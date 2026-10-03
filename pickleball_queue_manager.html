@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PickleStack - Free Pickleball Paddle Stacking & Queue App</title>
+    <meta name="description" content="Manage your open play pickleball sessions effortlessly with PickleStack. A free, offline-capable paddle stacking and queue management web app. Remove the chaos from court rotation.">
+    <meta name="keywords" content="pickleball, paddle stacking, queue management, court rotation, open play, pickleball app, offline pickleball tracker, sports management">
+    <meta name="author" content="PickleStack Dev">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph Tags -->
+    <meta property="og:title" content="PickleStack - Pickleball Queue Manager">
+    <meta property="og:description" content="Streamline your open play pickleball sessions with our free, offline-capable paddle stacking application.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://picklestack.app/">
+    <meta property="og:image" content="https://placehold.co/1200x630/0f172a/ccff00?text=PickleStack">
+
+    <!-- JSON-LD Structured Data for Software Application -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "PickleStack",
+      "operatingSystem": "Web",
+      "applicationCategory": "SportsApplication",
+      "description": "A free, offline-capable web application built specifically to remove the chaos of manual paddle stacking and queue management in pickleball open play.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "PickleStack Sports"
+      }
+    }
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        pickle: {
+                            400: '#d9ff33',
+                            500: '#ccff00',
+                            600: '#b3e600',
+                        },
+                        dark: {
+                            900: '#0B0F19', // Deep dark blue-black
+                            800: '#141B2D', // Card background
+                            700: '#1E293B', // Lighter borders
+                        }
+                    },
+                    fontFamily: {
+                        sport: ['Oswald', 'sans-serif'],
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            background-color: #0B0F19;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+        }
+        h1, h2, h3, .font-sport {
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        /* Custom scrollbar for queue list */
+        .queue-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .queue-container::-webkit-scrollbar-track {
+            background: #141B2D;
+            border-radius: 4px;
+        }
+        .queue-container::-webkit-scrollbar-thumb {
+            background: #1E293B;
+            border-radius: 4px;
+        }
+        .queue-container::-webkit-scrollbar-thumb:hover {
+            background: #ccff00;
+        }
+        
+        /* Message Box Animation */
+        @keyframes slideIn {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .message-box {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-pickle-500 selection:text-dark-900">
+
+    <header class="bg-dark-800 border-b border-dark-700 sticky top-0 z-10 shadow-lg">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-pickle-500 text-dark-900 p-2 rounded-lg rotate-12">
+                    <i class="fa-solid fa-table-tennis-paddle-ball text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-white leading-none">Pickle<span class="text-pickle-500">Stack</span></h1>
+                    <p class="text-xs text-gray-400 font-medium">QUEUE MANAGEMENT</p>
+                </div>
+            </div>
+            <div class="text-sm text-gray-400 flex items-center gap-2 bg-dark-900 py-1 px-3 rounded-full border border-dark-700">
+                <i class="fa-solid fa-wifi text-green-400" id="connection-status-icon"></i>
+                <span id="connection-status-text" class="hidden sm:inline">Offline Ready</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Global Message Container (replaces alert) -->
+    <div id="message-container" class="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none flex flex-col gap-2"></div>
+
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full items-start">
+            
+            <!-- LEFT COLUMN: Paddle Stack / Queue -->
+            <section class="lg:col-span-4 bg-dark-800 rounded-2xl border border-dark-700 shadow-xl overflow-hidden flex flex-col" style="max-height: 80vh;">
+                <div class="p-6 border-b border-dark-700 bg-gradient-to-br from-dark-800 to-dark-900">
+                    <h2 class="text-xl text-white mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-users text-pickle-500"></i> The Stack (<span id="queue-count">0</span>)
+                    </h2>
+                    
+                    <form id="add-player-form" class="flex gap-2">
+                        <input type="text" id="player-name" placeholder="Enter player name..." 
+                               class="flex-grow bg-dark-900 border border-dark-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-pickle-500 focus:ring-1 focus:ring-pickle-500 transition-colors"
+                               autocomplete="off">
+                        <button type="submit" class="bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-sport font-bold px-6 py-3 rounded-lg transition-transform active:scale-95 shadow-[0_0_15px_rgba(204,255,0,0.2)] hover:shadow-[0_0_20px_rgba(204,255,0,0.4)]">
+                            ADD
+                        </button>
+                    </form>
+                </div>
+
+                <div class="p-4 flex-grow overflow-y-auto queue-container" id="queue-list-container">
+                    <ul id="queue-list" class="space-y-3">
+                        <!-- Queue items injected by JS -->
+                    </ul>
+                    
+                    <!-- Empty State -->
+                    <div id="queue-empty-state" class="h-full flex flex-col items-center justify-center text-gray-500 py-10 opacity-50">
+                        <i class="fa-solid fa-box-open text-4xl mb-3"></i>
+                        <p class="text-sm font-medium">Stack is empty. Add players above.</p>
+                    </div>
+                </div>
+
+                <div class="p-4 border-t border-dark-700 bg-dark-800">
+                    <button id="start-match-btn" class="w-full bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-sport text-xl py-4 rounded-xl transition-all active:scale-95 shadow-[0_0_15px_rgba(204,255,0,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-pickle-500 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-play"></i> SEND NEXT 4 TO COURT
+                    </button>
+                </div>
+            </section>
+
+            <!-- RIGHT COLUMN: Active Courts -->
+            <section class="lg:col-span-8">
+                <div class="flex justify-between items-end mb-6">
+                    <div>
+                        <h2 class="text-3xl font-sport text-white">Active Courts</h2>
+                        <p class="text-gray-400 text-sm mt-1">Manage ongoing matches and free up courts.</p>
+                    </div>
+                    <button id="reset-all-btn" class="text-xs text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1">
+                        <i class="fa-solid fa-rotate-right"></i> Reset All Data
+                    </button>
+                </div>
+
+                <div id="courts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <!-- Courts injected by JS -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="bg-dark-900 border-t border-dark-700 py-6 text-center text-sm text-gray-500 mt-auto">
+        <p>&copy; 2026 PickleStack App. <i class="fa-solid fa-bolt text-pickle-500"></i> Local-first logic.</p>
+    </footer>
+
+    <script>
+        /**
+         * State Management
+         */
+        const STATE_KEY = 'pickleStackState';
+        
+        const defaultState = {
+            queue: [],
+            courts: [
+                { id: 1, name: 'Court 1', isActive: false, players: [] },
+                { id: 2, name: 'Court 2', isActive: false, players: [] },
+                { id: 3, name: 'Court 3', isActive: false, players: [] },
+                { id: 4, name: 'Court 4', isActive: false, players: [] }
+            ]
+        };
+
+        let appState = JSON.parse(JSON.stringify(defaultState));
+
+        // DOM Elements
+        const form = document.getElementById('add-player-form');
+        const nameInput = document.getElementById('player-name');
+        const queueList = document.getElementById('queue-list');
+        const queueEmptyState = document.getElementById('queue-empty-state');
+        const queueCount = document.getElementById('queue-count');
+        const startMatchBtn = document.getElementById('start-match-btn');
+        const courtsGrid = document.getElementById('courts-grid');
+        const msgContainer = document.getElementById('message-container');
+        const resetBtn = document.getElementById('reset-all-btn');
+
+        /**
+         * Show custom alert message
+         */
+        function showMessage(msg, type = 'info') {
+            const div = document.createElement('div');
+            const bgClass = type === 'error' ? 'bg-red-500/90 border-red-400 text-white' : 
+                            type === 'success' ? 'bg-pickle-500/90 border-pickle-400 text-dark-900' : 
+                            'bg-dark-700/90 border-dark-600 text-white';
+            
+            div.className = `message-box ${bgClass} border px-4 py-3 rounded-lg shadow-xl backdrop-blur-sm pointer-events-auto flex items-center justify-between gap-3 text-sm font-medium`;
+            div.innerHTML = `
+                <span>${msg}</span>
+                <button class="opacity-70 hover:opacity-100"><i class="fa-solid fa-xmark"></i></button>
+            `;
+            
+            div.querySelector('button').addEventListener('click', () => div.remove());
+            msgContainer.appendChild(div);
+            
+            setTimeout(() => {
+                if (div.parentNode) {
+                    div.style.opacity = '0';
+                    div.style.transition = 'opacity 0.3s ease';
+                    setTimeout(() => div.remove(), 300);
+                }
+            }, 3000);
+        }
+
+        /**
+         * Local Storage sync
+         */
+        function loadState() {
+            const saved = localStorage.getItem(STATE_KEY);
+            if (saved) {
+                try {
+                    appState = JSON.parse(saved);
+                } catch(e) {
+                    console.error("Failed to parse state", e);
+                    appState = JSON.parse(JSON.stringify(defaultState));
+                }
+            }
+            renderAll();
+        }
+
+        function saveState() {
+            localStorage.setItem(STATE_KEY, JSON.stringify(appState));
+        }
+
+        function resetState() {
+            // Using custom message instead of confirm()
+            const div = document.createElement('div');
+            div.className = `message-box bg-dark-800 border border-red-500/50 p-5 rounded-xl shadow-2xl pointer-events-auto text-center mx-auto mt-20 max-w-sm`;
+            div.innerHTML = `
+                <i class="fa-solid fa-triangle-exclamation text-red-500 text-3xl mb-3"></i>
+                <h3 class="text-white font-bold text-lg mb-2">Reset Application?</h3>
+                <p class="text-gray-400 text-sm mb-4">This will clear the queue and all active courts. This action cannot be undone.</p>
+                <div class="flex gap-3 justify-center">
+                    <button id="cancel-reset" class="px-4 py-2 bg-dark-700 text-white rounded-lg hover:bg-dark-600">Cancel</button>
+                    <button id="confirm-reset" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Reset</button>
+                </div>
+            `;
+            msgContainer.appendChild(div);
+
+            document.getElementById('cancel-reset').addEventListener('click', () => div.remove());
+            document.getElementById('confirm-reset').addEventListener('click', () => {
+                appState = JSON.parse(JSON.stringify(defaultState));
+                saveState();
+                renderAll();
+                div.remove();
+                showMessage('Data successfully reset', 'success');
+            });
+        }
+        
+        resetBtn.addEventListener('click', resetState);
+
+        /**
+         * Add player to queue
+         */
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = nameInput.value.trim();
+            if (!name) return;
+            
+            appState.queue.push(name);
+            nameInput.value = '';
+            saveState();
+            renderQueue();
+            updateStartButtonState();
+        });
+
+        /**
+         * Remove specific player from queue
+         */
+        function removePlayer(index) {
+            appState.queue.splice(index, 1);
+            saveState();
+            renderQueue();
+            updateStartButtonState();
+        }
+
+        /**
+         * Assign next 4 players to an available court
+         */
+        startMatchBtn.addEventListener('click', () => {
+            if (appState.queue.length < 4) {
+                showMessage('Need at least 4 players in the stack to start a match.', 'error');
+                return;
+            }
+
+            const freeCourt = appState.courts.find(c => !c.isActive);
+            if (!freeCourt) {
+                showMessage('No courts available. Please end an active match first.', 'error');
+                return;
+            }
+
+            // Pop 4 players from queue
+            const playersForMatch = appState.queue.splice(0, 4);
+            
+            // Assign to court
+            freeCourt.isActive = true;
+            freeCourt.players = playersForMatch;
+
+            saveState();
+            renderAll();
+            showMessage(`${playersForMatch.join(', ')} assigned to ${freeCourt.name}`, 'success');
+        });
+
+        /**
+         * Free up a court
+         */
+        function endMatch(courtId) {
+            const court = appState.courts.find(c => c.id === courtId);
+            if (court && court.isActive) {
+                court.isActive = false;
+                court.players = [];
+                saveState();
+                renderCourts();
+                updateStartButtonState();
+                showMessage(`${court.name} is now available.`, 'info');
+            }
+        }
+
+        /**
+         * Render Queue List
+         */
+        function renderQueue() {
+            queueCount.textContent = appState.queue.length;
+            
+            if (appState.queue.length === 0) {
+                queueList.innerHTML = '';
+                queueEmptyState.style.display = 'flex';
+            } else {
+                queueEmptyState.style.display = 'none';
+                queueList.innerHTML = appState.queue.map((player, idx) => {
+                    // Highlight first 4 players differently
+                    const isNextUp = idx < 4;
+                    const borderClass = isNextUp ? 'border-pickle-500/50 bg-pickle-500/10' : 'border-dark-700 bg-dark-900';
+                    const numberColor = isNextUp ? 'text-pickle-400 bg-pickle-500/20' : 'text-gray-500 bg-dark-700';
+                    
+                    return `
+                        <li class="flex items-center justify-between p-3 rounded-xl border ${borderClass} transition-all">
+                            <div class="flex items-center gap-3">
+                                <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${numberColor}">${idx + 1}</span>
+                                <span class="font-medium text-white">${player}</span>
+                            </div>
+                            <button onclick="removePlayer(${idx})" class="text-gray-500 hover:text-red-400 w-8 h-8 flex items-center justify-center rounded-full hover:bg-dark-700 transition-colors" title="Remove">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </li>
+                    `;
+                }).join('');
+            }
+        }
+
+        /**
+         * Update Start Button styling based on queue length & court availability
+         */
+        function updateStartButtonState() {
+            const hasPlayers = appState.queue.length >= 4;
+            const hasCourt = appState.courts.some(c => !c.isActive);
+            
+            if (hasPlayers && hasCourt) {
+                startMatchBtn.disabled = false;
+                startMatchBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-dark-700', 'text-gray-500');
+                startMatchBtn.classList.add('bg-pickle-500', 'text-dark-900');
+            } else {
+                startMatchBtn.disabled = true;
+                startMatchBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                
+                if (!hasPlayers && startMatchBtn.classList.contains('bg-pickle-500')) {
+                    // Optional: adjust visual style when disabled
+                }
+            }
+        }
+
+        /**
+         * Render Active Courts
+         */
+        function renderCourts() {
+            courtsGrid.innerHTML = appState.courts.map(court => {
+                if (court.isActive) {
+                    return `
+                        <div class="bg-dark-800 rounded-2xl border border-pickle-500/30 overflow-hidden shadow-[0_0_15px_rgba(204,255,0,0.05)] flex flex-col h-full relative">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-pickle-500"></div>
+                            <div class="p-5 border-b border-dark-700 flex justify-between items-center bg-gradient-to-r from-dark-800 to-dark-700">
+                                <h3 class="text-xl font-sport text-pickle-500 flex items-center gap-2">
+                                    <i class="fa-solid fa-hashtag text-sm opacity-70"></i> ${court.name}
+                                </h3>
+                                <span class="px-2 py-1 text-xs font-bold bg-red-500/10 text-red-400 rounded border border-red-500/20 tracking-wider">IN USE</span>
+                            </div>
+                            <div class="p-5 flex-grow">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="space-y-3">
+                                        <div class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1 border-b border-dark-700 pb-1">Team 1</div>
+                                        <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-blue-400"></div><span class="text-gray-200">${court.players[0] || 'Player 1'}</span></div>
+                                        <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-blue-400"></div><span class="text-gray-200">${court.players[1] || 'Player 2'}</span></div>
+                                    </div>
+                                    <div class="space-y-3">
+                                        <div class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1 border-b border-dark-700 pb-1">Team 2</div>
+                                        <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-orange-400"></div><span class="text-gray-200">${court.players[2] || 'Player 3'}</span></div>
+                                        <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-orange-400"></div><span class="text-gray-200">${court.players[3] || 'Player 4'}</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-4 border-t border-dark-700 bg-dark-900/50">
+                                <button onclick="endMatch(${court.id})" class="w-full py-2.5 rounded-lg text-sm font-bold border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white transition-colors">
+                                    END MATCH & CLEAR COURT
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="bg-dark-900 rounded-2xl border border-dark-700 overflow-hidden opacity-70 flex flex-col h-full items-center justify-center py-10 px-5 text-center transition-all hover:opacity-100 hover:border-dark-600">
+                            <div class="w-16 h-16 rounded-full bg-dark-800 flex items-center justify-center mb-4 border border-dark-700">
+                                <i class="fa-solid fa-check text-2xl text-gray-500"></i>
+                            </div>
+                            <h3 class="text-xl font-sport text-gray-400 mb-1">${court.name}</h3>
+                            <p class="text-sm text-gray-500 mb-6">Court is currently open and waiting for players.</p>
+                            <span class="px-3 py-1 text-xs font-bold bg-dark-800 text-gray-400 rounded-full border border-dark-700 tracking-wider">AVAILABLE</span>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+
+        function renderAll() {
+            renderQueue();
+            renderCourts();
+            updateStartButtonState();
+        }
+
+        // Initialize App
+        loadState();
+
+        /**
+         * Offline Service Worker Injection
+         * Since we must deliver in a single HTML file, we construct the SW as a Blob
+         * and register it. This provides basic network-first or cache-first offline capabilities
+         * without needing a separate sw.js file on the server.
+         */
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swCode = `
+                    const CACHE_NAME = 'picklestack-cache-v1';
+                    
+                    self.addEventListener('install', event => {
+                        self.skipWaiting();
+                    });
+
+                    self.addEventListener('activate', event => {
+                        event.waitUntil(clients.claim());
+                    });
+
+                    self.addEventListener('fetch', event => {
+                        // Very simple fetch interceptor for single file resilience
+                        event.respondWith(
+                            fetch(event.request)
+                                .then(response => {
+                                    // Clone response and cache it on successful fetch
+                                    if(response && response.status === 200 && response.type === 'basic') {
+                                        const responseToCache = response.clone();
+                                        caches.open(CACHE_NAME).then(cache => {
+                                            cache.put(event.request, responseToCache);
+                                        });
+                                    }
+                                    return response;
+                                })
+                                .catch(() => {
+                                    // If offline, serve from cache
+                                    return caches.match(event.request);
+                                })
+                        );
+                    });
+                `;
+                
+                try {
+                    const blob = new Blob([swCode], { type: 'application/javascript' });
+                    const swUrl = URL.createObjectURL(blob);
+                    
+                    navigator.serviceWorker.register(swUrl).then(registration => {
+                        console.log('PickleStack ServiceWorker registered for offline use.');
+                    }).catch(error => {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+                } catch(e) {
+                    console.warn("Blob SW registration blocked by environment, standard offline caching disabled.", e);
+                }
+            });
+
+            // Handle online/offline UI indicators
+            const statusIcon = document.getElementById('connection-status-icon');
+            const statusText = document.getElementById('connection-status-text');
+
+            window.addEventListener('online', () => {
+                statusIcon.className = 'fa-solid fa-wifi text-green-400';
+                statusText.textContent = 'Online & Synced';
+            });
+
+            window.addEventListener('offline', () => {
+                statusIcon.className = 'fa-solid fa-wifi text-red-500';
+                statusText.textContent = 'Offline Mode';
+                showMessage('You are offline. Queue changes are saved locally.', 'info');
+            });
+
+            // Initial check
+            if (!navigator.onLine) {
+                statusIcon.className = 'fa-solid fa-wifi text-red-500';
+                statusText.textContent = 'Offline Mode';
+            }
+        }
+    </script>
+</body>
+</html>

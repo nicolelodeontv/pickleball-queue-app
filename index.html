@@ -94,7 +94,7 @@ h1,h2,h3,.font-sport{font-family:Oswald,sans-serif;text-transform:uppercase;lett
 <script>
 const K='pickleStackState',$=id=>document.getElementById(id);
 /* Live sharing: paste your Supabase project URL and anon key (see README). Leave empty to share snapshot links instead. */
-const SB_URL='',SB_KEY='';
+const SB_URL='sb_publishable_vk1EKES125_AzGi9iPHxSw_XiliPhcA',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvY2hldGVtc25yeXNuanJnb2VkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1NzYyMjYsImV4cCI6MjEwNjE1MjIyNn0.tdXEQwJGU0zNK-dPRgWD4IVhqS21_AEAay2LnpKIsBU';
 const sb=SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY):null,lt={};
 function push(c,st){if(!sb||!c.mid)return;
 const row={code:c.mid,court:c.name,players:c.players,score:c.score,target:S.target,status:st||'live',updated_at:new Date().toISOString()};

@@ -1,0 +1,211 @@
+name: Two-device production smoke
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Run two-device production smoke
+        env:
+          APP_URL: https://pickle-stack-app.vercel.app/
+        run: |
+          cat > two-device-smoke.mjs <<'EOF'
+          import { chromium, devices } from 'playwright';
+          import assert from 'node:assert/strict';
+
+          const APP = process.env.APP_URL;
+          const browser = await chromium.launch({headless:true});
+
+          const host = await browser.newContext({
+            viewport: {width: 1440, height: 900},
+            deviceScaleFactor: 1
+          });
+          const phone = await browser.newContext({
+            ...devices['Pixel 7']
+          });
+
+          const hp = await host.newPage();
+          const vp = await phone.newPage();
+
+          const results = {};
+          const waitText = async (page, text, timeout=10000) => {
+            await page.getByText(text, {exact:true}).waitFor({state:'visible', timeout});
+          };
+
+          try {
+            // 1) Host setup + live link.
+            await hp.goto(APP, {waitUntil:'networkidle'});
+            await hp.locator('#pn').fill('Alpha,Beta,Gamma,Delta');
+            await hp.locator('#f').press('Enter');
+            await hp.getByRole('button', {name:'Check in all'}).click();
+            await assert.doesNotReject(async () => waitText(hp, 'Alpha', 5000));
+            await hp.locator('#go').click();
+            await hp.locator('#courts .bg-dark-800').first().waitFor({state:'visible', timeout:5000});
+
+            await hp.locator('button[onclick="live()"]').click();
+            const liveCode = await hp.evaluate(() => S.sid);
+            assert.match(liveCode, /^[a-z0-9]{6}$/);
+            const liveUrl = APP + '#s=' + liveCode;
+
+            // 2) Second phone opens live link and receives a score update.
+            await vp.goto(liveUrl, {waitUntil:'networkidle'});
+            await waitText(vp, 'Live Session', 10000);
+            await waitText(vp, 'Alpha', 10000);
+
+            const before = await vp.locator('#viewer').innerText();
+            assert.match(before, /0/);
+
+            await hp.locator('button[aria-label="Plus point"]').first().click();
+            await vp.waitForFunction(
+              () => /1/.test(document.querySelector('#viewer')?.innerText || ''),
+              null,
+              {timeout:10000}
+            );
+            const afterScore = await vp.locator('#viewer').innerText();
+            assert.match(afterScore, /1/);
+            results.liveSync = true;
+
+            // Finish a scored match so results contains standings + match log.
+            for (let i=0;i<10;i++) {
+              await hp.locator('button[aria-label="Plus point"]').first().click();
+            }
+            await hp.getByRole('button', {name:'FINISH & LOG'}).click();
+            await waitText(hp, 'Alpha', 5000);
+
+            // 3) End session creates a distinct results code.
+            await hp.locator('#rs').click();
+            await hp.locator('.fixed .nw').waitFor({state:'visible', timeout:5000});
+            const resultCode = await hp.evaluate(() => S.rid);
+            assert.match(resultCode, /^[a-z0-9]{6}$/);
+            assert.notEqual(resultCode, liveCode);
+            const resultUrl = APP + '#s=' + resultCode;
+
+            // Second phone opens the results QR target.
+            await vp.goto(resultUrl, {waitUntil:'networkidle'});
+            await waitText(vp, 'Session Results', 10000);
+            const resultText = await vp.locator('#viewer').innerText();
+            assert.match(resultText, /Match Log/);
+            assert.match(resultText, /Alpha/);
+            assert.match(resultText, /11-0|10-0|9-0|8-0/);
+            results.resultsPage = true;
+            results.codesDistinct = true;
+
+            // 4) Back to session, then prove original live link still updates.
+            await hp.locator('.fixed .bk').click();
+            await hp.locator('#rs').waitFor({state:'visible', timeout:5000});
+            await hp.locator('#courts .bg-dark-800').first().waitFor({state:'visible', timeout:5000});
+
+            await hp.locator('button[onclick="live()"]').click();
+            const liveCodeAgain = await hp.evaluate(() => S.sid);
+            assert.equal(liveCodeAgain, liveCode);
+
+            await hp.locator('#msg').waitFor({state:'attached'});
+            // Close live-link QR modal.
+            await hp.locator('.fixed .x').click();
+
+            await vp.goto(liveUrl, {waitUntil:'networkidle'});
+            await waitText(vp, 'Live Session', 10000);
+            const liveBeforeSecond = await vp.locator('#viewer').innerText();
+            assert.match(liveBeforeSecond, /Live Session/);
+
+            await hp.locator('button[aria-label="Plus point"]').first().click();
+            await vp.waitForFunction(
+              () => /12/.test(document.querySelector('#viewer')?.innerText || ''),
+              null,
+              {timeout:10000}
+            );
+            results.liveLinkStillWorks = true;
+
+            // 5) Attendance bulk controls on a clean isolated device state.
+            const helper = await host.newPage();
+            await helper.goto(APP, {waitUntil:'networkidle'});
+            await helper.evaluate(() => localStorage.removeItem('pickleStackState'));
+            await helper.reload({waitUntil:'networkidle'});
+            await helper.locator('#pn').fill('One,Two,Three,Four');
+            await helper.locator('#f').press('Enter');
+            assert.equal(await helper.locator('#wc').innerText(), '4');
+            await helper.getByRole('button', {name:'Check in all'}).click();
+            assert.equal(await helper.locator('#wc').innerText(), '0');
+            assert.equal(await helper.locator('#qc').innerText(), '4');
+            assert.deepEqual(
+              await helper.locator('#ql li').allInnerTexts(),
+              ['1\nOne', '2\nTwo', '3\nThree', '4\nFour']
+            );
+            await helper.locator('button').filter({hasText:'Clear all'}).click();
+            await helper.getByRole('button', {name:'Confirm'}).click();
+            assert.equal(await helper.locator('#qc').innerText(), '0');
+            assert.equal(await helper.locator('#wc').innerText(), '0');
+            results.attendanceBulk = true;
+
+            // 6) Court rename + running timer survives refresh.
+            await helper.locator('#pn').fill('Red,Blue,Green,Yellow');
+            await helper.locator('#f').press('Enter');
+            await helper.getByRole('button', {name:'Check in all'}).click();
+            await helper.locator('#go').click();
+
+            let renamed = false;
+            helper.once('dialog', async dialog => {
+              assert.equal(dialog.type(), 'prompt');
+              await dialog.accept('Court Alpha');
+              renamed = true;
+            });
+            await helper.locator('button[title="Rename"]').first().click();
+            assert.equal(renamed, true);
+            await waitText(helper, 'Court Alpha', 5000);
+
+            const timerSelector = '#courts .tm';
+            const timer1 = await helper.locator(timerSelector).innerText();
+            await helper.waitForTimeout(2200);
+            const timer2 = await helper.locator(timerSelector).innerText();
+            assert.notEqual(timer1, timer2);
+            await helper.reload({waitUntil:'networkidle'});
+            assert.match(await helper.locator('#courts').innerText(), /Court Alpha/);
+            const timer3 = await helper.locator(timerSelector).innerText();
+            const secs = s => {
+              const [m,ss] = s.split(':').map(Number);
+              return m*60+ss;
+            };
+            assert.ok(secs(timer3) >= secs(timer2) - 1);
+            results.renameTimer = true;
+
+            // 7) Dark scrollbar styling is present in the actual loaded page.
+            const css = await helper.evaluate(() => {
+              const styleText = [...document.querySelectorAll('style')].map(s => s.textContent).join('\n');
+              return {
+                colorScheme: getComputedStyle(document.documentElement).colorScheme,
+                scrollbar: /scrollbar-width:thin/.test(styleText) && /scrollbar-color:#334155 transparent/.test(styleText),
+                webkitThumb: /::-webkit-scrollbar-thumb\{background:#334155/.test(styleText)
+              };
+            });
+            assert.equal(css.colorScheme, 'dark');
+            assert.equal(css.scrollbar, true);
+            assert.equal(css.webkitThumb, true);
+            results.darkScrollbar = true;
+
+            console.log(JSON.stringify({pass:true, ...results, liveCode, resultCode}, null, 2));
+          } catch (err) {
+            console.error(JSON.stringify({pass:false, ...results}, null, 2));
+            throw err;
+          } finally {
+            await browser.close();
+          }
+          EOF
+          node two-device-smoke.mjs

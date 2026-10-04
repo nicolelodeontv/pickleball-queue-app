@@ -95,15 +95,20 @@ jobs:
             const before = await vp.locator('#viewer').innerText();
             assert.match(before, /0/);
 
+            const syncStart = Date.now();
             await hp.locator('button[aria-label="Plus point"]').first().click();
             await vp.waitForFunction(
               () => /1/.test(document.querySelector('#viewer')?.innerText || ''),
               null,
               {timeout:10000}
             );
+            const syncMs = Date.now() - syncStart;
             const afterScore = await vp.locator('#viewer').innerText();
             assert.match(afterScore, /1/);
+            assert.ok(syncMs <= 3000, `live sync took ${syncMs}ms`);
+            console.log('LIVE_SYNC_MS', syncMs); 
             results.liveSync = true;
+            results.liveSyncMs = syncMs;
 
             // Finish a scored match so results contains standings + match log.
             for (let i=0;i<10;i++) {
@@ -124,7 +129,7 @@ jobs:
             await vp.goto(resultUrl, {waitUntil:'networkidle'});
             await waitText(vp, 'Session Results', 10000);
             const resultText = await vp.locator('#viewer').innerText();
-            assert.match(resultText, /Match Log/);
+            assert.match(resultText, /MATCH LOG/i);
             assert.match(resultText, /Alpha/);
             assert.match(resultText, /11-0|10-0|9-0|8-0/);
             results.resultsPage = true;

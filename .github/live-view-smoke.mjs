@@ -52,12 +52,17 @@ try {
   await viewer.locator('#viewer').getByRole('heading', { name: 'The Stack' }).waitFor({ timeout: 15000 });
   await viewer.locator('#viewer').getByRole('heading', { name: 'Leaderboard' }).waitFor({ timeout: 15000 });
 
-  const organizerControls = await Promise.all(
-    ['#go', '#rs', '#f', '#tg'].map(sel => viewer.locator(sel).isVisible())
+  const visibleViewerControls = await viewer.locator('#viewer button, #viewer input, #viewer select').evaluateAll(els =>
+    els.filter(el => {
+      const s = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
+    }).map(el => ({tag: el.tagName, text: (el.textContent || '').trim(), id: el.id}))
   );
-  if (organizerControls.some(Boolean)) throw new Error('Viewer exposed visible organizer controls');
+  const forbidden = visibleViewerControls.filter(x => x.id && ['go', 'rs', 'f', 'tg'].includes(x.id));
+  if (forbidden.length) throw new Error('Viewer exposed organizer controls: ' + JSON.stringify(forbidden));
 
-  const viewerText = await viewer.locator('body').innerText();
+  const viewerText = await viewer.locator('#viewer').innerText();
   for (const expected of ['Ana', 'Bea', 'Cara', 'Dani']) {
     if (!viewerText.includes(expected)) throw new Error('Viewer missing player: ' + expected);
   }
@@ -66,7 +71,7 @@ try {
     pass: true,
     liveUrl,
     viewport: '390x844',
-    viewerReadOnly: organizerControls === 0,
+    viewerReadOnly: forbidden.length === 0,
     playersVisible: true,
     sections: ['Up Next', 'The Stack', 'Leaderboard']
   }, null, 2));

@@ -69,6 +69,20 @@ jobs:
               scriptURL: navigator.serviceWorker.controller?.scriptURL || null
             }));
 
+            const cacheInfo = await page.evaluate(async () => {
+              const c = await caches.open('picklestack-v1');
+              const keys = await c.keys();
+              const r = await c.match('/');
+              const body = r ? await r.clone().text() : '';
+              return {
+                keys: keys.map(x => x.url),
+                rootStatus: r ? r.status : null,
+                rootType: r ? r.type : null,
+                rootBytes: body.length,
+                rootHasStack: body.includes('The Stack')
+              };
+            });
+
             const cdp = await context.newCDPSession(page);
             let installability = null;
             let appManifest = null;
@@ -81,8 +95,9 @@ jobs:
             await page.locator('#f button').click();
             await page.waitForTimeout(300);
 
+            await page.goto('about:blank');
             await context.setOffline(true);
-            await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
             await page.waitForTimeout(1000);
 
             const offlineLoaded = (await page.locator('body').innerText()).includes('The Stack');
@@ -102,6 +117,7 @@ jobs:
               controlled,
               installability,
               appManifest,
+              cacheInfo,
               offlineLoaded,
               offlineMatchStarted: courtsText.includes('Eve') && courtsText.includes('Frank') && /LIVE/.test(courtsText),
               consoleErrors,

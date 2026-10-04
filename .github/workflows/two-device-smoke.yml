@@ -174,8 +174,8 @@ jobs:
             assert.equal(await helper.locator('#wc').innerText(), '0');
             assert.equal(await helper.locator('#qc').innerText(), '4');
             assert.deepEqual(
-              await helper.locator('#ql li').allInnerTexts(),
-              ['1\nOne', '2\nTwo', '3\nThree', '4\nFour']
+              await helper.locator('#ql li .truncate').allTextContents(),
+              ['One', 'Two', 'Three', 'Four']
             );
             await helper.locator('button').filter({hasText:'Clear all'}).click();
             await helper.getByRole('button', {name:'Confirm'}).click();

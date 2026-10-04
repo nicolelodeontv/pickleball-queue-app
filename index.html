@@ -208,7 +208,7 @@ let st;function pushS(){if(!sb||!S.sid)return;clearTimeout(st);st=setTimeout(()=
 async function sess(mode){if(!sb)return toast('Session sharing needs Supabase set up.','error');
 if(!S.sid)S.sid=Math.random().toString(36).slice(2,8);
 const q=await sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()});
-if(q.error)return toast('Could not publish. Did you run the SQL?','error');
+if(q.error)return toast('Publish failed: '+q.error.message,'error');
 save();const url=location.origin+location.pathname+'#s='+S.sid;
 if(mode=='qr')return qrBox('Live session',url);
 try{if(navigator.share)await navigator.share({title:'PickleStack live',text:'Watch our open play live',url});else{await navigator.clipboard.writeText(url);toast('Session link copied','success')}}catch(e){}}

@@ -14,6 +14,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={theme:{extend:{colors:{pickle:{400:'#d9ff33',500:'#ccff00',600:'#b3e600'},dark:{900:'#0B0F19',800:'#141B2D',700:'#1E293B'}},fontFamily:{sport:['Oswald','sans-serif']}}}}</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
@@ -24,6 +25,7 @@ h1,h2,h3,.font-sport{font-family:Oswald,sans-serif;text-transform:uppercase;lett
 .live{animation:p 1.4s infinite}@keyframes p{50%{opacity:.3}}
 .mb{animation:s .3s ease-out}@keyframes s{from{transform:translateY(-50%);opacity:0}}
 @media(prefers-reduced-motion:reduce){.live,.mb{animation:none}}
+.qrb svg{width:100%;height:auto;display:block}
 </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-pickle-500 selection:text-dark-900">
@@ -147,11 +149,17 @@ const enc=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
 const dec=h=>JSON.parse(decodeURIComponent(escape(atob(h))));
 function snap(m){const c=S.courts.find(x=>x.mid==m&&x.isActive);if(c)return{m,n:c.name,p:c.players,s:c.score,tg:S.target,ts:Date.now()};
 const l=S.log.find(x=>x.mid==m);return l&&{m,n:l.c,p:l.p,s:l.s,tg:l.tg,f:1,ts:l.t}}
-async function share(m){const s=snap(m);if(!s)return;
+async function mlink(m){const s=snap(m);if(!s)return null;
 let ok=false;
 if(sb){const q=await sb.from('live_matches').upsert({code:s.m,court:s.n,players:s.p,score:s.s,target:s.tg,status:s.f?'final':'live',updated_at:new Date().toISOString()});ok=!q.error}
-const url=location.origin+location.pathname+'#m='+(ok?s.m:enc(s)),t=`${s.n}: ${tx(s.p,0)} ${s.s[0]}-${s.s[1]} ${tx(s.p,1)}`;
+return{s,url:location.origin+location.pathname+'#m='+(ok?s.m:enc(s)),t:`${s.n}: ${tx(s.p,0)} ${s.s[0]}-${s.s[1]} ${tx(s.p,1)}`}}
+async function share(m){const r=await mlink(m);if(!r)return;const{url,t}=r;
 try{if(navigator.share)await navigator.share({title:'PickleStack match',text:t,url});else{await navigator.clipboard.writeText(t+'\n'+url);toast('Match link copied','success')}}catch(e){}}
+async function qr(m){const r=await mlink(m);if(!r)return;let svg;
+try{const q=qrcode(0,'M');q.addData(r.url);q.make();svg=q.createSvgTag({cellSize:6,margin:0,scalable:true})}catch(e){return toast('Could not make QR code.','error')}
+const d=document.createElement('div');d.className='fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4';
+d.innerHTML=`<div class="bg-dark-800 border border-dark-700 rounded-2xl p-6 text-center max-w-xs w-full"><h3 class="text-white text-lg mb-3">${esc(r.s.n)}</h3><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:240px;max-width:100%">${svg}</div><p class="text-xs text-gray-400 mt-3">Scan to watch this match.</p><button class="x mt-4 px-4 py-2 bg-dark-700 rounded-lg">Close</button></div>`;
+d.onclick=e=>{if(e.target==d||e.target.classList.contains('x'))d.remove()};document.body.append(d)}
 
 /* Render */
 function team(c,i){const w=win(c.score,S.target)==i;
@@ -162,7 +170,7 @@ function renderCourts(){$('courts').innerHTML=S.courts.map(c=>c.isActive?
 `<div class="bg-dark-800 rounded-2xl border border-pickle-500/30 overflow-hidden flex flex-col relative"><div class="absolute top-0 inset-x-0 h-1 bg-pickle-500"></div>
 <div class="p-4 border-b border-dark-700 flex justify-between items-center"><h3 class="text-xl text-pickle-500">${c.name}</h3><span class="text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1"><i class="fa-solid fa-circle live text-[8px]"></i> LIVE ${mins(c.t)}m</span></div>
 <div class="p-4 space-y-2 flex-grow">${team(c,0)}${team(c,1)}<p class="text-[11px] text-gray-500 text-center">First to ${S.target}, win by 2</p></div>
-<div class="p-3 border-t border-dark-700 flex gap-2"><button onclick="share('${c.mid}')" title="Share match" class="sb"><i class="fa-solid fa-share-nodes"></i></button>
+<div class="p-3 border-t border-dark-700 flex gap-2"><button onclick="share('${c.mid}')" title="Share match" class="sb"><i class="fa-solid fa-share-nodes"></i></button><button onclick="qr('${c.mid}')" title="QR code" class="sb"><i class="fa-solid fa-qrcode"></i></button>
 <button onclick="fin(${c.id})" class="flex-grow rounded-lg text-sm font-bold ${win(c.score,S.target)>=0?'bg-pickle-500 text-dark-900':'border border-dark-700 text-gray-300 hover:border-pickle-500'}">FINISH & LOG</button>
 <button onclick="drop(${c.id})" title="Cancel match" class="sb hover:!bg-red-500 hover:!text-white"><i class="fa-solid fa-xmark"></i></button></div></div>`:
 `<div class="bg-dark-900 rounded-2xl border border-dark-700 opacity-70 flex flex-col items-center justify-center py-10 px-5 text-center"><i class="fa-solid fa-check text-2xl text-gray-500 mb-3"></i><h3 class="text-xl text-gray-400">${c.name}</h3><p class="text-sm text-gray-500">Open and waiting for players.</p></div>`).join('')}
@@ -189,7 +197,7 @@ $('ql').innerHTML=S.queue.map((p,i)=>`<li class="flex items-center justify-betwe
 $('go').disabled=S.queue.length<4||!S.courts.some(c=>!c.isActive)}
 function renderLog(){$('log').innerHTML=S.log.length?S.log.map(l=>`<div class="flex items-center gap-3 p-3"><div class="text-xs text-gray-500 w-24 flex-none">${hm(l.t)}<br>${l.c} · ${Math.max(1,Math.round(l.d/60000))}m</div>
 <div class="flex-1 min-w-0 text-sm"><span class="${l.w==0?'text-pickle-500 font-semibold':''}">${nm(l.p,0)}</span><span class="font-sport text-lg px-2">${l.s[0]}-${l.s[1]}</span><span class="${l.w==1?'text-pickle-500 font-semibold':''}">${nm(l.p,1)}</span></div>
-<button onclick="share('${l.mid}')" title="Share result" class="sb"><i class="fa-solid fa-share-nodes"></i></button></div>`).join(''):'<p class="text-sm text-gray-500 py-8 text-center">No matches yet. Finish a match to log it.</p>'}
+<button onclick="share('${l.mid}')" title="Share result" class="sb"><i class="fa-solid fa-share-nodes"></i></button><button onclick="qr('${l.mid}')" title="QR code" class="sb"><i class="fa-solid fa-qrcode"></i></button></div>`).join(''):'<p class="text-sm text-gray-500 py-8 text-center">No matches yet. Finish a match to log it.</p>'}
 
 function stats(){const m={};S.log.forEach(l=>{if(l.w<0)return;l.p.forEach((n,i)=>{const t=i<2?0:1,k=n.toLowerCase(),x=m[k]||(m[k]={n,w:0,l:0,d:0});l.w==t?x.w++:x.l++;x.d+=l.s[t]-l.s[1-t]})});
 return Object.values(m).sort((a,b)=>b.w-a.w||b.d-a.d||a.l-b.l)}

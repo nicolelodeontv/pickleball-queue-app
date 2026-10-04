@@ -47,10 +47,10 @@ try {
   const shareToken = new URL(baseUrl).searchParams.get('_vercel_share');
   if (shareToken) viewerUrl.searchParams.set('_vercel_share', shareToken);
   await viewer.goto(viewerUrl.toString(), { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await viewer.getByText('LIVE VIEW', { exact: true }).waitFor({ timeout: 15000 });
-  await viewer.getByText('Up Next', { exact: true }).waitFor({ timeout: 15000 });
-  await viewer.getByText('The Stack', { exact: true }).waitFor({ timeout: 15000 });
-  await viewer.getByText('Leaderboard', { exact: true }).waitFor({ timeout: 15000 });
+  await viewer.locator('#viewer').getByText('LIVE VIEW', { exact: true }).waitFor({ timeout: 15000 });
+  await viewer.locator('#viewer').getByRole('heading', { name: 'Up Next' }).waitFor({ timeout: 15000 });
+  await viewer.locator('#viewer').getByRole('heading', { name: 'The Stack' }).waitFor({ timeout: 15000 });
+  await viewer.locator('#viewer').getByRole('heading', { name: 'Leaderboard' }).waitFor({ timeout: 15000 });
 
   const organizerControls = await viewer.locator('#go, #rs, #f, #tg').count();
   if (organizerControls !== 0) throw new Error('Viewer exposed organizer controls');

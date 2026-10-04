@@ -8,6 +8,7 @@ const check=async(n,f)=>{try{await f();console.log('PASS',n)}catch(e){console.er
 await page.goto(URL,{waitUntil:'networkidle'});await page.evaluate(()=>localStorage.clear());await page.reload({waitUntil:'networkidle'});
 await check('production loads',async()=>await page.getByRole('heading',{name:/PickleStack/i}).first().waitFor());
 for(const n of ['Ana','Ben','Cara','Dan']){await page.locator('#pn').fill(n);await page.locator('#f').press('Enter')}
+await page.getByRole('button',{name:/Check in all/i}).click();
 await check('four players queued',async()=>{if(await page.locator('#ql li').count()!==4)throw Error('expected 4')});
 await page.getByRole('button',{name:/SEND NEXT 4 TO COURT/i}).click();
 await check('match starts',async()=>await page.getByText('LIVE',{exact:true}).first().waitFor());

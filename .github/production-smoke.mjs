@@ -13,7 +13,7 @@ await check('four players queued',async()=>{if(await page.locator('#ql li').coun
 await page.getByRole('button',{name:/SEND NEXT 4 TO COURT/i}).click();
 await page.waitForTimeout(1500);
 await check('match starts',async()=>await page.locator('#courts .live').first().waitFor());
-await page.getByRole('button',{name:/Live link/i}).click();
+await page.locator('header button[onclick="live()"]).click();
 await check('live popup',async()=>{await page.getByText('Live session',{exact:true}).waitFor();await page.getByRole('button',{name:'Copy link'}).waitFor();await page.getByRole('button',{name:'Share'}).waitFor();await page.locator('.qrb svg').waitFor()});
 const liveUrl=await page.locator('.break-all').first().innerText();await page.getByRole('button',{name:'Copy link'}).click();
 await check('live clipboard',async()=>{if(await page.evaluate(()=>navigator.clipboard.readText())!==liveUrl)throw Error('clipboard mismatch')});

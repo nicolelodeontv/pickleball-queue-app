@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>PickleStack - Free Pickleball Paddle Stacking & Queue App</title>
-<meta name="description" content="Manage your open play pickleball sessions effortlessly with PickleStack. A free paddle stacking, live scoring and match log web app. Remove the chaos from court rotation.">
+<title>QueueZeroTwo - Free Pickleball Queue & Court Rotation App</title>
+<meta name="description" content="Manage your open play pickleball sessions effortlessly with QueueZeroTwo. A free paddle stacking, live scoring and match log web app. Remove the chaos from court rotation.">
 <meta name="keywords" content="pickleball, paddle stacking, queue management, court rotation, open play, pickleball scoring, match log">
 <meta name="robots" content="index, follow">
-<meta property="og:title" content="PickleStack - Pickleball Queue Manager">
+<meta property="og:title" content="QueueZeroTwo - Pickleball Queue Manager">
 <meta property="og:description" content="Stack players, keep score, share live matches and keep a match log for open play.">
 <meta property="og:type" content="website">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"PickleStack","operatingSystem":"Web","applicationCategory":"SportsApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"QueueZeroTwo","operatingSystem":"Web","applicationCategory":"SportsApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={theme:{extend:{colors:{pickle:{400:'#d9ff33',500:'#ccff00',600:'#b3e600'},dark:{900:'#0B0F19',800:'#141B2D',700:'#1E293B'}},fontFamily:{sport:['Oswald','sans-serif']}}}}</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -121,9 +121,16 @@ button,select,input{touch-action:manipulation}
 </style>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B0F19">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://queuezerotwo.app/">
+<meta property="og:site_name" content="QueueZeroTwo">
+<meta property="og:url" content="https://queuezerotwo.app/">
+<meta property="og:image" content="https://queuezerotwo.app/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="PickleStack">
+<meta name="apple-mobile-web-app-title" content="QueueZeroTwo">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-pickle-500 selection:text-dark-900">
@@ -131,9 +138,9 @@ button,select,input{touch-action:manipulation}
 <div class="container mx-auto px-4 py-4 flex justify-between items-center">
 <div class="flex items-center gap-3">
 <div class="bg-pickle-500 text-dark-900 p-2 rounded-lg rotate-12"><i class="fa-solid fa-table-tennis-paddle-ball text-xl"></i></div>
-<div><h1 class="text-2xl font-bold text-white leading-none">Pickle<span class="text-pickle-500">Stack</span></h1><p class="text-xs text-gray-400 font-medium">QUEUE, SCORES & LOG</p></div>
+<div><h1 class="text-2xl font-bold text-white leading-none">Queue<span class="text-pickle-500">ZeroTwo</span></h1><p class="text-xs text-gray-400 font-medium">QUEUE, SCORES & LOG</p></div>
 </div>
-<div class="flex items-center gap-2"><button onclick="stand()" title="Standings" class="bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10"><i class="fa-solid fa-trophy"></i></button><button id="snb" onclick="snd()" title="Sound" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="tsb" onclick="tts()" title="Voice announcements" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="exp" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Export a backup of this device's PickleStack data"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Export</span></button><button id="impbtn" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Import a PickleStack backup"><i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Import</span></button><button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm" title="Open a read-only live view for players"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live View</span></button></div>
+<div class="flex items-center gap-2"><button onclick="stand()" title="Standings" class="bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10"><i class="fa-solid fa-trophy"></i></button><button id="snb" onclick="snd()" title="Sound" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="tsb" onclick="tts()" title="Voice announcements" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="exp" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Export a backup of this device's QueueZeroTwo data"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Export</span></button><button id="impbtn" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Import a QueueZeroTwo backup"><i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Import</span></button><button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm" title="Open a read-only live view for players"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live View</span></button></div>
 <div class="text-sm text-gray-400 flex items-center gap-2 bg-dark-900 py-1 px-3 rounded-full border border-dark-700"><i class="fa-solid fa-wifi text-green-400" id="ci"></i><span id="ct" class="hidden sm:inline">Saved on this device</span></div>
 </div>
 </header>
@@ -182,7 +189,7 @@ button,select,input{touch-action:manipulation}
 <div><h2 class="text-3xl text-white">Active Courts</h2><p class="text-gray-400 text-sm mt-1">Score matches and clear courts when they finish.</p></div>
 <div class="flex items-center gap-4 text-xs text-gray-400">
 <label>Play to <select id="tg" class="bg-dark-900 border border-dark-700 rounded px-2 py-1 text-white"><option>11</option><option>15</option><option>21</option></select></label>
-<button id="rs" class="bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg px-3 py-1.5"><i class="fa-solid fa-stop"></i> End session</button>
+<button id="rs" class="bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg px-3 py-1.5"><i class="fa-solid fa-stop"></i> End session</button>
 </div>
 </div>
 <div id="courts" class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6"></div>
@@ -211,7 +218,7 @@ button,select,input{touch-action:manipulation}
 <button id="nvt" onclick="tab('stats')"><i class="fa-solid fa-ranking-star text-lg"></i><span>Stats</span></button>
 <div class="w-20 flex items-center justify-center"><button id="fab" onclick="addPl()" aria-label="Add player" title="Add player" class="w-12 h-12 rounded-full bg-pickle-500 text-dark-900 shadow-lg active:scale-95"><i class="fa-solid fa-plus text-xl"></i></button></div>
 </nav>
-<footer class="bg-dark-900 border-t border-dark-700 py-6 text-center text-sm text-gray-400"><p>&copy; 2026 PickleStack App. <i class="fa-solid fa-bolt text-pickle-500"></i> Your session stays on this device. Share a Live View for players, or End session for a results link.</p></footer>
+<footer class="bg-dark-900 border-t border-dark-700 py-6 text-center text-sm text-gray-400"><p>&copy; 2026 QueueZeroTwo App. <i class="fa-solid fa-bolt text-pickle-500"></i> Your session stays on this device. Share a Live View for players, or End session for a results link.</p></footer>
 
 <script>
 const K='pickleStackState',$=id=>document.getElementById(id);
@@ -238,7 +245,7 @@ d.textContent=m;$('msg').append(d);setTimeout(()=>d.remove(),3000)}
 
 const bP='px-4 py-3 rounded-xl bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-sport tracking-wide active:scale-95',
 bS='px-4 py-3 rounded-xl bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200',
-bD='px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-sport tracking-wide';
+bD='px-4 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-sport tracking-wide';
 let modalSeq=0,lastModalTrigger=null;
 document.addEventListener('click',e=>{
   if(e.target.closest('[role="dialog"]'))return;
@@ -248,7 +255,7 @@ document.addEventListener('click',e=>{
 function modal(html,lock){
   const d=document.createElement('div'),prev=document.activeElement,opener=(lastModalTrigger&&lastModalTrigger.isConnected)?lastModalTrigger:prev,mid='picklestack-modal-'+(++modalSeq);
   d.className='fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4';
-  d.innerHTML='<div class="mb bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-label="PickleStack dialog" tabindex="-1" id="'+mid+'">'+html+'</div>';
+  d.innerHTML='<div class="mb bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-label="QueueZeroTwo dialog" tabindex="-1" id="'+mid+'">'+html+'</div>';
   const box=d.firstElementChild,focusable=()=>[...box.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(x=>!x.disabled&&x.offsetParent!==null);
   d.__close=()=>{d.remove();lastModalTrigger=null;if(opener&&opener.isConnected)try{opener.focus()}catch(e){}};
   if(!lock)d.onclick=e=>{if(e.target==d)d.__close()};
@@ -261,7 +268,7 @@ function modal(html,lock){
     if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
     else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
   });
-  document.body.append(d);
+  document.body.append(d);const hh=box.querySelector('h3');if(hh){hh.id=mid+'-t';box.setAttribute('aria-labelledby',hh.id);box.removeAttribute('aria-label')}
   requestAnimationFrame(()=>{const f=focusable();(f[0]||box).focus()});
   return d
 }
@@ -279,7 +286,7 @@ async function live(){
   save();const url=location.origin+location.pathname+'#s='+S.sid;
   const d=modal('<div class="p-6 text-center"><div class="flex items-center justify-center gap-2 mb-1"><h3 class="text-xl text-white">Live View</h3><span class="text-[10px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-full px-2 py-1">VIEW ONLY</span></div><p class="text-xs text-gray-400 mb-4">Players can scan the QR code or open the link to watch courts, Up Next, the stack and leaderboard in real time.</p><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:200px;max-width:100%">'+qrSvg(url)+'</div><div class="mt-4 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-xs text-gray-300 break-all">'+esc(url)+'</div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"><button class="cp '+bS+'">Copy link</button><button class="sh '+bP+'">Share</button><button class="op '+bS+'">Open view</button></div><button data-x class="mt-4 text-sm text-gray-400 hover:text-white">Close</button></div>');
   d.querySelector('.cp').onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
-  d.querySelector('.sh').onclick=async()=>{try{if(navigator.share)await navigator.share({title:'PickleStack Live View',text:'Watch our open play live',url});else{await navigator.clipboard.writeText(url);toast('Link copied','success')}}catch(e){}};
+  d.querySelector('.sh').onclick=async()=>{try{if(navigator.share)await navigator.share({title:'QueueZeroTwo Live View',text:'Watch our open play live',url});else{await navigator.clipboard.writeText(url);toast('Link copied','success')}}catch(e){}};
   d.querySelector('.op').onclick=()=>window.open(url,'_blank','noopener,noreferrer')
 }
 async function resImg(){
@@ -290,20 +297,20 @@ async function resImg(){
   const T=(t,px,py,sz,c,al,sp)=>{x.font=(sp?'700 '+sz+'px Oswald,sans-serif':'600 '+sz+'px Inter,sans-serif');x.fillStyle=c;x.textAlign=al||'left';x.fillText(t,px,py)};
   const fit=(t,w)=>{x.font='600 38px Inter,sans-serif';while(t.length>1&&x.measureText(t).width>w)t=t.slice(0,-1);return t};
   const box=(a,b,w,h,c,rad)=>{x.fillStyle=c;x.beginPath();if(x.roundRect)x.roundRect(a,b,w,h,rad);else x.rect(a,b,w,h);x.fill()};
-  T('PICKLESTACK',W/2,115,68,'#ccff00','center',1);T('Session Results',W/2,170,34,'#94a3b8','center');
+  T('QUEUEZEROTWO',W/2,115,68,'#ccff00','center',1);T('Session Results',W/2,170,34,'#94a3b8','center');
   box(60,210,960,150,'#1E293B',24);
   T(String(r.length),W/3,295,64,'#ffffff','center',1);T('PLAYERS',W/3,335,24,'#94a3b8','center');
   T(String(S.log.length),2*W/3,295,64,'#ffffff','center',1);T('GAMES',2*W/3,335,24,'#94a3b8','center');
   top.forEach((p,i)=>{const y=400+i*120;box(60,y,960,108,i<3?'rgba(204,255,0,.12)':'#141B2D',20);T(i<3?['🥇','🥈','🥉'][i]:String(i+1),120,y+70,i<3?48:40,'#64748b','center',i>=3);T(fit(p.n,560),190,y+55,38,'#ffffff');T(Math.round(100*p.w/(p.w+p.l))+'% win rate · '+(p.w+p.l)+' games',190,y+92,26,'#94a3b8');T(String(p.w),985,y+68,60,'#4ade80','right',1);T('WINS',985,y+96,20,'#64748b','right')});
   const ye=400+top.length*120;if(r.length>8)T('+'+(r.length-8)+' more players',W/2,ye+45,28,'#94a3b8','center');
-  T(new Date().toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})+' · pickle-stack-app.vercel.app',W/2,H-45,26,'#64748b','center');
+  T(new Date().toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})+' · '+location.host,W/2,H-45,26,'#64748b','center');
   return cv
 }
 let RF=null;
-async function prepImg(){const cv=await resImg();return new Promise(r=>cv.toBlob(b=>{RF=new File([b],'picklestack-results.png',{type:'image/png'});r(RF)},'image/png'))}
+async function prepImg(){const cv=await resImg();return new Promise(r=>cv.toBlob(b=>{RF=new File([b],'queuezerotwo-results.png',{type:'image/png'});r(RF)},'image/png'))}
 async function shareImg(){
   const f=RF||await prepImg();
-  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'PickleStack results'});return}}
+  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'QueueZeroTwo results'});return}}
   catch(e){if(e.name=='AbortError')return}
   const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Results image saved','success')
 }
@@ -373,18 +380,19 @@ const BACKUP_VERSION=1;
 function expData(){
   const o=JSON.parse(JSON.stringify(S));
   delete o.sid;delete o.sh;delete o.rid;
-  return JSON.stringify({app:'PickleStack',version:BACKUP_VERSION,exportedAt:new Date().toISOString(),state:o},null,2)
+  return JSON.stringify({app:'QueueZeroTwo',version:BACKUP_VERSION,exportedAt:new Date().toISOString(),state:o},null,2)
 }
 function cleanState(o){
   const s=o&&o.state&&typeof o.state==='object'?o.state:o;
-  if(!s||!Array.isArray(s.courts))throw new Error('Not a valid PickleStack backup');
+  if(!s||!Array.isArray(s.courts))throw new Error('Not a valid QueueZeroTwo backup');
   const R=mk();
-  R.queue=Array.isArray(s.queue)?s.queue.slice(0,5000).map(x=>String(x)).filter(Boolean):[];
-  R.waiting=Array.isArray(s.waiting)?s.waiting.slice(0,5000).map(x=>String(x)).filter(Boolean):[];
-  R.rest=s.rest&&typeof s.rest==='object'?JSON.parse(JSON.stringify(s.rest)):{};
-  R.lv=s.lv&&typeof s.lv==='object'?JSON.parse(JSON.stringify(s.lv)):{};
-  R.md=s.md==='soc'?'soc':'bal';R.sd=Number.isFinite(+s.sd)?+s.sd:0;R.gp=s.gp&&typeof s.gp==='object'?JSON.parse(JSON.stringify(s.gp)):{};
-  R.ws=!!s.ws;R.wl=[2,3,4].includes(+s.wl)?+s.wl:2;R.eq=!!s.eq;R.tts=!!s.tts;R.snd=!!s.snd;
+  R.queue=Array.isArray(s.queue)?s.queue.slice(0,5000).map(x=>String(x).trim().slice(0,40)).filter(Boolean):[];
+  R.waiting=Array.isArray(s.waiting)?s.waiting.slice(0,5000).map(x=>String(x).trim().slice(0,40)).filter(Boolean):[];
+  const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{},clean=(src,f)=>{const o={};Object.keys(obj(src)).slice(0,2000).forEach(k=>{const v=f(src[k]);if(v)o[String(k).toLowerCase().slice(0,60)]=v});return o};
+  R.rest=clean(s.rest,v=>v?1:0);
+  R.lv=clean(s.lv,v=>Math.min(6,Math.max(0,Math.floor(Number(v))||0)));
+  R.md=s.md==='soc'?'soc':'bal';R.sd=Number.isFinite(+s.sd)?+s.sd:0;R.gp=clean(s.gp,v=>Math.max(0,Math.floor(Number(v))||0));
+  R.ws=!!s.ws;R.wl=[2,3,4].includes(+s.wl)?+s.wl:2;R.eq=!!s.eq;R.tts=!!s.tts;R.snd=s.snd!==false;
   R.target=[11,15,21].includes(+s.target)?+s.target:11;
   R.courts=s.courts.slice(0,12).map((c,i)=>{
     const base=R.courts[i]||{id:i+1,name:'Court '+(i+1),isActive:false,players:[],score:[0,0],mid:'',t:0,hold:null,stk:0};
@@ -392,12 +400,13 @@ function cleanState(o){
     return {...base,id:Number(c&&c.id)||i+1,name:String(c&&c.name||base.name).slice(0,20),isActive:!!(c&&c.isActive),players:Array.isArray(c&&c.players)?c.players.slice(0,4).map(x=>String(x)):[],score:sc,mid:String(c&&c.mid||'').slice(0,32),t:Number(c&&c.t)||0,hold:Array.isArray(c&&c.hold)?c.hold.slice(0,2).map(x=>String(x)):null,stk:Number(c&&c.stk)||0}
   });
   R.log=Array.isArray(s.log)?s.log.slice(0,5000).filter(l=>l&&Array.isArray(l.p)&&l.p.length===4&&Array.isArray(l.s)&&l.s.length===2).map(l=>({...l,c:String(l.c||'').slice(0,20),p:l.p.slice(0,4).map(x=>String(x)),s:l.s.slice(0,2).map(v=>Math.max(0,Number(v)||0)),w:Number(l.w),tg:Number(l.tg)||R.target,t:Number(l.t)||Date.now(),d:Number(l.d)||0})): [];
-  R.ended=!!s.ended;R.rid='';delete R.sid;delete R.sh;
+  R.rid='';delete R.sid;delete R.sh;
+  R.courts.forEach(c=>{if(!c.isActive||c.players.length!==4)Object.assign(c,{isActive:false,players:[],score:[0,0],mid:'',t:0})});
   return R
 }
 $('exp').onclick=()=>{
   const blob=new Blob([expData()],{type:'application/json'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download='picklestack-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  a.href=URL.createObjectURL(blob);a.download='queuezerotwo-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Backup exported. Live View control key excluded.','success')
 };
 $('impbtn').onclick=()=>$('imp').click();
@@ -408,7 +417,7 @@ $('imp').onchange=async e=>{
     ask('Restore backup?','This replaces the current local session. Live View control data is not included; a new session identity will be created on publish.',()=>{
       S=R;S.sid='';S.sh='';S.rid='';save();render();toast('Backup restored','success')
     })
-  }catch(err){toast('Not a valid PickleStack backup','error')}
+  }catch(err){toast('Not a valid QueueZeroTwo backup','error')}
 };
 
 /* Sharing */
@@ -484,7 +493,7 @@ $('mdi').innerHTML=S.md=='bal'
 :'<b class="text-gray-200">Social mix:</b> rotates partners before repeating, then spreads opponents as fairly as possible. Ratings are not used.';
 const ix=pick4();if(ix.length<4){$('unxb').innerHTML='<p class="text-sm text-gray-400">Add at least 4 players to see the next teams.</p>';return}
 const t=split4(ix.map(i=>q[i]));
-$('unxb').innerHTML='<div class="grid grid-cols-2 gap-3">'+[[t.slice(0,2),'Team 1','bg-blue-500','bg-blue-500/10'],[t.slice(2),'Team 2','bg-orange-500','bg-orange-500/10']].map(([p,l,h,b])=>`<div class="rounded-xl overflow-hidden border border-dark-700"><div class="${h} text-white text-xs font-bold px-3 py-1.5">${l}</div><div class="${b} p-3 space-y-1">${p.map(n=>`<div>${esc(n)} <span class="text-xs text-gray-400">${'★'.repeat(lvl(n))}</span></div>`).join('')}</div></div>`).join('')+'</div>'}
+$('unxb').innerHTML='<div class="grid grid-cols-2 gap-3">'+[[t.slice(0,2),'Team 1','bg-blue-600','bg-blue-500/10'],[t.slice(2),'Team 2','bg-orange-700','bg-orange-500/10']].map(([p,l,h,b])=>`<div class="rounded-xl overflow-hidden border border-dark-700"><div class="${h} text-white text-xs font-bold px-3 py-1.5">${l}</div><div class="${b} p-3 space-y-1">${p.map(n=>`<div>${esc(n)} <span class="text-xs text-gray-400">${'★'.repeat(lvl(n))}</span></div>`).join('')}</div></div>`).join('')+'</div>'}
 function renderQueue(){const ix=pick4();$('qc').textContent=S.queue.length;$('nvc').textContent=S.queue.length;$('qe').style.display=S.queue.length?'none':'flex';
 $('ql').innerHTML=S.queue.map((p,i)=>`<li class="flex items-center justify-between p-3 rounded-xl border ${isRest(p)?'opacity-50 ':''}${ix.includes(i)?'border-pickle-500/50 bg-pickle-500/10':'border-dark-700 bg-dark-900'}"><div class="flex items-center gap-2 min-w-0"><span class="dg w-6 h-8 flex flex-none items-center justify-center text-gray-400 hover:text-pickle-500 cursor-grab" style="touch-action:none" title="Drag to reorder" aria-label="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></span><span class="w-6 h-6 rounded-full flex flex-none items-center justify-center text-xs font-bold ${ix.includes(i)?'text-pickle-400 bg-pickle-500/20':'text-gray-400 bg-dark-700'}">${i+1}</span><span class="truncate">${esc(p)}</span>${isRest(p)?'<span class="text-[10px] text-gray-400 border border-dark-700 rounded px-1.5">RESTING</span>':''}</div><div class="flex items-center gap-1">${lsel(i)}<button onclick="rest(${i})" title="${isRest(p)?'Back in':'Rest'}" class="w-8 h-8 ${isRest(p)?'text-pickle-500':'text-gray-400 hover:text-pickle-500'}"><i class="fa-solid ${isRest(p)?'fa-play':'fa-mug-hot'}"></i></button><button onclick="rm(${i})" title="Remove" class="text-gray-400 hover:text-red-400 w-8 h-8"><i class="fa-solid fa-xmark"></i></button></div></li>`).join('');
 $('go').disabled=ix.length<4||!S.courts.some(c=>!c.isActive)}
@@ -564,11 +573,11 @@ const lb=(d.lb||[]).length?`<table class="w-full text-sm text-center"><thead cla
 $('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><div><h2 class="text-2xl text-white">Live Session</h2><p class="text-xs text-gray-400">Read-only view for players on their own phones.</p></div><span class="text-xs font-bold rounded-full px-2 py-1 ${SV.status=='SUBSCRIBED'?'text-green-300 bg-green-500/10':'text-blue-300 bg-blue-500/10'}">${SV.status=='SUBSCRIBED'?'LIVE · CONNECTED':'CONNECTING'}</span></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">${courts}</div><h3 class="text-xl text-white mb-2">Up Next</h3><div class="mb-6">${nx}</div><h3 class="text-xl text-white mb-2">The Stack (${(d.q||[]).length})</h3><p class="text-sm text-gray-300 mb-6">${(d.q||[]).length?(d.q||[]).map((p,i)=>`${i+1}. ${esc(p)}`).join(' &nbsp; '):'Empty'}</p><h3 class="text-xl text-white mb-2">Leaderboard</h3><div class="bg-dark-800 border border-dark-700 rounded-2xl overflow-x-auto">${lb}</div>`}
 
 function renderLB(){const r=stats();$('lb').innerHTML=r.length?`<table class="w-full text-sm"><thead class="text-xs text-gray-400"><tr><th class="p-3 text-left">#</th><th class="text-left">Player</th><th>W-L</th><th>Win%</th><th class="pr-3">+/-</th></tr></thead><tbody class="divide-y divide-dark-700 text-center">${r.map((x,i)=>`<tr><td class="p-3 text-left text-gray-400">${i+1}</td><td class="text-left ${i==0?'text-pickle-500 font-semibold':''}">${esc(x.n)}</td><td>${x.w}-${x.l}</td><td>${Math.round(100*x.w/(x.w+x.l))}%</td><td class="pr-3 ${x.d>0?'text-green-400':x.d<0?'text-red-400':''}">${x.d>0?'+':''}${x.d}</td></tr>`).join('')}</tbody></table>`:'<p class="text-sm text-gray-400 py-8 text-center">Finish a scored match to start the leaderboard.</p>'}
-function renderViewer(){let s=V;const c=S.courts.find(x=>x.mid==s.m&&x.isActive);
+function renderViewer(){if(V&&V.code){$('viewer').innerHTML='<div class="bg-dark-800 border border-dark-700 rounded-2xl p-8 text-center"><p class="text-gray-300">This match link is no longer supported.</p><p class="text-xs text-gray-400 mt-2">Ask the organizer for a new Live View link.</p></div>';return}let s=V;const c=S.courts.find(x=>x.mid==s.m&&x.isActive);
 if(c)s={...s,p:c.players,s:c.score};else{const l=S.log.find(x=>x.mid==s.m);if(l)s={...s,p:l.p,s:l.s,f:1}}
 const lv=c||(s.code&&s.p.length&&!s.fin),w=win(s.s,s.tg||11),row=i=>`<div class="flex items-center justify-between gap-3 p-5 rounded-2xl border ${w==i?'bg-pickle-500/15 border-pickle-500/50':'bg-dark-800 border-dark-700'}"><div class="min-w-0"><div class="text-xs text-gray-400">Team ${i+1}</div><div class="text-xl truncate">${nm(s.p,i)}</div></div><div class="font-sport text-6xl ${w==i?'text-pickle-500':''}">${s.s[i]}</div></div>`;
 $('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><h2 class="text-2xl text-white">${esc(s.n)}</h2><span class="text-xs font-bold rounded px-2 py-1 ${lv?'text-red-400 bg-red-500/10':'text-gray-300 bg-dark-700'}">${lv?'<i class="fa-solid fa-circle live text-[8px]"></i> LIVE':(s.f||s.fin)?'FINAL':'SNAPSHOT'}</span></div><div class="space-y-3">${row(0)}${row(1)}</div>
-<p class="text-xs text-gray-400 mt-4">${lv?(s.code?'Updating live.':'Updating live on this device.'):s.code?'Final score.':'Score as of '+hm(s.ts)+'. Ask for a new link for the latest score.'}</p><a href="${location.pathname}" class="inline-block mt-4 text-sm text-pickle-500 underline">Open PickleStack</a>`}
+<p class="text-xs text-gray-400 mt-4">${lv?(s.code?'Updating live.':'Updating live on this device.'):s.code?'Final score.':'Score as of '+hm(s.ts)+'. Ask for a new link for the latest score.'}</p><a href="${location.pathname}" class="inline-block mt-4 text-sm text-pickle-500 underline">Open QueueZeroTwo</a>`}
 
 function a11y(){document.querySelectorAll('button[title]:not([aria-label])').forEach(b=>b.setAttribute('aria-label',b.title));document.querySelectorAll('i.fa-solid').forEach(i=>i.setAttribute('aria-hidden','true'))}
 function render(){sndUi();ttsUi();if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();nav(NV);a11y()}
@@ -581,7 +590,7 @@ $('cl').onclick=()=>ask('Clear match log?','All logged matches will be removed.'
 /* Init + live sync (other tabs on this device update instantly) */
 load();
 if(location.hash.startsWith('#m=')){const h=location.hash.slice(3);try{V=h.length<=10?{m:h,code:1,n:'Match',p:[],s:[0,0],tg:11,ts:Date.now()}:dec(h);$('app').classList.add('hidden');$('viewer').classList.remove('hidden');$('nav').classList.add('hidden')}catch(e){}}
-if(V&&V.code&&sb){const ap=q=>{V={...V,n:q.court,p:q.players,s:q.score,tg:q.target,fin:q.status!='live',ts:Date.parse(q.updated_at)};render()};
+if(false){const ap=q=>{V={...V,n:q.court,p:q.players,s:q.score,tg:q.target,fin:q.status!='live',ts:Date.parse(q.updated_at)};render()};
 sb.from('live_matches').select('*').eq('code',V.m).maybeSingle().then(q=>q.data&&ap(q.data));
 sb.channel('m'+V.m).on('postgres_changes',{event:'*',schema:'public',table:'live_matches',filter:'code=eq.'+V.m},q=>q.new&&ap(q.new)).subscribe()}if(location.hash.startsWith('#s=')){SV={code:location.hash.slice(3),d:null,ts:Date.now(),status:'CONNECTING'};$('app').classList.add('hidden');$('viewer').classList.remove('hidden','max-w-xl');$('nav').classList.add('hidden');$('viewer').classList.add('max-w-3xl');
 if(sb){const sv=viewerClient(SV.code),ap=q=>{SV.d=q.data;SV.ts=Date.parse(q.updated_at);render()};

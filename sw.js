@@ -1,6 +1,6 @@
-/* PickleStack service worker. Bump V on each release to refresh the cache. Profiles are included in the app shell. */
-const V = 'picklestack-v2';
-const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
+/* QueueZeroTwo service worker. Bump V on each release to refresh the cache. Profiles are included in the app shell. */
+const V = 'queuezerotwo-v1';
+const SHELL = ['/', '/manifest.webmanifest', '/favicon.svg', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
 const CDN = [
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js',

@@ -1,0 +1,23 @@
+name: Temporary Live View browser smoke
+
+on:
+  push:
+    branches:
+      - feature/live-view-qr
+
+jobs:
+  live-view-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: npm install --no-save playwright@1.55.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run Live View smoke test
+        env:
+          PICKLESTACK_PREVIEW: https://pickleball-queue-9j78m0ajz-meow-7e9e.vercel.app/
+        run: node .github/live-view-smoke.mjs

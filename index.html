@@ -211,6 +211,27 @@ function renderLog(){$('log').innerHTML=S.log.length?S.log.map(l=>`<div class="f
 
 function stats(){const m={};S.log.forEach(l=>{if(l.w<0)return;l.p.forEach((n,i)=>{const t=i<2?0:1,k=n.toLowerCase(),x=m[k]||(m[k]={n,w:0,l:0,d:0});l.w==t?x.w++:x.l++;x.d+=l.s[t]-l.s[1-t]})});
 return Object.values(m).sort((a,b)=>b.w-a.w||b.d-a.d||a.l-b.l)}
+async function endS(){
+if(!S.sid)S.sid=Math.random().toString(36).slice(2,8);
+S.ended=true;let ok=false;
+if(sb){const q=await sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()});ok=!q.error}
+save();
+const url=ok?location.origin+location.pathname+'#s='+S.sid:'';let svg='';
+if(url){try{const q=qrcode(0,'M');q.addData(url);q.make();svg=q.createSvgTag({cellSize:6,margin:0,scalable:true})}catch(e){}}
+const r=stats(),d=document.createElement('div');d.className='fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4';
+d.innerHTML=`<div class="bg-dark-800 border border-dark-700 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+<div class="p-5 border-b border-dark-700"><h3 class="text-xl text-white">Session Results</h3><p class="text-xs text-gray-400">${S.log.length} games played</p></div>
+<div class="divide-y divide-dark-700">${r.length?r.map((x,i)=>`<div class="flex items-center gap-3 p-3 ${i<3?'bg-pickle-500/10':''}"><span class="w-8 text-center font-sport text-lg ${i<3?'text-pickle-500':'text-gray-500'}">${i<3?['🥇','🥈','🥉'][i]:i+1}</span><div class="flex-1 min-w-0"><div class="truncate text-white">${esc(x.n)}</div><div class="text-xs text-gray-400">${Math.round(100*x.w/(x.w+x.l))}% win rate · ${x.w+x.l} games · ${x.d>0?'+':''}${x.d}</div></div><div class="font-sport text-2xl text-green-400">${x.w}<span class="text-[10px] text-gray-500 ml-1">wins</span></div></div>`).join(''):'<p class="p-6 text-center text-sm text-gray-500">No scored matches this session.</p>'}</div>
+<div class="p-5 border-t border-dark-700 text-center">${url?`<div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:200px;max-width:100%">${svg}</div><p class="text-xs text-gray-400 mt-2 break-all">${url}</p><div class="flex gap-2 justify-center mt-3"><button class="cpu px-4 py-2 bg-dark-700 rounded-lg text-sm"><i class="fa-solid fa-copy"></i> Copy link</button><button class="shu px-4 py-2 bg-pickle-500 text-dark-900 font-semibold rounded-lg text-sm"><i class="fa-solid fa-share-nodes"></i> Share</button></div>`:'<p class="text-sm text-gray-500">Share link unavailable. Supabase could not be reached.</p>'}</div>
+<div class="p-4 border-t border-dark-700 flex flex-wrap gap-2"><button class="lg px-3 py-2 bg-dark-700 rounded-lg text-sm">Copy log</button><button class="bk px-3 py-2 bg-dark-700 rounded-lg text-sm">Back to session</button><button class="nw flex-grow px-3 py-2 bg-red-500 rounded-lg text-sm font-bold">Start new session</button></div></div>`;
+const q=s=>d.querySelector(s);
+if(url){q('.cpu').onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
+q('.shu').onclick=async()=>{try{if(navigator.share)await navigator.share({title:'PickleStack results',text:'Our session results',url});else{await navigator.clipboard.writeText(url);toast('Link copied','success')}}catch(e){}}}
+q('.lg').onclick=()=>$('cp').click();
+q('.bk').onclick=()=>{d.remove();S.ended=false;save();render()};
+q('.nw').onclick=()=>{d.remove();const sn=S.snd;S=mk();S.snd=sn;save();render();toast('New session started','success')};
+document.body.append(d)}
+
 const isRest=n=>!!(S.rest&&S.rest[n.toLowerCase()]);
 const pick4=()=>{const ix=[];S.queue.forEach((p,i)=>{if(ix.length<4&&!isRest(p))ix.push(i)});return ix};
 function rest(i){const k=S.queue[i].toLowerCase();S.rest=S.rest||{};if(S.rest[k])delete S.rest[k];else S.rest[k]=1;save();render()}
@@ -241,7 +262,7 @@ function render(){if(SV)return renderSession();if(V)return renderViewer();$('tg'
 
 /* Controls */
 $('tg').onchange=e=>{S.target=+e.target.value;save();render()};
-$('rs').onclick=()=>ask('Reset everything?','Clears the stack, courts and match log. This cannot be undone.',()=>{S=mk();save();render();toast('Data reset','success')});
+$('rs').onclick=endS;
 $('cl').onclick=()=>ask('Clear match log?','All logged matches will be removed.',()=>{S.log=[];save();render()});
 $('cp').onclick=async()=>{if(!S.log.length)return toast('Nothing to copy yet.','error');
 const t=S.log.map(l=>`${new Date(l.t).toLocaleDateString()} ${hm(l.t)} ${l.c}: ${tx(l.p,0)} ${l.s[0]}-${l.s[1]} ${tx(l.p,1)}`).join('\n');

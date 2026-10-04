@@ -128,16 +128,91 @@ const nm=(p,i)=>esc(tx(p,i));
 const hm=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
 const mins=t=>Math.max(0,Math.round((Date.now()-t)/60000));
 
-function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.courts){S=s;S.ended=false;S.log=S.log||[];S.waiting=S.waiting||[];S.rest=S.rest||{};S.target=S.target||11;S.lv=S.lv||{};S.md=S.md||'bal';S.sd=S.sd||0;S.courts.forEach(c=>{c.score=c.score||[0,0]})}}catch(e){}}
+function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.courts){S=s;S.log=S.log||[];S.waiting=S.waiting||[];S.rest=S.rest||{};S.target=S.target||11;S.lv=S.lv||{};S.md=S.md||'bal';S.sd=S.sd||0;S.courts.forEach(c=>{c.score=c.score||[0,0]})}}catch(e){}}
 function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}pushS()}
 
 function toast(m,type){const d=document.createElement('div');
 d.className='mb border px-4 py-3 rounded-lg shadow-xl pointer-events-auto text-sm font-medium '+(type=='error'?'bg-red-500/90 border-red-400':type=='success'?'bg-pickle-500/90 border-pickle-400 text-dark-900':'bg-dark-700/90 border-dark-700');
 d.textContent=m;$('msg').append(d);setTimeout(()=>d.remove(),3000)}
-function ask(t,m,fn){const d=document.createElement('div');
-d.className='mb bg-dark-800 border border-red-500/50 p-5 rounded-xl shadow-2xl pointer-events-auto text-center';
-d.innerHTML=`<h3 class="text-white text-lg mb-2">${t}</h3><p class="text-gray-400 text-sm mb-4">${m}</p><div class="flex gap-3 justify-center"><button class="x px-4 py-2 bg-dark-700 rounded-lg">Cancel</button><button class="y px-4 py-2 bg-red-500 rounded-lg">Confirm</button></div>`;
-d.querySelector('.x').onclick=()=>d.remove();d.querySelector('.y').onclick=()=>{d.remove();fn()};$('msg').append(d)}
+
+const bP='px-4 py-3 rounded-xl bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-sport tracking-wide active:scale-95',
+bS='px-4 py-3 rounded-xl bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200',
+bD='px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-sport tracking-wide';
+function modal(html,lock){
+  const d=document.createElement('div');
+  d.className='fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4';
+  d.innerHTML='<div class="mb bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">'+html+'</div>';
+  if(!lock)d.onclick=e=>{if(e.target==d)d.remove()};
+  d.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>d.remove());
+  document.body.append(d);return d
+}
+function ask(t,m,fn){
+  const d=modal('<div class="p-6 text-center"><h3 class="text-xl text-white mb-2">'+esc(t)+'</h3><p class="text-gray-400 text-sm mb-6">'+esc(m)+'</p><div class="flex gap-3"><button data-x class="flex-1 '+bS+'">Cancel</button><button class="y flex-1 '+bD+'">Confirm</button></div></div>');
+  d.querySelector('.y').onclick=()=>{d.remove();fn()}
+}
+function ren(id){
+  const c=S.courts.find(x=>x.id==id);
+  const d=modal('<form class="p-6"><h3 class="text-xl text-white mb-4">Rename court</h3><input class="n w-full bg-dark-900 border border-dark-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-pickle-500 mb-5" maxlength="20" value="'+esc(c.name)+'"><div class="flex gap-3"><button type="button" data-x class="flex-1 '+bS+'">Cancel</button><button class="flex-1 '+bP+'">Save</button></div></form>');
+  const i=d.querySelector('.n');i.focus();i.select();
+  d.querySelector('form').onsubmit=e=>{
+    e.preventDefault();const n=i.value.trim();
+    if(n){c.name=n.slice(0,20);push(c);save();render()}d.remove()
+  }
+}
+const qrSvg=u=>{try{const q=qrcode(0,'M');q.addData(u);q.make();return q.createSvgTag({cellSize:6,margin:0,scalable:true})}catch(e){return ''}};
+async function live(){
+  if(S.ended)return showRes();
+  if(!sb)return toast('Live link needs Supabase.','error');
+  if(!S.sid)S.sid=Math.random().toString(36).slice(2,8);
+  const q=await sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()});
+  if(q.error)return toast('Publish failed: '+q.error.message,'error');
+  save();const url=location.origin+location.pathname+'#s='+S.sid;
+  const d=modal('<div class="p-6 text-center"><h3 class="text-xl text-white mb-1">Live session</h3><p class="text-xs text-gray-400 mb-4">Anyone with this link can watch the courts update live.</p><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:200px;max-width:100%">'+qrSvg(url)+'</div><div class="mt-4 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-xs text-gray-300 break-all">'+esc(url)+'</div><div class="flex gap-3 mt-4"><button class="cp flex-1 '+bS+'">Copy link</button><button class="sh flex-1 '+bP+'">Share</button></div><button data-x class="mt-4 text-sm text-gray-400 hover:text-white">Close</button></div>');
+  d.querySelector('.cp').onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
+  d.querySelector('.sh').onclick=async()=>{try{if(navigator.share)await navigator.share({title:'PickleStack live',text:'Watch our open play live',url});else{await navigator.clipboard.writeText(url);toast('Link copied','success')}}catch(e){}}
+}
+async function resImg(){
+  try{await document.fonts.load('700 40px Oswald');await document.fonts.load('600 30px Inter')}catch(e){}
+  const r=stats(),top=r.slice(0,8),W=1080,H=500+top.length*120+(r.length>8?80:0);
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const x=cv.getContext('2d'),g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#141B2D');g.addColorStop(1,'#0B0F19');x.fillStyle=g;x.fillRect(0,0,W,H);
+  const T=(t,px,py,sz,c,al,sp)=>{x.font=(sp?'700 '+sz+'px Oswald,sans-serif':'600 '+sz+'px Inter,sans-serif');x.fillStyle=c;x.textAlign=al||'left';x.fillText(t,px,py)};
+  const fit=(t,w)=>{x.font='600 38px Inter,sans-serif';while(t.length>1&&x.measureText(t).width>w)t=t.slice(0,-1);return t};
+  const box=(a,b,w,h,c,rad)=>{x.fillStyle=c;x.beginPath();if(x.roundRect)x.roundRect(a,b,w,h,rad);else x.rect(a,b,w,h);x.fill()};
+  T('PICKLESTACK',W/2,115,68,'#ccff00','center',1);T('Session Results',W/2,170,34,'#94a3b8','center');
+  box(60,210,960,150,'#1E293B',24);
+  T(String(r.length),W/3,295,64,'#ffffff','center',1);T('PLAYERS',W/3,335,24,'#94a3b8','center');
+  T(String(S.log.length),2*W/3,295,64,'#ffffff','center',1);T('GAMES',2*W/3,335,24,'#94a3b8','center');
+  top.forEach((p,i)=>{const y=400+i*120;box(60,y,960,108,i<3?'rgba(204,255,0,.12)':'#141B2D',20);T(i<3?['🥇','🥈','🥉'][i]:String(i+1),120,y+70,i<3?48:40,'#64748b','center',i>=3);T(fit(p.n,560),190,y+55,38,'#ffffff');T(Math.round(100*p.w/(p.w+p.l))+'% win rate · '+(p.w+p.l)+' games',190,y+92,26,'#94a3b8');T(String(p.w),985,y+68,60,'#4ade80','right',1);T('WINS',985,y+96,20,'#64748b','right')});
+  const ye=400+top.length*120;if(r.length>8)T('+'+(r.length-8)+' more players',W/2,ye+45,28,'#94a3b8','center');
+  T(new Date().toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})+' · pickle-stack-app.vercel.app',W/2,H-45,26,'#64748b','center');
+  return cv
+}
+let RF=null;
+async function prepImg(){const cv=await resImg();return new Promise(r=>cv.toBlob(b=>{RF=new File([b],'picklestack-results.png',{type:'image/png'});r(RF)},'image/png'))}
+async function shareImg(){
+  const f=RF||await prepImg();
+  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'PickleStack results'});return}}
+  catch(e){if(e.name=='AbortError')return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Results image saved','success')
+}
+async function endS(){
+  S.courts.forEach(c=>{if(c.isActive){push(c,'cancelled');clear(c)}});
+  S.rid=Math.random().toString(36).slice(2,8);S.ended=true;
+  const pay={...sdata(),e:1,n:S.log.length,g:S.log.slice(0,60).map(l=>({p:l.p,s:l.s,c:l.c,w:l.w}))},now=new Date().toISOString();
+  if(sb){const rows=[{code:S.rid,data:pay,updated_at:now}];if(S.sid)rows.push({code:S.sid,data:pay,updated_at:now});const q=await sb.from('live_sessions').upsert(rows);if(q.error){S.rid='';console.warn(q.error.message)}}
+  save();render();showRes()
+}
+function showRes(){
+  RF=null;prepImg();
+  const url=S.rid?location.origin+location.pathname+'#s='+S.rid:'',r=stats();
+  const rows=r.length?r.map((x,i)=>'<div class="flex items-center gap-3 p-3 '+(i<3?'bg-pickle-500/10':'')+'"><span class="w-8 text-center font-sport text-lg '+(i<3?'text-pickle-500':'text-gray-500')+'">'+(i<3?['🥇','🥈','🥉'][i]:i+1)+'</span><div class="flex-1 min-w-0"><div class="truncate text-white">'+esc(x.n)+'</div><div class="text-xs text-gray-400">'+Math.round(100*x.w/(x.w+x.l))+'% win rate · '+(x.w+x.l)+' games · '+(x.d>0?'+':'')+x.d+'</div></div><div class="font-sport text-2xl text-green-400">'+x.w+'</div></div>').join(''):'<p class="p-6 text-center text-sm text-gray-500">No scored matches this session.</p>';
+  const lk=url?'<div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:180px;max-width:100%">'+qrSvg(url)+'</div><div class="mt-3 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-xs text-gray-300 break-all">'+esc(url)+'</div><button class="cp w-full mt-3 '+bS+'">Copy results link</button>':'<p class="text-sm text-gray-500">Results link unavailable. Supabase could not be reached.</p>';
+  const d=modal('<div class="p-5 border-b border-dark-700"><h3 class="text-2xl text-white">Session Results</h3><p class="text-xs text-gray-400">'+S.log.length+' games played · session ended</p></div><div class="divide-y divide-dark-700">'+rows+'</div><div class="p-5 border-t border-dark-700 text-center">'+lk+'</div><div class="p-4 border-t border-dark-700 grid grid-cols-2 gap-3"><button class="sh col-span-2 '+bP+'"><i class="fa-solid fa-image"></i> Share results image</button><button class="lg '+bS+'">Copy log</button><button class="nw '+bD+'">New session</button></div>',true);
+  const cp=d.querySelector('.cp');if(cp)cp.onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
+  d.querySelector('.sh').onclick=shareImg;d.querySelector('.lg').onclick=()=>$('cp').click();
+  d.querySelector('.nw').onclick=()=>ask('Start new session?','This clears the stack, courts, leaderboard and log. Make sure you have shared the results.',()=>{d.remove();S=mk();save();render();toast('New session started','success')})
+}
 
 /* Stack */
 /* Attendance */
@@ -161,8 +236,6 @@ const n=c.name;push(c,'final');clear(c);save();render();toast(n+' is free. Winne
 function drop(id){const c=S.courts.find(x=>x.id==id);ask('Cancel match?','Players go back to the top of the stack. Nothing is logged.',()=>{S.queue.unshift(...c.players);push(c,'cancelled');clear(c);save();render()})}
 
 const fmt=t=>{const s=Math.max(0,Math.floor((Date.now()-t)/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
-function ren(id){const c=S.courts.find(x=>x.id==id),n=prompt('Court name',c.name);if(n&&n.trim()){c.name=n.trim().slice(0,20);push(c);save();render()}}
-
 /* Sharing */
 const enc=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
 const dec=h=>JSON.parse(decodeURIComponent(escape(atob(h))));
@@ -174,13 +247,6 @@ if(sb){const q=await sb.from('live_matches').upsert({code:s.m,court:s.n,players:
 return{s,url:location.origin+location.pathname+'#m='+(ok?s.m:enc(s)),t:`${s.n}: ${tx(s.p,0)} ${s.s[0]}-${s.s[1]} ${tx(s.p,1)}`}}
 async function share(m){const r=await mlink(m);if(!r)return;const{url,t}=r;
 try{if(navigator.share)await navigator.share({title:'PickleStack match',text:t,url});else{await navigator.clipboard.writeText(t+'\n'+url);toast('Match link copied','success')}}catch(e){}}
-async function qrBox(title,url){let svg;
-try{const q=qrcode(0,'M');q.addData(url);q.make();svg=q.createSvgTag({cellSize:6,margin:0,scalable:true})}catch(e){return toast('Could not make QR code.','error')}
-const d=document.createElement('div');d.className='fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4';
-d.innerHTML=`<div class="bg-dark-800 border border-dark-700 rounded-2xl p-6 text-center max-w-xs w-full"><h3 class="text-white text-lg mb-3">${esc(title)}</h3><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:240px;max-width:100%">${svg}</div><p class="text-xs text-gray-400 mt-3">Scan to watch live.</p><button class="x mt-4 px-4 py-2 bg-dark-700 rounded-lg">Close</button></div>`;
-d.onclick=e=>{if(e.target==d||e.target.classList.contains('x'))d.remove()};document.body.append(d)}
-async function qr(m){const r=await mlink(m);if(r)qrBox(r.s.n,r.url)}
-
 /* Render */
 function renderWaiting(){$('wc').textContent=S.waiting.length;$('we').style.display=S.waiting.length?'none':'block';
 $('wl').innerHTML=S.waiting.map((p,i)=>`<li class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-dark-700 bg-dark-900"><span class="truncate text-sm text-gray-300">${esc(p)} <span class="text-xs text-gray-500">${'★'.repeat(lvl(p))}</span></span><div class="flex items-center gap-1"><button onclick="checkIn(${i})" class="px-2.5 py-1.5 rounded-lg bg-pickle-500 text-dark-900 text-xs font-bold"><i class="fa-solid fa-user-check"></i> Check in</button><button onclick="rmWaiting(${i})" title="Remove" class="text-gray-500 hover:text-red-400 w-7 h-7"><i class="fa-solid fa-xmark"></i></button></div></li>`).join('')}
@@ -222,35 +288,10 @@ function renderLog(){$('log').innerHTML=S.log.length?S.log.map(l=>`<div class="f
 
 function stats(){const m={};S.log.forEach(l=>{if(l.w<0)return;l.p.forEach((n,i)=>{const t=i<2?0:1,k=n.toLowerCase(),x=m[k]||(m[k]={n,w:0,l:0,d:0});l.w==t?x.w++:x.l++;x.d+=l.s[t]-l.s[1-t]})});
 return Object.values(m).sort((a,b)=>b.w-a.w||b.d-a.d||a.l-b.l)}
-async function live(){if(!sb)return toast('Live link needs Supabase.','error');
-if(!S.sid)S.sid=Math.random().toString(36).slice(2,8);
-const q=await sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()});
-if(q.error)return toast('Publish failed: '+q.error.message,'error');
-save();const url=location.origin+location.pathname+'#s='+S.sid;
-try{await navigator.clipboard.writeText(url);toast('Live link copied','success')}catch(e){}
-qrBox('Live session',url)}
 function renderResults(d){const medal=i=>i<3?['🥇','🥈','🥉'][i]:i+1,lb=d.lb||[];
 const rows=lb.map((x,i)=>'<div class="flex items-center gap-3 p-3 '+(i<3?'bg-pickle-500/10':'')+'"><span class="w-8 text-center font-sport text-lg '+(i<3?'text-pickle-500':'text-gray-500')+'">'+medal(i)+'</span><div class="flex-1 min-w-0"><div class="truncate">'+esc(x.n)+'</div><div class="text-xs text-gray-400">'+Math.round(100*x.w/(x.w+x.l))+'% win rate · '+(x.w+x.l)+' games · '+(x.d>0?'+':'')+x.d+'</div></div><div class="font-sport text-2xl text-green-400">'+x.w+'</div></div>').join('');
 const games=(d.g||[]).map(l=>'<div class="p-3 text-sm flex items-center gap-2"><span class="text-xs text-gray-500 w-14">'+esc(l.c)+'</span><span class="'+(l.w==0?'text-pickle-500 font-semibold':'')+'">'+nm(l.p,0)+'</span><span class="font-sport text-lg px-1">'+l.s[0]+'-'+l.s[1]+'</span><span class="'+(l.w==1?'text-pickle-500 font-semibold':'')+'">'+nm(l.p,1)+'</span></div>').join('');
 $('viewer').innerHTML='<div class="mb-4"><h2 class="text-2xl text-white">Session Results</h2><p class="text-xs text-gray-400">'+(d.n||0)+' games played</p></div><div class="bg-dark-800 border border-dark-700 rounded-2xl divide-y divide-dark-700 mb-6">'+(rows||'<p class="p-6 text-center text-sm text-gray-500">No scored matches.</p>')+'</div><h3 class="text-xl text-white mb-2">Match Log</h3><div class="bg-dark-800 border border-dark-700 rounded-2xl divide-y divide-dark-700">'+(games||'<p class="p-6 text-center text-sm text-gray-500">No matches.</p>')+'</div>'}
-async function endS(){
-if(!S.sid)S.sid=Math.random().toString(36).slice(2,8);
-S.rid=Math.random().toString(36).slice(2,8);S.ended=true;let ok=false;
-const pay={...sdata(),e:1,n:S.log.length,g:S.log.slice(0,60).map(l=>({p:l.p,s:l.s,c:l.c,w:l.w}))};
-if(sb){const q=await sb.from('live_sessions').upsert({code:S.rid,data:pay,updated_at:new Date().toISOString()});ok=!q.error}
-save();
-const url=ok?location.origin+location.pathname+'#s='+S.rid:'';let svg='';
-if(url){try{const q=qrcode(0,'M');q.addData(url);q.make();svg=q.createSvgTag({cellSize:6,margin:0,scalable:true})}catch(e){}}
-const r=stats(),d=document.createElement('div');d.className='fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4';
-const rows=r.map((x,i)=>'<div class="flex items-center gap-3 p-3 '+(i<3?'bg-pickle-500/10':'')+'"><span class="w-8 text-center font-sport text-lg '+(i<3?'text-pickle-500':'text-gray-500')+'">'+(i<3?['🥇','🥈','🥉'][i]:i+1)+'</span><div class="flex-1 min-w-0"><div class="truncate text-white">'+esc(x.n)+'</div><div class="text-xs text-gray-400">'+Math.round(100*x.w/(x.w+x.l))+'% win rate · '+(x.w+x.l)+' games · '+(x.d>0?'+':'')+x.d+'</div></div><div class="font-sport text-2xl text-green-400">'+x.w+'<span class="text-[10px] text-gray-500 ml-1">wins</span></div></div>').join('');
-const qr=svg?'<div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:200px;max-width:100%">'+svg+'</div><p class="text-xs text-gray-400 mt-2 break-all">'+url+'</p><div class="flex gap-2 justify-center mt-3"><button class="cpu px-4 py-2 bg-dark-700 rounded-lg text-sm">Copy link</button><button class="shu px-4 py-2 bg-pickle-500 text-dark-900 font-semibold rounded-lg text-sm">Share</button></div>':'<p class="text-sm text-gray-500">Share link unavailable. Supabase could not be reached.</p>';
-d.innerHTML='<div class="bg-dark-800 border border-dark-700 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"><div class="p-5 border-b border-dark-700"><h3 class="text-xl text-white">Session Results</h3><p class="text-xs text-gray-400">'+S.log.length+' games played</p></div><div class="divide-y divide-dark-700">'+(rows||'<p class="p-6 text-center text-sm text-gray-500">No scored matches this session.</p>')+'</div><div class="p-5 border-t border-dark-700 text-center">'+qr+'</div><div class="p-4 border-t border-dark-700 flex flex-wrap gap-2"><button class="lg px-3 py-2 bg-dark-700 rounded-lg text-sm">Copy log</button><button class="bk px-3 py-2 bg-dark-700 rounded-lg text-sm">Back to session</button><button class="nw flex-grow px-3 py-2 bg-red-500 rounded-lg text-sm font-bold">Start new session</button></div></div>';
-const q=s=>d.querySelector(s);
-if(url){q('.cpu').onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};q('.shu').onclick=async()=>{try{if(navigator.share)await navigator.share({title:'PickleStack results',text:'Our session results',url});else{await navigator.clipboard.writeText(url);toast('Link copied','success')}}catch(e){}}}
-q('.lg').onclick=()=>$('cp').click();
-q('.bk').onclick=()=>{d.remove();S.ended=false;save();render()};
-q('.nw').onclick=()=>{d.remove();S=mk();save();render();toast('New session started','success')};
-document.body.append(d)}
 let NV='play';
 function nav(v){NV=v;const p=v=='play';
 ['sstk','sun','scr'].forEach(i=>$(i).classList.toggle('hidden',!p));
@@ -265,7 +306,7 @@ const pick4=()=>{const ix=[];S.queue.forEach((p,i)=>{if(ix.length<4&&!isRest(p))
 function rest(i){const k=S.queue[i].toLowerCase();S.rest=S.rest||{};if(S.rest[k])delete S.rest[k];else S.rest[k]=1;save();render()}
 
 function sdata(){const q=S.queue;return{t:S.target,courts:S.courts.map(c=>({n:c.name,a:c.isActive,p:c.players,s:c.score})),nx:pick4().length>=4?split4(pick4().map(i=>q[i])):[],q:q,lb:stats().slice(0,20)}}
-let st;function pushS(){if(!sb||!S.sid)return;clearTimeout(st);st=setTimeout(()=>sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()}).then(q=>q.error&&console.warn(q.error.message)),400)}
+let st;function pushS(){if(!sb||!S.sid||S.ended)return;clearTimeout(st);st=setTimeout(()=>{if(S.ended)return;sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()}).then(q=>q.error&&console.warn(q.error.message))},400)}
 async function sess(mode){if(!sb)return toast('Session sharing needs Supabase set up.','error');
 if(!S.sid)S.sid=Math.random().toString(36).slice(2,8);
 const q=await sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()});
@@ -291,7 +332,7 @@ function render(){if(SV)return renderSession();if(V)return renderViewer();$('tg'
 
 /* Controls */
 $('tg').onchange=e=>{S.target=+e.target.value;save();render()};
-$('rs').onclick=endS;
+$('rs').onclick=()=>ask('End session?','Active matches will be cancelled and the session closes for good. You can still share the results afterwards.',endS);
 $('cl').onclick=()=>ask('Clear match log?','All logged matches will be removed.',()=>{S.log=[];save();render()});
 $('cp').onclick=async()=>{if(!S.log.length)return toast('Nothing to copy yet.','error');
 const t=S.log.map(l=>`${new Date(l.t).toLocaleDateString()} ${hm(l.t)} ${l.c}: ${tx(l.p,0)} ${l.s[0]}-${l.s[1]} ${tx(l.p,1)}`).join('\n');
@@ -308,6 +349,7 @@ sb.from('live_sessions').select('*').eq('code',SV.code).maybeSingle().then(q=>q.
 sb.channel('s'+SV.code).on('postgres_changes',{event:'*',schema:'public',table:'live_sessions',filter:'code=eq.'+SV.code},q=>q.new&&ap(q.new)).subscribe()}}
 
 render();
+if(S.ended&&!V&&!SV)showRes();
 addEventListener('storage',e=>{if(e.key==K){load();render()}});
 onhashchange=()=>location.reload();
 setInterval(()=>{if(!V)renderCourts()},30000);

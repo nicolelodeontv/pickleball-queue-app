@@ -122,7 +122,7 @@ const nm=(p,i)=>esc(tx(p,i));
 const hm=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
 const mins=t=>Math.max(0,Math.round((Date.now()-t)/60000));
 
-function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.courts){S=s;S.log=S.log||[];S.waiting=S.waiting||[];S.target=S.target||11;S.lv=S.lv||{};S.md=S.md||'bal';S.sd=S.sd||0;S.courts.forEach(c=>{c.score=c.score||[0,0]})}}catch(e){}}
+function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.courts){S=s;S.log=S.log||[];S.waiting=S.waiting||[];S.rest=S.rest||{};S.target=S.target||11;S.lv=S.lv||{};S.md=S.md||'bal';S.sd=S.sd||0;S.courts.forEach(c=>{c.score=c.score||[0,0]})}}catch(e){}}
 function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}pushS()}
 
 function toast(m,type){const d=document.createElement('div');
@@ -213,6 +213,10 @@ function renderLog(){$('log').innerHTML=S.log.length?S.log.map(l=>`<div class="f
 
 function stats(){const m={};S.log.forEach(l=>{if(l.w<0)return;l.p.forEach((n,i)=>{const t=i<2?0:1,k=n.toLowerCase(),x=m[k]||(m[k]={n,w:0,l:0,d:0});l.w==t?x.w++:x.l++;x.d+=l.s[t]-l.s[1-t]})});
 return Object.values(m).sort((a,b)=>b.w-a.w||b.d-a.d||a.l-b.l)}
+const isRest=n=>!!(S.rest&&S.rest[n.toLowerCase()]);
+const pick4=()=>{const ix=[];S.queue.forEach((p,i)=>{if(ix.length<4&&!isRest(p))ix.push(i)});return ix};
+function rest(i){const k=S.queue[i].toLowerCase();S.rest=S.rest||{};if(S.rest[k])delete S.rest[k];else S.rest[k]=1;save();render()}
+
 function sdata(){const q=S.queue;return{t:S.target,courts:S.courts.map(c=>({n:c.name,a:c.isActive,p:c.players,s:c.score})),nx:q.length>=4?split4(q.slice(0,4)):[],q:q,lb:stats().slice(0,20)}}
 let st;function pushS(){if(!sb||!S.sid)return;clearTimeout(st);st=setTimeout(()=>sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()}).then(q=>q.error&&console.warn(q.error.message)),400)}
 async function sess(mode){if(!sb)return toast('Session sharing needs Supabase set up.','error');

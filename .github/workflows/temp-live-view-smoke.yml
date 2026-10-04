@@ -22,7 +22,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run Live View smoke test
         env:
-          PICKLESTACK_PREVIEW: https://pickleball-queue-o9wdna83o-meow-7e9e.vercel.app/?_vercel_share=03ygvDnSDKgst7JwnRybd52GoeHYb8iU
+          PICKLESTACK_PREVIEW: https://pickleball-queue-8qg8crcwi-meow-7e9e.vercel.app/?_vercel_share=Q7l9W77LkjBn92lgFeAEjQjhVxi3eaJY
         run: node .github/live-view-smoke.mjs
 
 # Browser smoke is temporary and preview-only.

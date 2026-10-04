@@ -50,9 +50,10 @@ html{color-scheme:dark}
 <main class="flex-grow container mx-auto px-4 py-8">
 <div id="nav" class="flex gap-2 mb-6 overflow-x-auto"><button id="nvp" onclick="nav('play')">Play</button><button id="nvl" onclick="nav('lb')">Leaderboard</button><button id="nvg" onclick="nav('log')">Match Log</button></div>
 <div id="viewer" class="hidden max-w-xl mx-auto"></div>
-<div id="app" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<div id="app" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start lg:items-stretch">
 
-<section id="sstk" class="lg:col-span-4 bg-dark-800 rounded-2xl border border-dark-700 shadow-xl overflow-hidden flex flex-col max-h-[80vh] lg:max-h-none lg:h-[calc(100vh-170px)] lg:min-h-[560px]">
+<section id="sstk" class="lg:col-span-4 bg-dark-800 rounded-2xl border border-dark-700 shadow-xl overflow-hidden relative lg:min-h-[560px]">
+<div class="flex flex-col max-h-[80vh] lg:max-h-none lg:absolute lg:inset-0">
 <div class="p-6 border-b border-dark-700 shrink-0">
 <div class="flex items-center justify-between mb-4"><h2 class="text-xl text-white"><i class="fa-solid fa-users text-pickle-500"></i> The Stack (<span id="qc">0</span>)</h2><button onclick="clAll()" class="text-xs text-gray-400 hover:text-red-400"><i class="fa-solid fa-trash"></i> Clear all</button></div>
 <form id="f" class="flex gap-2">
@@ -72,14 +73,14 @@ html{color-scheme:dark}
 <div class="p-4 border-t border-dark-700 shrink-0">
 <button id="go" class="w-full bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-sport text-xl py-4 rounded-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"><i class="fa-solid fa-play"></i> SEND NEXT 4 TO COURT</button>
 </div>
-</section>
+</div></section>
 
 <div id="rcol" class="lg:col-span-8 space-y-10">
 <section id="sun" class="bg-dark-800 rounded-2xl border border-dark-700 p-5">
 <div class="flex flex-wrap justify-between items-center gap-3 mb-4"><div><h2 class="text-2xl text-white">Up Next</h2><p class="text-gray-400 text-sm">Teams for the next four players in the stack.</p></div>
 <div class="flex items-center gap-2 text-xs"><button id="mdb" onclick="smd('bal')">Balanced</button><button id="mds" onclick="smd('soc')">Social mix</button><button onclick="shuf()" class="px-3 py-1.5 rounded-lg border border-dark-700 text-gray-300 hover:border-pickle-500"><i class="fa-solid fa-shuffle"></i> Reshuffle</button></div></div>
 <p id="mdi" class="text-xs text-gray-400 mb-4"></p>
-<div id="unxb"></div>
+<div id="unxb" class="min-h-[105px]"></div>
 </section>
 <section id="scr">
 <div class="flex flex-wrap justify-between items-end gap-3 mb-6">
@@ -255,12 +256,12 @@ return `<div class="flex items-center justify-between gap-2 p-3 rounded-xl borde
 <div class="min-w-0"><div class="text-[11px] text-gray-500 font-semibold">Team ${i+1}</div><div class="truncate text-gray-100">${nm(c.players,i)}</div></div>
 <div class="flex items-center gap-2"><button class="sb" aria-label="Minus point" onclick="sc(${c.id},${i},-1)">−</button><span class="font-sport text-3xl w-10 text-center ${w?'text-pickle-500':''}">${c.score[i]}</span><button class="sb" aria-label="Plus point" onclick="sc(${c.id},${i},1)">+</button></div></div>`}
 function renderCourts(){$('courts').innerHTML=S.courts.map(c=>c.isActive?
-`<div class="bg-dark-800 rounded-2xl border border-pickle-500/30 overflow-hidden flex flex-col relative"><div class="absolute top-0 inset-x-0 h-1 bg-pickle-500"></div>
+`<div class="bg-dark-800 rounded-2xl border border-pickle-500/30 overflow-hidden flex flex-col relative min-h-[322px]"><div class="absolute top-0 inset-x-0 h-1 bg-pickle-500"></div>
 <div class="p-4 border-b border-dark-700 flex justify-between items-center"><h3 class="text-xl text-pickle-500">${esc(c.name)} <button onclick="ren(${c.id})" title="Rename" class="text-gray-500 hover:text-pickle-500 text-sm"><i class="fa-solid fa-pencil"></i></button></h3><span class="text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1"><i class="fa-solid fa-circle live text-[8px]"></i> LIVE <span class="tm" data-t="${c.t}">${fmt(c.t)}</span></span></div>
 <div class="p-4 space-y-2 flex-grow">${team(c,0)}${team(c,1)}<p class="text-[11px] text-gray-500 text-center">First to ${S.target}, win by 2</p></div>
 <div class="p-3 border-t border-dark-700 flex gap-2"><button onclick="fin(${c.id})" class="flex-grow rounded-lg text-sm font-bold ${win(c.score,S.target)>=0?'bg-pickle-500 text-dark-900':'border border-dark-700 text-gray-300 hover:border-pickle-500'}">FINISH & LOG</button>
 <button onclick="drop(${c.id})" title="Cancel match" class="sb hover:!bg-red-500 hover:!text-white"><i class="fa-solid fa-xmark"></i></button></div></div>`:
-`<div class="bg-dark-900 rounded-2xl border border-dark-700 opacity-70 flex flex-col items-center justify-center py-10 px-5 text-center"><i class="fa-solid fa-check text-2xl text-gray-500 mb-3"></i><h3 class="text-xl text-gray-400">${esc(c.name)} <button onclick="ren(${c.id})" title="Rename" class="text-gray-500 hover:text-pickle-500 text-sm"><i class="fa-solid fa-pencil"></i></button></h3><p class="text-sm text-gray-500">Open and waiting for players.</p></div>`).join('')}
+`<div class="bg-dark-900 rounded-2xl border border-dark-700 opacity-70 flex flex-col items-center justify-center py-10 px-5 text-center min-h-[322px]"><i class="fa-solid fa-check text-2xl text-gray-500 mb-3"></i><h3 class="text-xl text-gray-400">${esc(c.name)} <button onclick="ren(${c.id})" title="Rename" class="text-gray-500 hover:text-pickle-500 text-sm"><i class="fa-solid fa-pencil"></i></button></h3><p class="text-sm text-gray-500">Open and waiting for players.</p></div>`).join('')}
 const lvl=n=>S.lv[n.toLowerCase()]||0;
 const pc=(a,b)=>S.log.reduce((n,l)=>n+[0,2].filter(i=>{const t=l.p.slice(i,i+2);return t.includes(a)&&t.includes(b)}).length,0);
 const oc=(a,b)=>S.log.reduce((n,l)=>n+((l.p.slice(0,2).includes(a)&&l.p.slice(2).includes(b))||(l.p.slice(0,2).includes(b)&&l.p.slice(2).includes(a))?1:0),0);

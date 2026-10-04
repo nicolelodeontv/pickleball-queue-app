@@ -1,14 +1,24 @@
 # PickleStack
 
-Pickleball paddle-stacking queue with skill levels, balanced or social-mix Up Next teams, scoring, shareable live matches, a match log and a leaderboard. One file: `index.html`.
+PickleStack is a single-file pickleball paddle-stacking queue with skill levels, balanced or social-mix Up Next teams, scoring, shareable live sessions, a match log and a leaderboard.
 
 ## Run
-Open `index.html`, or deploy the repo to Vercel / GitHub Pages. Everything is saved in the browser (localStorage).
 
-## Live sharing (optional)
-Without this, the share button sends a snapshot link. With it, viewers see scores update in real time.
-1. Create a Supabase project and run `supabase.sql` in the SQL Editor.
-2. In `index.html`, set `SB_URL` and `SB_KEY` (Project Settings > API: project URL and the anon public key).
-3. Redeploy. Share buttons now produce short live links.
+Open index.html, or deploy the repo to Vercel / GitHub Pages. The organizer's working session is stored in browser localStorage.
 
-The anon key is meant to be public. The policies in `supabase.sql` let anyone with it read and write `live_matches`, which is fine for a scoreboard but not for private data.
+## Live View
+
+PickleStack includes a cloud-backed Live View for players who want to follow the session from their own phones.
+
+1. Start a session and tap Live View in the header.
+2. Let players scan the QR code, open the link, or use Share.
+3. The read-only view shows active courts, Up Next, the stack and leaderboard and updates through Supabase Realtime.
+4. The organizer continues to manage the session from the main device. Viewers only receive the published session state.
+
+The public session code is the access token for the Live View, so do not put private information in player names or session data.
+
+## Supabase setup
+
+For a separate deployment, run supabase.sql in your Supabase SQL Editor, then set SB_URL and SB_KEY in index.html to the project's URL and browser-safe publishable key.
+
+The local session remains the source of truth. Cloud data is only published when the organizer uses Live View.

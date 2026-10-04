@@ -134,6 +134,9 @@ d.innerHTML=`<h3 class="text-white text-lg mb-2">${t}</h3><p class="text-gray-40
 d.querySelector('.x').onclick=()=>d.remove();d.querySelector('.y').onclick=()=>{d.remove();fn()};$('msg').append(d)}
 
 /* Stack */
+/* Attendance */
+function checkIn(i){const p=S.waiting.splice(i,1)[0];if(!p)return;S.queue.push(p);save();render();toast(p+' checked in','success')}
+function rmWaiting(i){S.waiting.splice(i,1);save();render()}
 $('f').onsubmit=e=>{e.preventDefault();const n=$('pn').value.split(/[,\n]/).map(s=>s.trim()).filter(Boolean);if(!n.length)return;S.queue.push(...n.map(q=>{const[a,t]=q.split('|').map(x=>x.trim()),x=parseFloat(t);if(x)S.lv[a.toLowerCase()]=x<2.25?1:x<2.75?2:x<3.25?3:x<3.75?4:x<4.25?5:6;return a}).filter(Boolean));$('pn').value='';save();render()};
 function rm(i){S.queue.splice(i,1);save();render()}
 $('go').onclick=()=>{

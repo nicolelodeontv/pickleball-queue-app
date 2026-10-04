@@ -1,6 +1,9 @@
 name: Two-device production smoke
 
 on:
+  push:
+    branches:
+      - verify/two-device-smoke-20261004
   pull_request:
     branches: [main]
 

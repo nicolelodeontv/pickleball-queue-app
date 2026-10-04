@@ -8,7 +8,7 @@ const organizer = await browser.newPage({ viewport: { width: 390, height: 844 },
 
 try {
   const response = await organizer.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  const consoleLines = []; const pageErrors = []; organizer.on('console', m => consoleLines.push(m.type()+': '+m.text())); organizer.on('pageerror', e => pageErrors.push(e.message));
+  const consoleLines = []; const pageErrors = []; const responses = []; organizer.on('console', m => consoleLines.push(m.type()+': '+m.text())); organizer.on('pageerror', e => pageErrors.push(e.message)); organizer.on('response', async r => { if (r.url().includes('wochetemsnrysnjrgoed.supabase.co')) responses.push({url:r.url(), status:r.status(), method:r.request().method()}); });
   console.log('page', JSON.stringify({
     url: organizer.url(),
     status: response?.status(),
@@ -32,8 +32,9 @@ try {
   }, null, { timeout: 10000 });
 
   await organizer.locator('button[title="Open a read-only live view for players"]').click();
+  await organizer.waitForTimeout(3000);
   console.log('runtime', JSON.stringify({supabase: await organizer.evaluate(() => typeof window.supabase),
-    qrcode: await organizer.evaluate(() => typeof window.qrcode), body: (await organizer.locator('body').innerText()).slice(0,3000), consoleLines, pageErrors}, null, 2));
+    qrcode: await organizer.evaluate(() => typeof window.qrcode), body: (await organizer.locator('body').innerText()).slice(0,3000), responses, consoleLines, pageErrors}, null, 2));
   await organizer.getByRole('button', { name: 'Copy link' }).waitFor({ timeout: 10000 });
   const liveUrl = (await organizer.locator('.fixed .break-all').innerText()).trim();
 

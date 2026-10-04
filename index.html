@@ -239,13 +239,18 @@ d.textContent=m;$('msg').append(d);setTimeout(()=>d.remove(),3000)}
 const bP='px-4 py-3 rounded-xl bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-sport tracking-wide active:scale-95',
 bS='px-4 py-3 rounded-xl bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200',
 bD='px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-sport tracking-wide';
-let modalSeq=0;
+let modalSeq=0,lastModalTrigger=null;
+document.addEventListener('click',e=>{
+  if(e.target.closest('[role="dialog"]'))return;
+  const b=e.target.closest('button,[role="button"]');
+  if(b)lastModalTrigger=b;
+},true);
 function modal(html,lock){
-  const d=document.createElement('div'),prev=document.activeElement,mid='picklestack-modal-'+(++modalSeq);
+  const d=document.createElement('div'),prev=document.activeElement,opener=(lastModalTrigger&&lastModalTrigger.isConnected)?lastModalTrigger:prev,mid='picklestack-modal-'+(++modalSeq);
   d.className='fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4';
   d.innerHTML='<div class="mb bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-label="PickleStack dialog" tabindex="-1" id="'+mid+'">'+html+'</div>';
   const box=d.firstElementChild,focusable=()=>[...box.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(x=>!x.disabled&&x.offsetParent!==null);
-  d.__close=()=>{d.remove();if(prev&&prev.isConnected)try{prev.focus()}catch(e){}};
+  d.__close=()=>{d.remove();lastModalTrigger=null;if(opener&&opener.isConnected)try{opener.focus()}catch(e){}};
   if(!lock)d.onclick=e=>{if(e.target==d)d.__close()};
   d.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>d.__close());
   d.addEventListener('keydown',e=>{

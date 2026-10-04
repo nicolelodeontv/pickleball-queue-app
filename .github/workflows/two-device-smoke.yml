@@ -66,11 +66,26 @@ jobs:
             await hp.locator('button[onclick="live()"]').click();
             const liveCode = await hp.evaluate(() => S.sid);
             assert.match(liveCode, /^[a-z0-9]{6}$/);
+            const hostDbProbe = await hp.evaluate(async code => {
+              const q = await sb.from('live_sessions').select('code,data').eq('code',code).maybeSingle();
+              return {error:q.error?.message||null, data:q.data||null};
+            }, liveCode);
+            console.log('HOST_LIVE_DB_PROBE', JSON.stringify(hostDbProbe));
             const liveUrl = APP + '#s=' + liveCode;
 
             // 2) Second phone opens live link and receives a score update.
             await vp.goto(liveUrl, {waitUntil:'networkidle'});
             await waitText(vp, 'Live Session', 10000);
+            const dbProbe = await vp.evaluate(async code => {
+              const q = await sb.from('live_sessions').select('code,data').eq('code',code).maybeSingle();
+              return {error:q.error?.message||null, data:q.data||null};
+            }, liveCode);
+            console.log('LIVE_DB_PROBE', JSON.stringify(dbProbe));
+            const viewerState = await vp.evaluate(() => ({
+              sessionData: SV?.d || null,
+              body: document.querySelector('#viewer')?.innerText || ''
+            }));
+            console.log('LIVE_VIEWER_STATE', JSON.stringify(viewerState));
             await waitText(vp, 'Alpha', 10000);
 
             const before = await vp.locator('#viewer').innerText();

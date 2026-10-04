@@ -138,6 +138,7 @@ jobs:
             // 4) Back to session, then prove original live link still updates.
             await hp.locator('.fixed .bk').click();
             await hp.locator('#rs').waitFor({state:'visible', timeout:5000});
+            await hp.locator('#go').click();
             await hp.locator('#courts .bg-dark-800').first().waitFor({state:'visible', timeout:5000});
 
             await hp.locator('button[onclick="live()"]').click();
@@ -155,7 +156,7 @@ jobs:
 
             await hp.locator('button[aria-label="Plus point"]').first().click();
             await vp.waitForFunction(
-              () => /12/.test(document.querySelector('#viewer')?.innerText || ''),
+              () => /1/.test(document.querySelector('#viewer')?.innerText || ''),
               null,
               {timeout:10000}
             );

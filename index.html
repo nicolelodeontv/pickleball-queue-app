@@ -72,6 +72,8 @@ h1,h2,h3,.font-sport{font-family:Oswald,sans-serif;text-transform:uppercase;lett
 <div><h2 class="text-3xl text-white">Active Courts</h2><p class="text-gray-400 text-sm mt-1">Score matches, share them, and clear courts when they finish.</p></div>
 <div class="flex items-center gap-4 text-xs text-gray-400">
 <label>Play to <select id="tg" class="bg-dark-900 border border-dark-700 rounded px-2 py-1 text-white"><option>11</option><option>15</option><option>21</option></select></label>
+<button onclick="sess()" class="hover:text-pickle-500"><i class="fa-solid fa-share-nodes"></i> Share session</button>
+<button onclick="sess('qr')" class="hover:text-pickle-500"><i class="fa-solid fa-qrcode"></i> QR</button>
 <button id="rs" class="hover:text-red-400"><i class="fa-solid fa-rotate-right"></i> Reset all</button>
 </div>
 </div>
@@ -107,7 +109,7 @@ function push(c,st){if(!sb||!c.mid)return;
 const row={code:c.mid,court:c.name,players:c.players,score:c.score,target:S.target,status:st||'live',updated_at:new Date().toISOString()};
 clearTimeout(lt[c.mid]);lt[c.mid]=setTimeout(()=>sb.from('live_matches').upsert(row).then(q=>q.error&&console.warn(q.error.message)),st?0:300)}
 const mk=()=>({queue:[],log:[],target:11,lv:{},md:'bal',sd:0,courts:[1,2,3,4].map(id=>({id,name:'Court '+id,isActive:false,players:[],score:[0,0],mid:'',t:0}))});
-let S=mk(),V=null;
+let S=mk(),V=null,SV=null;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const win=(s,t)=>Math.max(s[0],s[1])>=t&&Math.abs(s[0]-s[1])>=2?(s[0]>s[1]?0:1):-1;
 const tx=(p,i)=>p.slice(i*2,i*2+2).join(' & ');
@@ -116,7 +118,7 @@ const hm=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})
 const mins=t=>Math.max(0,Math.round((Date.now()-t)/60000));
 
 function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.courts){S=s;S.log=S.log||[];S.target=S.target||11;S.lv=S.lv||{};S.md=S.md||'bal';S.sd=S.sd||0;S.courts.forEach(c=>{c.score=c.score||[0,0]})}}catch(e){}}
-function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}pushS()}
 
 function toast(m,type){const d=document.createElement('div');
 d.className='mb border px-4 py-3 rounded-lg shadow-xl pointer-events-auto text-sm font-medium '+(type=='error'?'bg-red-500/90 border-red-400':type=='success'?'bg-pickle-500/90 border-pickle-400 text-dark-900':'bg-dark-700/90 border-dark-700');
@@ -155,11 +157,12 @@ if(sb){const q=await sb.from('live_matches').upsert({code:s.m,court:s.n,players:
 return{s,url:location.origin+location.pathname+'#m='+(ok?s.m:enc(s)),t:`${s.n}: ${tx(s.p,0)} ${s.s[0]}-${s.s[1]} ${tx(s.p,1)}`}}
 async function share(m){const r=await mlink(m);if(!r)return;const{url,t}=r;
 try{if(navigator.share)await navigator.share({title:'PickleStack match',text:t,url});else{await navigator.clipboard.writeText(t+'\n'+url);toast('Match link copied','success')}}catch(e){}}
-async function qr(m){const r=await mlink(m);if(!r)return;let svg;
-try{const q=qrcode(0,'M');q.addData(r.url);q.make();svg=q.createSvgTag({cellSize:6,margin:0,scalable:true})}catch(e){return toast('Could not make QR code.','error')}
+async function qrBox(title,url){let svg;
+try{const q=qrcode(0,'M');q.addData(url);q.make();svg=q.createSvgTag({cellSize:6,margin:0,scalable:true})}catch(e){return toast('Could not make QR code.','error')}
 const d=document.createElement('div');d.className='fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4';
-d.innerHTML=`<div class="bg-dark-800 border border-dark-700 rounded-2xl p-6 text-center max-w-xs w-full"><h3 class="text-white text-lg mb-3">${esc(r.s.n)}</h3><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:240px;max-width:100%">${svg}</div><p class="text-xs text-gray-400 mt-3">Scan to watch this match.</p><button class="x mt-4 px-4 py-2 bg-dark-700 rounded-lg">Close</button></div>`;
+d.innerHTML=`<div class="bg-dark-800 border border-dark-700 rounded-2xl p-6 text-center max-w-xs w-full"><h3 class="text-white text-lg mb-3">${esc(title)}</h3><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:240px;max-width:100%">${svg}</div><p class="text-xs text-gray-400 mt-3">Scan to watch live.</p><button class="x mt-4 px-4 py-2 bg-dark-700 rounded-lg">Close</button></div>`;
 d.onclick=e=>{if(e.target==d||e.target.classList.contains('x'))d.remove()};document.body.append(d)}
+async function qr(m){const r=await mlink(m);if(r)qrBox(r.s.n,r.url)}
 
 /* Render */
 function team(c,i){const w=win(c.score,S.target)==i;
@@ -170,8 +173,7 @@ function renderCourts(){$('courts').innerHTML=S.courts.map(c=>c.isActive?
 `<div class="bg-dark-800 rounded-2xl border border-pickle-500/30 overflow-hidden flex flex-col relative"><div class="absolute top-0 inset-x-0 h-1 bg-pickle-500"></div>
 <div class="p-4 border-b border-dark-700 flex justify-between items-center"><h3 class="text-xl text-pickle-500">${c.name}</h3><span class="text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1"><i class="fa-solid fa-circle live text-[8px]"></i> LIVE ${mins(c.t)}m</span></div>
 <div class="p-4 space-y-2 flex-grow">${team(c,0)}${team(c,1)}<p class="text-[11px] text-gray-500 text-center">First to ${S.target}, win by 2</p></div>
-<div class="p-3 border-t border-dark-700 flex gap-2"><button onclick="share('${c.mid}')" title="Share match" class="sb"><i class="fa-solid fa-share-nodes"></i></button><button onclick="qr('${c.mid}')" title="QR code" class="sb"><i class="fa-solid fa-qrcode"></i></button>
-<button onclick="fin(${c.id})" class="flex-grow rounded-lg text-sm font-bold ${win(c.score,S.target)>=0?'bg-pickle-500 text-dark-900':'border border-dark-700 text-gray-300 hover:border-pickle-500'}">FINISH & LOG</button>
+<div class="p-3 border-t border-dark-700 flex gap-2"><button onclick="fin(${c.id})" class="flex-grow rounded-lg text-sm font-bold ${win(c.score,S.target)>=0?'bg-pickle-500 text-dark-900':'border border-dark-700 text-gray-300 hover:border-pickle-500'}">FINISH & LOG</button>
 <button onclick="drop(${c.id})" title="Cancel match" class="sb hover:!bg-red-500 hover:!text-white"><i class="fa-solid fa-xmark"></i></button></div></div>`:
 `<div class="bg-dark-900 rounded-2xl border border-dark-700 opacity-70 flex flex-col items-center justify-center py-10 px-5 text-center"><i class="fa-solid fa-check text-2xl text-gray-500 mb-3"></i><h3 class="text-xl text-gray-400">${c.name}</h3><p class="text-sm text-gray-500">Open and waiting for players.</p></div>`).join('')}
 const lvl=n=>S.lv[n.toLowerCase()]||0;
@@ -197,10 +199,25 @@ $('ql').innerHTML=S.queue.map((p,i)=>`<li class="flex items-center justify-betwe
 $('go').disabled=S.queue.length<4||!S.courts.some(c=>!c.isActive)}
 function renderLog(){$('log').innerHTML=S.log.length?S.log.map(l=>`<div class="flex items-center gap-3 p-3"><div class="text-xs text-gray-500 w-24 flex-none">${hm(l.t)}<br>${l.c} · ${Math.max(1,Math.round(l.d/60000))}m</div>
 <div class="flex-1 min-w-0 text-sm"><span class="${l.w==0?'text-pickle-500 font-semibold':''}">${nm(l.p,0)}</span><span class="font-sport text-lg px-2">${l.s[0]}-${l.s[1]}</span><span class="${l.w==1?'text-pickle-500 font-semibold':''}">${nm(l.p,1)}</span></div>
-<button onclick="share('${l.mid}')" title="Share result" class="sb"><i class="fa-solid fa-share-nodes"></i></button><button onclick="qr('${l.mid}')" title="QR code" class="sb"><i class="fa-solid fa-qrcode"></i></button></div>`).join(''):'<p class="text-sm text-gray-500 py-8 text-center">No matches yet. Finish a match to log it.</p>'}
+</div>`).join(''):'<p class="text-sm text-gray-500 py-8 text-center">No matches yet. Finish a match to log it.</p>'}
 
 function stats(){const m={};S.log.forEach(l=>{if(l.w<0)return;l.p.forEach((n,i)=>{const t=i<2?0:1,k=n.toLowerCase(),x=m[k]||(m[k]={n,w:0,l:0,d:0});l.w==t?x.w++:x.l++;x.d+=l.s[t]-l.s[1-t]})});
 return Object.values(m).sort((a,b)=>b.w-a.w||b.d-a.d||a.l-b.l)}
+function sdata(){const q=S.queue;return{t:S.target,courts:S.courts.map(c=>({n:c.name,a:c.isActive,p:c.players,s:c.score})),nx:q.length>=4?split4(q.slice(0,4)):[],q:q,lb:stats().slice(0,20)}}
+let st;function pushS(){if(!sb||!S.sid)return;clearTimeout(st);st=setTimeout(()=>sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()}).then(q=>q.error&&console.warn(q.error.message)),400)}
+async function sess(mode){if(!sb)return toast('Session sharing needs Supabase set up.','error');
+if(!S.sid)S.sid=Math.random().toString(36).slice(2,8);
+const q=await sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()});
+if(q.error)return toast('Could not publish. Did you run the SQL?','error');
+save();const url=location.origin+location.pathname+'#s='+S.sid;
+if(mode=='qr')return qrBox('Live session',url);
+try{if(navigator.share)await navigator.share({title:'PickleStack live',text:'Watch our open play live',url});else{await navigator.clipboard.writeText(url);toast('Session link copied','success')}}catch(e){}}
+function renderSession(){const d=SV.d;if(!d){$('viewer').innerHTML='<p class="text-gray-400 text-center py-10">Connecting…</p>';return}
+const courts=d.courts.map(c=>c.a?`<div class="bg-dark-800 border border-pickle-500/30 rounded-2xl p-4"><div class="flex justify-between mb-2"><h3 class="text-pickle-500 text-lg">${esc(c.n)}</h3><span class="text-xs text-red-400"><i class="fa-solid fa-circle live text-[8px]"></i> LIVE</span></div>${[0,1].map(i=>`<div class="flex justify-between items-center py-1"><span class="truncate">${nm(c.p,i)}</span><span class="font-sport text-3xl ${win(c.s,d.t)==i?'text-pickle-500':''}">${c.s[i]}</span></div>`).join('')}</div>`:`<div class="bg-dark-900 border border-dark-700 rounded-2xl p-4 text-center text-gray-500 opacity-70">${esc(c.n)} · open</div>`).join('');
+const nx=d.nx.length?`<div class="grid grid-cols-2 gap-3 text-sm"><div class="rounded-xl bg-blue-500/10 p-3"><div class="text-xs font-bold text-blue-400 mb-1">Team 1</div>${d.nx.slice(0,2).map(esc).join('<br>')}</div><div class="rounded-xl bg-orange-500/10 p-3"><div class="text-xs font-bold text-orange-400 mb-1">Team 2</div>${d.nx.slice(2).map(esc).join('<br>')}</div></div>`:'<p class="text-sm text-gray-500">Waiting for 4+ players.</p>';
+const lb=d.lb.length?`<table class="w-full text-sm text-center"><thead class="text-xs text-gray-500"><tr><th class="text-left p-2">#</th><th class="text-left">Player</th><th>W-L</th><th>+/-</th></tr></thead><tbody class="divide-y divide-dark-700">${d.lb.map((x,i)=>`<tr><td class="text-left p-2 text-gray-500">${i+1}</td><td class="text-left">${esc(x.n)}</td><td>${x.w}-${x.l}</td><td class="${x.d>0?'text-green-400':x.d<0?'text-red-400':''}">${x.d>0?'+':''}${x.d}</td></tr>`).join('')}</tbody></table>`:'<p class="text-sm text-gray-500 p-4 text-center">No scored matches yet.</p>';
+$('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><h2 class="text-2xl text-white">Live Session</h2><span class="text-xs text-gray-400">Updated ${hm(SV.ts)}</span></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">${courts}</div><h3 class="text-xl text-white mb-2">Up Next</h3><div class="mb-6">${nx}</div><h3 class="text-xl text-white mb-2">The Stack (${d.q.length})</h3><p class="text-sm text-gray-300 mb-6">${d.q.length?d.q.map((p,i)=>`${i+1}. ${esc(p)}`).join(' &nbsp; '):'Empty'}</p><h3 class="text-xl text-white mb-2">Leaderboard</h3><div class="bg-dark-800 border border-dark-700 rounded-2xl overflow-x-auto">${lb}</div>`}
+
 function renderLB(){const r=stats();$('lb').innerHTML=r.length?`<table class="w-full text-sm"><thead class="text-xs text-gray-500"><tr><th class="p-3 text-left">#</th><th class="text-left">Player</th><th>W-L</th><th>Win%</th><th class="pr-3">+/-</th></tr></thead><tbody class="divide-y divide-dark-700 text-center">${r.map((x,i)=>`<tr><td class="p-3 text-left text-gray-500">${i+1}</td><td class="text-left ${i==0?'text-pickle-500 font-semibold':''}">${esc(x.n)}</td><td>${x.w}-${x.l}</td><td>${Math.round(100*x.w/(x.w+x.l))}%</td><td class="pr-3 ${x.d>0?'text-green-400':x.d<0?'text-red-400':''}">${x.d>0?'+':''}${x.d}</td></tr>`).join('')}</tbody></table>`:'<p class="text-sm text-gray-500 py-8 text-center">Finish a scored match to start the leaderboard.</p>'}
 function renderViewer(){let s=V;const c=S.courts.find(x=>x.mid==s.m&&x.isActive);
 if(c)s={...s,p:c.players,s:c.score};else{const l=S.log.find(x=>x.mid==s.m);if(l)s={...s,p:l.p,s:l.s,f:1}}
@@ -208,7 +225,7 @@ const lv=c||(s.code&&s.p.length&&!s.fin),w=win(s.s,s.tg||11),row=i=>`<div class=
 $('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><h2 class="text-2xl text-white">${esc(s.n)}</h2><span class="text-xs font-bold rounded px-2 py-1 ${lv?'text-red-400 bg-red-500/10':'text-gray-300 bg-dark-700'}">${lv?'<i class="fa-solid fa-circle live text-[8px]"></i> LIVE':(s.f||s.fin)?'FINAL':'SNAPSHOT'}</span></div><div class="space-y-3">${row(0)}${row(1)}</div>
 <p class="text-xs text-gray-500 mt-4">${lv?(s.code?'Updating live.':'Updating live on this device.'):s.code?'Final score.':'Score as of '+hm(s.ts)+'. Ask for a new link for the latest score.'}</p><a href="${location.pathname}" class="inline-block mt-4 text-sm text-pickle-500 underline">Open PickleStack</a>`}
 
-function render(){if(V)return renderViewer();$('tg').value=S.target;renderQueue();renderNext();renderCourts();renderLB();renderLog()}
+function render(){if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderQueue();renderNext();renderCourts();renderLB();renderLog()}
 
 /* Controls */
 $('tg').onchange=e=>{S.target=+e.target.value;save();render()};
@@ -223,7 +240,11 @@ load();
 if(location.hash.startsWith('#m=')){const h=location.hash.slice(3);try{V=h.length<=10?{m:h,code:1,n:'Match',p:[],s:[0,0],tg:11,ts:Date.now()}:dec(h);$('app').classList.add('hidden');$('viewer').classList.remove('hidden')}catch(e){}}
 if(V&&V.code&&sb){const ap=q=>{V={...V,n:q.court,p:q.players,s:q.score,tg:q.target,fin:q.status!='live',ts:Date.parse(q.updated_at)};render()};
 sb.from('live_matches').select('*').eq('code',V.m).maybeSingle().then(q=>q.data&&ap(q.data));
-sb.channel('m'+V.m).on('postgres_changes',{event:'*',schema:'public',table:'live_matches',filter:'code=eq.'+V.m},q=>q.new&&ap(q.new)).subscribe()}
+sb.channel('m'+V.m).on('postgres_changes',{event:'*',schema:'public',table:'live_matches',filter:'code=eq.'+V.m},q=>q.new&&ap(q.new)).subscribe()}if(location.hash.startsWith('#s=')){SV={code:location.hash.slice(3),d:null,ts:Date.now()};$('app').classList.add('hidden');$('viewer').classList.remove('hidden','max-w-xl');$('viewer').classList.add('max-w-3xl');
+if(sb){const ap=q=>{SV.d=q.data;SV.ts=Date.parse(q.updated_at);render()};
+sb.from('live_sessions').select('*').eq('code',SV.code).maybeSingle().then(q=>q.data&&ap(q.data));
+sb.channel('s'+SV.code).on('postgres_changes',{event:'*',schema:'public',table:'live_sessions',filter:'code=eq.'+SV.code},q=>q.new&&ap(q.new)).subscribe()}}
+
 render();
 addEventListener('storage',e=>{if(e.key==K){load();render()}});
 onhashchange=()=>location.reload();

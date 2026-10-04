@@ -108,7 +108,7 @@ const sb=SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY):nu
 function push(c,st){if(!sb||!c.mid)return;
 const row={code:c.mid,court:c.name,players:c.players,score:c.score,target:S.target,status:st||'live',updated_at:new Date().toISOString()};
 clearTimeout(lt[c.mid]);lt[c.mid]=setTimeout(()=>sb.from('live_matches').upsert(row).then(q=>q.error&&console.warn(q.error.message)),st?0:300)}
-const mk=()=>({queue:[],log:[],target:11,lv:{},md:'bal',sd:0,courts:[1,2,3,4].map(id=>({id,name:'Court '+id,isActive:false,players:[],score:[0,0],mid:'',t:0}))});
+const mk=()=>({queue:[],waiting:[],log:[],target:11,lv:{},md:'bal',sd:0,courts:[1,2,3,4].map(id=>({id,name:'Court '+id,isActive:false,players:[],score:[0,0],mid:'',t:0}))});
 let S=mk(),V=null,SV=null;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const win=(s,t)=>Math.max(s[0],s[1])>=t&&Math.abs(s[0]-s[1])>=2?(s[0]>s[1]?0:1):-1;

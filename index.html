@@ -132,11 +132,11 @@ button,select,input{touch-action:manipulation}
 <div class="bg-pickle-500 text-dark-900 p-2 rounded-lg rotate-12"><i class="fa-solid fa-table-tennis-paddle-ball text-xl"></i></div>
 <div><h1 class="text-2xl font-bold text-white leading-none">Pickle<span class="text-pickle-500">Stack</span></h1><p class="text-xs text-gray-400 font-medium">QUEUE, SCORES & LOG</p></div>
 </div>
-<div class="flex items-center gap-2"><button onclick="stand()" title="Standings" class="bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10"><i class="fa-solid fa-trophy"></i></button><button id="snb" onclick="snd()" title="Sound" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="tsb" onclick="tts()" title="Voice announcements" class="bg-dark-700 rounded-lg w-10 h-10"></button><button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm" title="Open a read-only live view for players"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live View</span></button></div>
+<div class="flex items-center gap-2"><button onclick="stand()" title="Standings" class="bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10"><i class="fa-solid fa-trophy"></i></button><button id="snb" onclick="snd()" title="Sound" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="tsb" onclick="tts()" title="Voice announcements" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="exp" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Export a backup of this device's PickleStack data"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Export</span></button><button id="impbtn" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Import a PickleStack backup"><i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Import</span></button><button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm" title="Open a read-only live view for players"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live View</span></button></div>
 <div class="text-sm text-gray-400 flex items-center gap-2 bg-dark-900 py-1 px-3 rounded-full border border-dark-700"><i class="fa-solid fa-wifi text-green-400" id="ci"></i><span id="ct" class="hidden sm:inline">Saved on this device</span></div>
 </div>
 </header>
-<div id="msg" class="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none flex flex-col gap-2"></div>
+<div id="msg" class="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none flex flex-col gap-2"></div><input id="imp" type="file" accept="application/json,.json" hidden>
 
 <main class="flex-grow container mx-auto px-4 py-8">
 <div id="viewer" class="hidden max-w-xl mx-auto"></div>
@@ -194,7 +194,7 @@ button,select,input{touch-action:manipulation}
 
 <section id="slg">
 <div class="flex justify-between items-end mb-4">
-<div><h2 class="text-3xl text-white">Match Log</h2><p class="text-gray-400 text-sm mt-1">Finished matches, newest first.</p></div>
+<div><h2 class="text-3xl text-white">Match Log</h2><p class="text-gray-400 text-sm mt-1">Finished matches, newest first. Showing the latest 50.</p></div>
 <div class="flex gap-4 text-xs text-gray-400">
 <button id="cl" class="hover:text-red-400"><i class="fa-solid fa-trash"></i> Clear</button>
 </div>
@@ -218,9 +218,7 @@ const K='pickleStackState',$=id=>document.getElementById(id);
 const SB_URL='https://wochetemsnrysnjrgoed.supabase.co',SB_KEY='sb_publishable_vk1EKES125_AzGi9iPHxSw_XiliPhcA';
 const sb=SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY):null,lt={};
 const viewerClient=code=>SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY,{global:{headers:{'x-picklestack-session-code':code}}}):null;
-function push(c,st){if(!sb||!c.mid)return;
-const row={code:c.mid,court:c.name,players:c.players,score:c.score,target:S.target,status:st||'live',updated_at:new Date().toISOString()};
-clearTimeout(lt[c.mid]);lt[c.mid]=setTimeout(()=>sb.from('live_matches').upsert(row).then(q=>q.error&&console.warn(q.error.message)),st?0:300)}
+function push(){}
 const mk=()=>({queue:[],waiting:[],rest:{},log:[],target:11,lv:{},md:'bal',sd:0,gp:{},ws:false,wl:2,eq:false,tts:false,courts:[1,2,3,4].map(id=>({id,name:'Court '+id,isActive:false,players:[],score:[0,0],mid:'',t:0}))});
 let S=mk(),V=null,SV=null;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -240,17 +238,30 @@ d.textContent=m;$('msg').append(d);setTimeout(()=>d.remove(),3000)}
 const bP='px-4 py-3 rounded-xl bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-sport tracking-wide active:scale-95',
 bS='px-4 py-3 rounded-xl bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200',
 bD='px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-sport tracking-wide';
+let modalSeq=0;
 function modal(html,lock){
-  const d=document.createElement('div');
+  const d=document.createElement('div'),prev=document.activeElement,mid='picklestack-modal-'+(++modalSeq);
   d.className='fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4';
-  d.innerHTML='<div class="mb bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">'+html+'</div>';
-  if(!lock)d.onclick=e=>{if(e.target==d)d.remove()};
-  d.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>d.remove());
-  document.body.append(d);return d
+  d.innerHTML='<div class="mb bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-label="PickleStack dialog" tabindex="-1" id="'+mid+'">'+html+'</div>';
+  const box=d.firstElementChild,focusable=()=>[...box.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(x=>!x.disabled&&x.offsetParent!==null);
+  d.__close=()=>{d.remove();if(prev&&prev.isConnected)try{prev.focus()}catch(e){}};
+  if(!lock)d.onclick=e=>{if(e.target==d)d.__close()};
+  d.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>d.__close());
+  d.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){e.preventDefault();d.__close();return}
+    if(e.key!=='Tab')return;
+    const f=focusable();if(!f.length){e.preventDefault();box.focus();return}
+    const first=f[0],last=f[f.length-1];
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
+  });
+  document.body.append(d);
+  requestAnimationFrame(()=>{const f=focusable();(f[0]||box).focus()});
+  return d
 }
 function ask(t,m,fn){
   const d=modal('<div class="p-6 text-center"><h3 class="text-xl text-white mb-2">'+esc(t)+'</h3><p class="text-gray-400 text-sm mb-6">'+esc(m)+'</p><div class="flex gap-3"><button data-x class="flex-1 '+bS+'">Cancel</button><button class="y flex-1 '+bD+'">Confirm</button></div></div>');
-  d.querySelector('.y').onclick=()=>{d.remove();fn()}
+  d.querySelector('.y').onclick=()=>{d.__close();fn()}
 }
 const qrSvg=u=>{try{const q=qrcode(0,'M');q.addData(u);q.make();return q.createSvgTag({cellSize:6,margin:0,scalable:true})}catch(e){return ''}};
 async function live(){
@@ -305,7 +316,7 @@ function showRes(){
   const d=modal('<div class="p-5 border-b border-dark-700"><h3 class="text-2xl text-white">Session Results</h3><p class="text-xs text-gray-400">'+S.log.length+' games played · session ended</p></div><div class="divide-y divide-dark-700">'+rows+'</div><div class="p-5 border-t border-dark-700 text-center">'+lk+'</div><div class="p-4 border-t border-dark-700 grid grid-cols-2 gap-3"><button class="sh col-span-2 '+bP+'"><i class="fa-solid fa-image"></i> Share results image</button><button class="nw col-span-2 '+bD+'">New session</button></div>',true);
   const cp=d.querySelector('.cp');if(cp)cp.onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
   d.querySelector('.sh').onclick=shareImg;
-  d.querySelector('.nw').onclick=()=>ask('Start new session?','This clears the stack, courts, leaderboard and log. Make sure you have shared the results.',()=>{d.remove();const k={snd:S.snd,tts:S.tts,md:S.md,ws:S.ws,wl:S.wl,eq:S.eq,target:S.target};S=Object.assign(mk(),k);save();render();toast('New session started','success')})
+  d.querySelector('.nw').onclick=()=>ask('Start new session?','This clears the stack, courts, leaderboard and log. Make sure you have shared the results.',()=>{d.__close();const k={snd:S.snd,tts:S.tts,md:S.md,ws:S.ws,wl:S.wl,eq:S.eq,target:S.target};S=Object.assign(mk(),k);save();render();toast('New session started','success')})
 }
 
 /* Stack */
@@ -348,9 +359,52 @@ function drop(id){const c=S.courts.find(x=>x.id==id);ask('Cancel match?','Player
 function ren(id){const c=S.courts.find(x=>x.id==id);if(!c)return;
 const d=modal('<form class="p-6"><h3 class="text-xl text-white mb-4">Rename court</h3><input class="n w-full bg-dark-900 border border-dark-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-pickle-500 mb-5" maxlength="20" value="'+esc(c.name)+'"><div class="flex gap-3"><button type="button" data-x class="flex-1 '+bS+'">Cancel</button><button class="flex-1 '+bP+'">Save</button></div></form>');
 const i=d.querySelector('.n');i.focus();i.select();
-d.querySelector('form').onsubmit=e=>{e.preventDefault();const n=i.value.trim();if(n){c.name=n.slice(0,20);if(c.isActive)push(c);save();render()}d.remove()}}
+d.querySelector('form').onsubmit=e=>{e.preventDefault();const n=i.value.trim();if(n){c.name=n.slice(0,20);if(c.isActive)push(c);save();render()}d.__close()}}
 
 const fmt=t=>{const s=Math.max(0,Math.floor((Date.now()-t)/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+/* Backup / restore */
+const BACKUP_VERSION=1;
+function expData(){
+  const o=JSON.parse(JSON.stringify(S));
+  delete o.sid;delete o.sh;delete o.rid;
+  return JSON.stringify({app:'PickleStack',version:BACKUP_VERSION,exportedAt:new Date().toISOString(),state:o},null,2)
+}
+function cleanState(o){
+  const s=o&&o.state&&typeof o.state==='object'?o.state:o;
+  if(!s||!Array.isArray(s.courts))throw new Error('Invalid PickleStack backup');
+  const R=mk();
+  R.queue=Array.isArray(s.queue)?s.queue.slice(0,5000).map(x=>String(x)).filter(Boolean):[];
+  R.waiting=Array.isArray(s.waiting)?s.waiting.slice(0,5000).map(x=>String(x)).filter(Boolean):[];
+  R.rest=s.rest&&typeof s.rest==='object'?JSON.parse(JSON.stringify(s.rest)):{};
+  R.lv=s.lv&&typeof s.lv==='object'?JSON.parse(JSON.stringify(s.lv)):{};
+  R.md=s.md==='soc'?'soc':'bal';R.sd=Number.isFinite(+s.sd)?+s.sd:0;R.gp=s.gp&&typeof s.gp==='object'?JSON.parse(JSON.stringify(s.gp)):{};
+  R.ws=!!s.ws;R.wl=[2,3,4].includes(+s.wl)?+s.wl:2;R.eq=!!s.eq;R.tts=!!s.tts;R.snd=!!s.snd;
+  R.target=[11,15,21].includes(+s.target)?+s.target:11;
+  R.courts=s.courts.slice(0,12).map((c,i)=>{
+    const base=R.courts[i]||{id:i+1,name:'Court '+(i+1),isActive:false,players:[],score:[0,0],mid:'',t:0,hold:null,stk:0};
+    const sc=Array.isArray(c&&c.score)&&c.score.length===2?c.score.map(v=>Math.max(0,Number(v)||0)):[0,0];
+    return {...base,id:Number(c&&c.id)||i+1,name:String(c&&c.name||base.name).slice(0,20),isActive:!!(c&&c.isActive),players:Array.isArray(c&&c.players)?c.players.slice(0,4).map(x=>String(x)):[],score:sc,mid:String(c&&c.mid||'').slice(0,32),t:Number(c&&c.t)||0,hold:Array.isArray(c&&c.hold)?c.hold.slice(0,2).map(x=>String(x)):null,stk:Number(c&&c.stk)||0}
+  });
+  R.log=Array.isArray(s.log)?s.log.slice(0,5000).filter(l=>l&&Array.isArray(l.p)&&l.p.length===4&&Array.isArray(l.s)&&l.s.length===2).map(l=>({...l,c:String(l.c||'').slice(0,20),p:l.p.slice(0,4).map(x=>String(x)),s:l.s.slice(0,2).map(v=>Math.max(0,Number(v)||0)),w:Number(l.w),tg:Number(l.tg)||R.target,t:Number(l.t)||Date.now(),d:Number(l.d)||0})): [];
+  R.ended=!!s.ended;R.rid='';delete R.sid;delete R.sh;
+  return R
+}
+$('exp').onclick=()=>{
+  const blob=new Blob([expData()],{type:'application/json'}),a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='picklestack-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Backup exported. Live View control key excluded.','success')
+};
+$('impbtn').onclick=()=>$('imp').click();
+$('imp').onchange=async e=>{
+  const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const o=JSON.parse(await f.text()),R=cleanState(o);
+    ask('Restore backup?','This replaces the current local session. Live View control data is not included; a new session identity will be created on publish.',()=>{
+      S=R;S.sid='';S.sh='';S.rid='';save();render();toast('Backup restored','success')
+    })
+  }catch(err){toast('Import failed: '+(err.message||'invalid backup'),'error')}
+};
+
 /* Sharing */
 const dec=h=>JSON.parse(decodeURIComponent(escape(atob(h))));
 /* Render */
@@ -405,7 +459,7 @@ box.innerHTML=`<div class="p-5 border-b border-dark-700 flex justify-between ite
 <div class="divide-y divide-dark-700">${r.length?r.map((x,i)=>{const p=Math.round(100*x.w/(x.w+x.l)),k=x.w+'|'+p;if(k!=prev){rk=i+1;prev=k}
 return `<div class="flex items-center gap-3 p-4 ${rk<=3?'bg-pickle-500/10':''}"><span class="w-8 text-center font-sport text-xl ${rk<=3?'text-pickle-500':'text-gray-500'}">${rk<=3?['🥇','🥈','🥉'][rk-1]:rk}</span><div class="flex-1 min-w-0"><div class="truncate text-white">${esc(x.n)}</div><div class="text-xs text-gray-400">${p}% win rate · Games played: ${x.w+x.l}</div></div><div class="text-right"><div class="font-sport text-2xl text-green-400">${x.w}</div><div class="text-[10px] text-gray-500">Total wins</div></div></div>`}).join(''):'<p class="p-8 text-center text-sm text-gray-500">No players have enough games yet.</p>'}</div>
 <div class="p-4 border-t border-dark-700"><button data-x class="w-full ${bS}">Back to game</button></div>`;
-box.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>d.remove());box.querySelector('.mg').onchange=e=>{MG=+e.target.value;draw()}};
+box.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>d.__close());box.querySelector('.mg').onchange=e=>{MG=+e.target.value;draw()}};
 draw()}
 function shuf(){S.sd++;save();render()}
 function setLv(i,v){S.lv[S.queue[i].toLowerCase()]=v;save();render()}
@@ -428,7 +482,7 @@ $('unxb').innerHTML='<div class="grid grid-cols-2 gap-3">'+[[t.slice(0,2),'Team 
 function renderQueue(){const ix=pick4();$('qc').textContent=S.queue.length;$('nvc').textContent=S.queue.length;$('qe').style.display=S.queue.length?'none':'flex';
 $('ql').innerHTML=S.queue.map((p,i)=>`<li class="flex items-center justify-between p-3 rounded-xl border ${isRest(p)?'opacity-50 ':''}${ix.includes(i)?'border-pickle-500/50 bg-pickle-500/10':'border-dark-700 bg-dark-900'}"><div class="flex items-center gap-2 min-w-0"><span class="dg w-6 h-8 flex flex-none items-center justify-center text-gray-600 hover:text-pickle-500 cursor-grab" style="touch-action:none" title="Drag to reorder" aria-label="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></span><span class="w-6 h-6 rounded-full flex flex-none items-center justify-center text-xs font-bold ${ix.includes(i)?'text-pickle-400 bg-pickle-500/20':'text-gray-500 bg-dark-700'}">${i+1}</span><span class="truncate">${esc(p)}</span>${isRest(p)?'<span class="text-[10px] text-gray-400 border border-dark-700 rounded px-1.5">RESTING</span>':''}</div><div class="flex items-center gap-1">${lsel(i)}<button onclick="rest(${i})" title="${isRest(p)?'Back in':'Rest'}" class="w-8 h-8 ${isRest(p)?'text-pickle-500':'text-gray-500 hover:text-pickle-500'}"><i class="fa-solid ${isRest(p)?'fa-play':'fa-mug-hot'}"></i></button><button onclick="rm(${i})" title="Remove" class="text-gray-500 hover:text-red-400 w-8 h-8"><i class="fa-solid fa-xmark"></i></button></div></li>`).join('');
 $('go').disabled=ix.length<4||!S.courts.some(c=>!c.isActive)}
-function renderLog(){$('log').innerHTML=S.log.length?S.log.map(l=>`<div class="flex items-center gap-3 p-3"><div class="text-xs text-gray-500 w-24 flex-none">${hm(l.t)}<br>${l.c} · ${Math.max(1,Math.round(l.d/60000))}m</div>
+function renderLog(){$('log').innerHTML=S.log.length?S.log.slice(0,50).map(l=>`<div class="flex items-center gap-3 p-3"><div class="text-xs text-gray-500 w-24 flex-none">${hm(l.t)}<br>${l.c} · ${Math.max(1,Math.round(l.d/60000))}m</div>
 <div class="flex-1 min-w-0 text-sm"><span class="${l.w==0?'text-pickle-500 font-semibold':''}">${nm(l.p,0)}</span><span class="font-sport text-lg px-2">${l.s[0]}-${l.s[1]}</span><span class="${l.w==1?'text-pickle-500 font-semibold':''}">${nm(l.p,1)}</span></div>
 </div>`).join(''):'<p class="text-sm text-gray-500 py-8 text-center">No matches yet. Finish a match to log it.</p>'}
 

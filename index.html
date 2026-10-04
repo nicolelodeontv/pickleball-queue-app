@@ -173,6 +173,8 @@ d.onclick=e=>{if(e.target==d||e.target.classList.contains('x'))d.remove()};docum
 async function qr(m){const r=await mlink(m);if(r)qrBox(r.s.n,r.url)}
 
 /* Render */
+function renderWaiting(){$('wc').textContent=S.waiting.length;$('we').style.display=S.waiting.length?'none':'block';
+$('wl').innerHTML=S.waiting.map((p,i)=>`<li class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-dark-700 bg-dark-900"><span class="truncate text-sm text-gray-300">${esc(p)} <span class="text-xs text-gray-500">${'★'.repeat(lvl(p))}</span></span><div class="flex items-center gap-1"><button onclick="checkIn(${i})" class="px-2.5 py-1.5 rounded-lg bg-pickle-500 text-dark-900 text-xs font-bold"><i class="fa-solid fa-user-check"></i> Check in</button><button onclick="rmWaiting(${i})" title="Remove" class="text-gray-500 hover:text-red-400 w-7 h-7"><i class="fa-solid fa-xmark"></i></button></div></li>`).join('')}
 function team(c,i){const w=win(c.score,S.target)==i;
 return `<div class="flex items-center justify-between gap-2 p-3 rounded-xl border ${w?'bg-pickle-500/15 border-pickle-500/50':'bg-dark-900 border-dark-700'}">
 <div class="min-w-0"><div class="text-[11px] text-gray-500 font-semibold">Team ${i+1}</div><div class="truncate text-gray-100">${nm(c.players,i)}</div></div>

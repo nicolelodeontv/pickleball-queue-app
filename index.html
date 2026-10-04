@@ -605,7 +605,19 @@ setInterval(()=>{if(!V)renderCourts()},30000);
 setInterval(()=>{if(!V&&!SV)document.querySelectorAll('.tm').forEach(e=>e.textContent=fmt(+e.dataset.t))},1000);
 const net=()=>{const on=navigator.onLine;$('ci').className='fa-solid fa-wifi '+(on?'text-green-400':'text-red-500');$('ct').textContent=on?'Saved on this device':'Offline'};
 addEventListener('online',net);addEventListener('offline',net);net();
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>{
+const had=!!navigator.serviceWorker.controller;
+navigator.serviceWorker.register('/sw.js').then(reg=>{
+const offer=w=>{if(!navigator.serviceWorker.controller||$('upd'))return;
+const t=document.createElement('div');t.id='upd';
+t.className='mb border px-4 py-3 rounded-lg shadow-xl pointer-events-auto text-sm font-medium bg-dark-700 border-dark-700 flex items-center justify-between gap-3';
+t.innerHTML='<span>A new version is ready.</span><button class="rounded-lg bg-pickle-500 text-dark-900 font-bold px-3 py-1.5">Reload</button>';
+t.querySelector('button').onclick=()=>w.postMessage('SKIP_WAITING');$('msg').append(t)};
+if(reg.waiting)offer(reg.waiting);
+reg.addEventListener('updatefound',()=>{const w=reg.installing;if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')offer(w)})});
+let rl=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(rl||!had)return;rl=true;location.reload()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{})});
+}).catch(()=>{})});
 </script>
 <script src="/profiles.js"></script><!-- profiles -->
 </body>

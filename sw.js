@@ -1,5 +1,5 @@
 /* QueueZeroTwo service worker. Bump V on each release to refresh the cache. Profiles are included in the app shell. */
-const V = 'queuezerotwo-v1';
+const V = 'queuezerotwo-v2';
 const SHELL = ['/', '/manifest.webmanifest', '/favicon.svg', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
 const CDN = [
   'https://cdn.tailwindcss.com',
@@ -18,7 +18,6 @@ self.addEventListener('install', e => {
       const r = new Request(u, { mode: 'no-cors' });
       return fetch(r).then(res => c.put(r, res)).catch(() => {});
     }));
-    await self.skipWaiting();
   })());
 });
 
@@ -60,3 +59,6 @@ self.addEventListener('fetch', e => {
     })
   );
 });
+
+// The page asks for activation when the person taps Reload on the update notice.
+self.addEventListener('message', e => { if (e.data === 'SKIP_WAITING') self.skipWaiting(); });

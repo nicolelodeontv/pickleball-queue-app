@@ -205,7 +205,7 @@ jobs:
             const timer2 = await helper.locator(timerSelector).innerText();
             assert.notEqual(timer1, timer2);
             await helper.reload({waitUntil:'networkidle'});
-            assert.match(await helper.locator('#courts').innerText(), /Court Alpha/);
+            assert.match(await helper.locator('#courts').innerText(), /COURT ALPHA/i);
             const timer3 = await helper.locator(timerSelector).innerText();
             const secs = s => {
               const [m,ss] = s.split(':').map(Number);

@@ -1,0 +1,151 @@
+name: temporary-pwa-mobile-check
+
+on:
+  push:
+    branches:
+      - feature/live-view-qr
+
+jobs:
+  pwa-mobile-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run Android Chrome-style PWA check
+        run: |
+          npm init -y
+          npm install --no-save playwright@latest
+          npx playwright install --with-deps chromium
+          node <<'NODE'
+          const { chromium, devices } = require('playwright');
+
+          const url = 'https://pickleball-queue-5zu9fyqw4-meow-7e9e.vercel.app/';
+
+          (async () => {
+            const browser = await chromium.launch({
+              headless: true,
+              args: ['--no-sandbox', '--disable-dev-shm-usage']
+            });
+
+            const context = await browser.newContext({
+              ...devices['Pixel 5'],
+              locale: 'en-US',
+              colorScheme: 'dark'
+            });
+
+            const page = await context.newPage();
+            const consoleErrors = [];
+            const pageErrors = [];
+            page.on('console', msg => {
+              if (msg.type() === 'error') consoleErrors.push(msg.text());
+            });
+            page.on('pageerror', err => pageErrors.push(String(err)));
+
+            await page.addInitScript(() => {
+              window.__beforeInstallPrompt = false;
+              window.addEventListener('beforeinstallprompt', () => {
+                window.__beforeInstallPrompt = true;
+              });
+            });
+
+            await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+            await page.waitForTimeout(2500);
+
+            const manifestLink = await page.locator('link[rel="manifest"]').getAttribute('href');
+            const manifest = await page.evaluate(async href => {
+              const r = await fetch(href);
+              return { status: r.status, contentType: r.headers.get('content-type'), body: await r.json() };
+            }, manifestLink);
+
+            const registration = await page.evaluate(async () => {
+              const r = await navigator.serviceWorker.ready;
+              return {
+                registration: !!r,
+                activeState: r.active && r.active.state,
+                controllerBeforeReload: !!navigator.serviceWorker.controller
+              };
+            });
+
+            await page.reload({ waitUntil: 'networkidle', timeout: 30000 });
+            await page.waitForTimeout(1200);
+
+            const controlled = await page.evaluate(() => ({
+              controller: !!navigator.serviceWorker.controller,
+              scope: navigator.serviceWorker.controller?.scriptURL || null,
+              beforeInstallPrompt: !!window.__beforeInstallPrompt
+            }));
+
+            const cdp = await context.newCDPSession(page);
+            let installability = null;
+            let appManifest = null;
+            try {
+              installability = await cdp.send('Page.getInstallabilityErrors');
+            } catch (e) {
+              installability = { unavailable: String(e) };
+            }
+            try {
+              appManifest = await cdp.send('Page.getAppManifest');
+            } catch (e) {
+              appManifest = { unavailable: String(e) };
+            }
+
+            await page.evaluate(() => localStorage.removeItem('pickleStackState'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 30000 });
+
+            await page.locator('#pn').fill('Alice, Bob, Carol, Dan');
+            await page.locator('#f button').click();
+            await page.waitForTimeout(250);
+
+            const onlineQueue = await page.locator('#ql').innerText();
+
+            await context.setOffline(true);
+            await page.reload({ waitUntil: 'networkidle', timeout: 30000 });
+            await page.waitForTimeout(1000);
+
+            const offlinePage = {
+              title: await page.title(),
+              bodyText: await page.locator('body').innerText()
+            };
+
+            await page.locator('#pn').fill('Eve, Frank, Gina, Hank');
+            await page.locator('#f button').click();
+            await page.waitForTimeout(250);
+            await page.locator('#go').click();
+            await page.waitForTimeout(500);
+
+            const courtsText = await page.locator('#courts').innerText();
+            const offlineQueue = await page.locator('#ql').innerText();
+
+            const result = {
+              manifest,
+              registration,
+              controlled,
+              installability,
+              appManifest,
+              beforeInstallPrompt: controlled.beforeInstallPrompt,
+              onlineQueue,
+              offlinePageLoaded: offlinePage.title.includes('PickleStack') && offlinePage.bodyText.includes('The Stack'),
+              offlineQueue,
+              offlineMatchStarted: /Court 1.*LIVE/s.test(courtsText) && courtsText.includes('Eve') && courtsText.includes('Frank'),
+              courtsText,
+              consoleErrors,
+              pageErrors
+            };
+
+            console.log(JSON.stringify(result, null, 2));
+
+            if (manifest.status !== 200) throw new Error('Manifest did not return 200');
+            if (!registration.registration || registration.activeState !== 'activated') throw new Error('Service worker did not activate');
+            if (!controlled.controller) throw new Error('Page is not controlled by the service worker after reload');
+            if (!result.offlinePageLoaded) throw new Error('Offline reload did not load the app shell');
+            if (!result.offlineMatchStarted) throw new Error('Offline add/start-match flow did not work');
+            if (consoleErrors.length || pageErrors.length) throw new Error('Browser reported console/page errors');
+
+            await browser.close();
+          })().catch(async err => {
+            console.error(err);
+            process.exitCode = 1;
+          });
+          NODE

@@ -148,6 +148,16 @@ function modal(html,lock){
   document.body.append(d);return d
 }
 function ask(t,m,fn){
+  const d=modal('<div class="p-6 text-center"><h3 class="text-xl text-white mb-2">'+esc(t)+'</h3><p class="text-gray-400 text-sm mb-6">'+esc(m)+'</p><div class="flex gap-3"><button data-x class="flex-1 '+bS+'">Cancel</button><button class="y flex-1 '+bD+'">Confirm</button></div></div>');
+  d.querySelector('.y').onclick=()=>{d.remove();fn()}
+}
+async function live(){
+  if(S.ended)return showRes();
+  if(!sb)return toast('Live View needs Supabase.','error');
+  if(!S.sid)S.sid=Math.random().toString(36).slice(2,8);
+  const q=await sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()});
+  if(q.error)return toast('Publish failed: '+q.error.message,'error');
+  save();const url=location.origin+location.pathname+'#s='+S.sid;
   const d=modal('<div class="p-6 text-center"><div class="flex items-center justify-center gap-2 mb-1"><h3 class="text-xl text-white">Live View</h3><span class="text-[10px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-full px-2 py-1">VIEW ONLY</span></div><p class="text-xs text-gray-400 mb-4">Players can scan the QR code or open the link to watch courts, Up Next, the stack and leaderboard in real time.</p><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:200px;max-width:100%">'+qrSvg(url)+'</div><div class="mt-4 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-xs text-gray-300 break-all">'+esc(url)+'</div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"><button class="cp '+bS+'">Copy link</button><button class="sh '+bP+'">Share</button><button class="op '+bS+'">Open view</button></div><button data-x class="mt-4 text-sm text-gray-400 hover:text-white">Close</button></div>');
   d.querySelector('.cp').onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
   d.querySelector('.sh').onclick=async()=>{try{if(navigator.share)await navigator.share({title:'PickleStack Live View',text:'Watch our open play live',url});else{await navigator.clipboard.writeText(url);toast('Link copied','success')}}catch(e){}};

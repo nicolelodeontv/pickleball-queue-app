@@ -83,12 +83,13 @@ h1,h2,h3,.font-sport{font-family:Oswald,sans-serif;text-transform:uppercase;lett
 <div id="courts" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
 </section>
 
-<section>
+<div class="flex gap-2"><button id="tbl" onclick="tab('lb')">Leaderboard</button><button id="tbm" onclick="tab('log')">Match Log</button></div>
+<section id="slb">
 <div class="mb-4"><h2 class="text-3xl text-white">Leaderboard</h2><p class="text-gray-400 text-sm mt-1">Built from the match log. Sorted by wins, then point difference.</p></div>
 <div id="lb" class="bg-dark-800 border border-dark-700 rounded-2xl overflow-x-auto"></div>
 </section>
 
-<section>
+<section id="slg">
 <div class="flex justify-between items-end mb-4">
 <div><h2 class="text-3xl text-white">Match Log</h2><p class="text-gray-400 text-sm mt-1">Finished matches, newest first.</p></div>
 <div class="flex gap-4 text-xs text-gray-400">
@@ -232,6 +233,12 @@ q('.bk').onclick=()=>{d.remove();S.ended=false;save();render()};
 q('.nw').onclick=()=>{d.remove();const sn=S.snd;S=mk();S.snd=sn;save();render();toast('New session started','success')};
 document.body.append(d)}
 
+let TB='lb';
+function tab(t){TB=t;$('slb').classList.toggle('hidden',t!='lb');$('slg').classList.toggle('hidden',t!='log');
+const on='bg-pickle-500 text-dark-900 font-semibold border-pickle-500',off='border-dark-700 text-gray-300';
+$('tbl').className='px-4 py-2 rounded-lg border text-sm '+(t=='lb'?on:off);
+$('tbm').className='px-4 py-2 rounded-lg border text-sm '+(t=='log'?on:off)}
+
 const isRest=n=>!!(S.rest&&S.rest[n.toLowerCase()]);
 const pick4=()=>{const ix=[];S.queue.forEach((p,i)=>{if(ix.length<4&&!isRest(p))ix.push(i)});return ix};
 function rest(i){const k=S.queue[i].toLowerCase();S.rest=S.rest||{};if(S.rest[k])delete S.rest[k];else S.rest[k]=1;save();render()}
@@ -258,7 +265,7 @@ const lv=c||(s.code&&s.p.length&&!s.fin),w=win(s.s,s.tg||11),row=i=>`<div class=
 $('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><h2 class="text-2xl text-white">${esc(s.n)}</h2><span class="text-xs font-bold rounded px-2 py-1 ${lv?'text-red-400 bg-red-500/10':'text-gray-300 bg-dark-700'}">${lv?'<i class="fa-solid fa-circle live text-[8px]"></i> LIVE':(s.f||s.fin)?'FINAL':'SNAPSHOT'}</span></div><div class="space-y-3">${row(0)}${row(1)}</div>
 <p class="text-xs text-gray-500 mt-4">${lv?(s.code?'Updating live.':'Updating live on this device.'):s.code?'Final score.':'Score as of '+hm(s.ts)+'. Ask for a new link for the latest score.'}</p><a href="${location.pathname}" class="inline-block mt-4 text-sm text-pickle-500 underline">Open PickleStack</a>`}
 
-function render(){if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog()}
+function render(){if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();tab(TB)}
 
 /* Controls */
 $('tg').onchange=e=>{S.target=+e.target.value;save();render()};

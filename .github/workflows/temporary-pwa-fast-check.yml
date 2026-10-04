@@ -89,6 +89,8 @@ jobs:
             await page.locator('#pn').fill('Eve, Frank, Gina, Hank');
             await page.locator('#f button').click();
             await page.waitForTimeout(300);
+            await page.getByRole('button', { name: 'Check in all' }).click();
+            await page.waitForTimeout(300);
             await page.locator('#go').click();
             await page.waitForTimeout(500);
             const courtsText = await page.locator('#courts').innerText();

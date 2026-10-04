@@ -52,24 +52,24 @@ html{color-scheme:dark}
 <div id="viewer" class="hidden max-w-xl mx-auto"></div>
 <div id="app" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-<section id="sstk" class="lg:col-span-4 bg-dark-800 rounded-2xl border border-dark-700 shadow-xl overflow-hidden flex flex-col" style="max-height:80vh">
-<div class="p-6 border-b border-dark-700">
+<section id="sstk" class="lg:col-span-4 bg-dark-800 rounded-2xl border border-dark-700 shadow-xl overflow-hidden flex flex-col max-h-[80vh] lg:max-h-none lg:h-[calc(100vh-170px)] lg:min-h-[560px]">
+<div class="p-6 border-b border-dark-700 shrink-0">
 <div class="flex items-center justify-between mb-4"><h2 class="text-xl text-white"><i class="fa-solid fa-users text-pickle-500"></i> The Stack (<span id="qc">0</span>)</h2><button onclick="clAll()" class="text-xs text-gray-400 hover:text-red-400"><i class="fa-solid fa-trash"></i> Clear all</button></div>
 <form id="f" class="flex gap-2">
 <input id="pn" type="text" placeholder="Name, several with commas, or Ana | 3.5" autocomplete="off" class="flex-grow min-w-0 bg-dark-900 border border-dark-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-pickle-500">
 <button class="bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-sport font-bold px-5 rounded-lg active:scale-95">ADD</button>
 </form>
 </div>
-<div class="px-4 pt-4">
+<div class="px-4 pt-4 shrink-0">
 <div class="flex items-center justify-between mb-2"><h3 class="text-xs font-bold uppercase tracking-wide text-gray-400">Not yet here (<span id="wc">0</span>)</h3><div class="flex items-center gap-2"><span class="text-[11px] text-gray-500">Check in players as they arrive</span><button onclick="ciAll()" class="bg-pickle-500 text-dark-900 font-bold rounded px-2 py-1 text-xs">Check in all</button></div></div>
-<ul id="wl" class="space-y-2"></ul>
+<ul id="wl" class="space-y-2 max-h-44 overflow-y-auto"></ul>
 <div id="we" class="text-xs text-gray-600 py-2">Everyone is checked in.</div>
 </div>
-<div class="p-4 flex-grow overflow-y-auto">
+<div class="p-4 flex-grow min-h-[8rem] overflow-y-auto">
 <ul id="ql" class="space-y-3"></ul>
 <div id="qe" class="flex flex-col items-center text-gray-500 py-10 opacity-60"><i class="fa-solid fa-box-open text-4xl mb-3"></i><p class="text-sm">Stack is empty. Add players above.</p></div>
 </div>
-<div class="p-4 border-t border-dark-700">
+<div class="p-4 border-t border-dark-700 shrink-0">
 <button id="go" class="w-full bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-sport text-xl py-4 rounded-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"><i class="fa-solid fa-play"></i> SEND NEXT 4 TO COURT</button>
 </div>
 </section>
@@ -310,13 +310,6 @@ function rest(i){const k=S.queue[i].toLowerCase();S.rest=S.rest||{};if(S.rest[k]
 
 function sdata(){const q=S.queue;return{t:S.target,courts:S.courts.map(c=>({n:c.name,a:c.isActive,p:c.players,s:c.score})),nx:pick4().length>=4?split4(pick4().map(i=>q[i])):[],q:q,lb:stats().slice(0,20)}}
 let st;function pushS(){if(!sb||!S.sid||S.ended)return;clearTimeout(st);st=setTimeout(()=>{if(S.ended)return;sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()}).then(q=>q.error&&console.warn(q.error.message))},400)}
-async function sess(mode){if(!sb)return toast('Session sharing needs Supabase set up.','error');
-if(!S.sid)S.sid=Math.random().toString(36).slice(2,8);
-const q=await sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()});
-if(q.error)return toast('Publish failed: '+q.error.message,'error');
-save();const url=location.origin+location.pathname+'#s='+S.sid;
-if(mode=='qr')return qrBox('Live session',url);
-try{if(navigator.share)await navigator.share({title:'PickleStack live',text:'Watch our open play live',url});else{await navigator.clipboard.writeText(url);toast('Session link copied','success')}}catch(e){}}
 function renderSession(){const d=SV.d;if(!d){$('viewer').innerHTML='<p class="text-gray-400 text-center py-10">Connecting…</p>';return}
 if(d.e)return renderResults(d);
 const courts=d.courts.map(c=>c.a?`<div class="bg-dark-800 border border-pickle-500/30 rounded-2xl p-4"><div class="flex justify-between mb-2"><h3 class="text-pickle-500 text-lg">${esc(c.n)}</h3><span class="text-xs text-red-400"><i class="fa-solid fa-circle live text-[8px]"></i> LIVE</span></div>${[0,1].map(i=>`<div class="flex justify-between items-center py-1"><span class="truncate">${nm(c.p,i)}</span><span class="font-sport text-3xl ${win(c.s,d.t)==i?'text-pickle-500':''}">${c.s[i]}</span></div>`).join('')}</div>`:`<div class="bg-dark-900 border border-dark-700 rounded-2xl p-4 text-center text-gray-500 opacity-70">${esc(c.n)} · open</div>`).join('');

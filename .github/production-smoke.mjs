@@ -11,6 +11,7 @@ for(const n of ['Ana','Ben','Cara','Dan']){await page.locator('#pn').fill(n);awa
 await page.getByRole('button',{name:/Check in all/i}).click();
 await check('four players queued',async()=>{if(await page.locator('#ql li').count()!==4)throw Error('expected 4')});
 await page.getByRole('button',{name:/SEND NEXT 4 TO COURT/i}).click();
+await page.waitForTimeout(1500); console.log('DEBUG courts:', await page.locator('#courts').innerText());
 await check('match starts',async()=>await page.getByText('LIVE',{exact:true}).first().waitFor());
 await page.getByRole('button',{name:/Live link/i}).click();
 await check('live popup',async()=>{await page.getByText('Live session',{exact:true}).waitFor();await page.getByRole('button',{name:'Copy link'}).waitFor();await page.getByRole('button',{name:'Share'}).waitFor();await page.locator('.qrb svg').waitFor()});

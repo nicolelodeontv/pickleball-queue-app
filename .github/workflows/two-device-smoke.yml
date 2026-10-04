@@ -65,6 +65,7 @@ jobs:
             await hp.locator('button[onclick="live()"]').click();
             const liveCode = await hp.evaluate(() => S.sid);
             assert.match(liveCode, /^[a-z0-9]{6}$/);
+            await hp.locator('.fixed .x').click();
             const hostDbProbe = await hp.evaluate(async code => {
               const q = await sb.from('live_sessions').select('code,data').eq('code',code).maybeSingle();
               return {error:q.error?.message||null, data:q.data||null};

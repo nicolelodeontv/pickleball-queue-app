@@ -30,7 +30,7 @@ try {
     return el && el.textContent === '4';
   }, null, { timeout: 10000 });
 
-  await organizer.getByRole('button', { name: 'Live View' }).click();
+  await organizer.locator('button[title="Open a read-only live view for players"]').click();
   await organizer.getByRole('button', { name: 'Copy link' }).waitFor({ timeout: 10000 });
   const liveUrl = (await organizer.locator('.fixed .break-all').innerText()).trim();
 

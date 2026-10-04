@@ -1,5 +1,5 @@
 /* PickleStack service worker. Bump V on each release to refresh the cache. */
-const V = 'picklestack-v1';
+const V = 'picklestack-v2';
 const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
 const CDN = [
   'https://cdn.tailwindcss.com',

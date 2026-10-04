@@ -43,7 +43,10 @@ try {
   }
 
   const viewer = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
-  await viewer.goto(liveUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  const viewerUrl = new URL(liveUrl);
+  const shareToken = new URL(baseUrl).searchParams.get('_vercel_share');
+  if (shareToken) viewerUrl.searchParams.set('_vercel_share', shareToken);
+  await viewer.goto(viewerUrl.toString(), { waitUntil: 'domcontentloaded', timeout: 30000 });
   await viewer.getByText('LIVE VIEW', { exact: true }).waitFor({ timeout: 15000 });
   await viewer.getByText('Up Next', { exact: true }).waitFor({ timeout: 15000 });
   await viewer.getByText('The Stack', { exact: true }).waitFor({ timeout: 15000 });

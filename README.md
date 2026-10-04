@@ -1,14 +1,14 @@
 # PickleStack
 
-Pickleball open-play manager: session setup, player check-in, auto-matched teams (Balanced or Social mix), court scoring, live view, match log and leaderboard. One file: `index.html`. Data is saved in the browser (localStorage).
+Pickleball paddle-stacking queue with skill levels, balanced or social-mix Up Next teams, scoring, shareable live matches, a match log and a leaderboard. One file: `index.html`.
 
-## Deploy
-Push to GitHub and import the repo in Vercel (or enable GitHub Pages).
+## Run
+Open `index.html`, or deploy the repo to Vercel / GitHub Pages. Everything is saved in the browser (localStorage).
 
-## Live view (optional)
-Without Supabase, the Live view button shares a snapshot link. With it, viewers see courts, up next, queue and standings update in real time.
-1. Create a Supabase project and run `supabase.sql` in the SQL Editor (one table, `live_matches`).
-2. In `index.html`, set `SB_URL` and `SB_KEY` (Project Settings > API: project URL and anon public key).
-3. Redeploy.
+## Live sharing (optional)
+Without this, the share button sends a snapshot link. With it, viewers see scores update in real time.
+1. Create a Supabase project and run `supabase.sql` in the SQL Editor.
+2. In `index.html`, set `SB_URL` and `SB_KEY` (Project Settings > API: project URL and the anon public key).
+3. Redeploy. Share buttons now produce short live links.
 
-The anon key is public by design. The policies let anyone with it read and write `live_matches`, so keep private data out of that table.
+The anon key is meant to be public. The policies in `supabase.sql` let anyone with it read and write `live_matches`, which is fine for a scoreboard but not for private data.

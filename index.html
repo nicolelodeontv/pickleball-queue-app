@@ -4,232 +4,224 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PickleStack - Free Pickleball Paddle Stacking & Queue App</title>
-<meta name="description" content="Run pickleball open play: check players in, auto-match balanced teams, keep score, share a live view and track a leaderboard.">
+<meta name="description" content="Manage your open play pickleball sessions effortlessly with PickleStack. A free paddle stacking, live scoring and match log web app. Remove the chaos from court rotation.">
+<meta name="keywords" content="pickleball, paddle stacking, queue management, court rotation, open play, pickleball scoring, match log">
 <meta name="robots" content="index, follow">
 <meta property="og:title" content="PickleStack - Pickleball Queue Manager">
+<meta property="og:description" content="Stack players, keep score, share live matches and keep a match log for open play.">
 <meta property="og:type" content="website">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"PickleStack","operatingSystem":"Web","applicationCategory":"SportsApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
 <script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={theme:{extend:{colors:{pickle:{400:'#d9ff33',500:'#ccff00',600:'#b3e600'},dark:{900:'#0B0F19',800:'#141B2D',700:'#1E293B'}},fontFamily:{sport:['Oswald','sans-serif']}}}}</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-body{font-family:Inter,system-ui,sans-serif}
-.card{background:#fff;border-radius:1rem;box-shadow:0 1px 3px #0001,0 0 0 1px #e2e8f0;padding:1.1rem}
-.card.ring{box-shadow:0 0 0 2px #16a34a}
-.btn{background:#16a34a;color:#fff;font-weight:600;border-radius:.7rem;padding:.55rem .9rem;font-size:.9rem}
-.btn:hover{background:#15803d}.btn:disabled{opacity:.45;cursor:not-allowed}
-.btn.g{background:#e2e8f0;color:#0f172a}.btn.r{background:#dc2626}.btn.w{width:100%;margin-top:.7rem}
-.lk{color:#dc2626;font-size:.85rem;padding:.3rem .5rem}
-.mut{color:#64748b;font-size:.9rem}
-.row{display:flex;align-items:center;gap:.6rem;padding:.6rem .7rem;border:1px solid #e2e8f0;border-radius:.8rem;margin-top:.5rem;background:#f8fafc}
-.row.hl{background:#f0fdf4;border-color:#86efac}
-.rk{font-weight:700;color:#16a34a;width:1.2rem;text-align:center}
-.sl{border:1px solid #cbd5e1;border-radius:.5rem;padding:.25rem;font-size:.8rem;background:#fff}
-.sb{width:2.2rem;height:2.2rem;border-radius:.6rem;background:#fff;font-weight:700;border:1px solid #cbd5e1}
-.tm{display:flex;align-items:center;gap:.5rem;padding:.6rem;border-radius:.7rem;margin-top:.5rem}
-.tm.b{background:#dbeafe}.tm.o{background:#ffedd5}
-.n{font-size:1.6rem;width:2.2rem;text-align:center}
-.th{color:#fff;font-weight:700;padding:.4rem .7rem;font-size:.8rem}.th.b{background:#2563eb}.th.o{background:#f97316}
-.tc{padding:.5rem .7rem;font-size:.9rem}.tc.b{background:#eff6ff}.tc.o{background:#fff7ed}
-.chip{font-size:.7rem;font-weight:700;border-radius:999px;padding:.15rem .55rem}
-.chip.g{background:#dcfce7;color:#166534}.chip.r{background:#fee2e2;color:#b91c1c}
-h2,h3{font-weight:700}h3{font-size:1.05rem}
-small{color:#64748b;font-size:.75rem;display:block}
-.inp{width:100%;border:1px solid #cbd5e1;border-radius:.7rem;padding:.65rem .8rem;background:#fff}
-.sg{border:1px solid #cbd5e1;border-radius:.7rem;padding:.55rem 1rem;font-weight:600;background:#fff}
-.sg.on{background:#16a34a;border-color:#16a34a;color:#fff}
-.md{display:block;width:100%;text-align:left;border:1px solid #cbd5e1;border-radius:.8rem;padding:.7rem .9rem;margin-top:.5rem;background:#fff}
-.md.on{border-color:#16a34a;background:#f0fdf4}
-.vr{display:flex;justify-content:space-between;gap:.5rem;padding:.4rem 0;font-size:1.05rem}
-.vr b{font-size:1.6rem}
-.live{animation:p 1.4s infinite;font-size:.5rem}@keyframes p{50%{opacity:.3}}
+body{background:#0B0F19;color:#f8fafc;font-family:Inter,sans-serif}
+h1,h2,h3,.font-sport{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.05em}
+.sb{width:2.25rem;height:2.25rem;border-radius:.6rem;background:#1E293B;color:#fff;font-weight:700;flex:none}
+.sb:hover{background:#ccff00;color:#0B0F19}
+.live{animation:p 1.4s infinite}@keyframes p{50%{opacity:.3}}
 .mb{animation:s .3s ease-out}@keyframes s{from{transform:translateY(-50%);opacity:0}}
 @media(prefers-reduced-motion:reduce){.live,.mb{animation:none}}
 </style>
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
-<header class="bg-slate-900 text-white sticky top-0 z-10">
-<div class="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
-<div class="bg-green-500 text-slate-900 w-9 h-9 rounded-lg flex items-center justify-center rotate-12"><i class="fa-solid fa-table-tennis-paddle-ball"></i></div>
-<div class="flex-1 min-w-0"><b id="hn" class="text-lg truncate block">PickleStack</b><div id="hs" class="text-xs text-slate-400"></div></div>
-<div id="ha" class="hidden flex gap-2"><button class="btn" onclick="live()"><i class="fa-solid fa-tower-broadcast"></i> Live view</button><button class="btn r" onclick="endS()">End</button></div>
+<body class="min-h-screen flex flex-col antialiased selection:bg-pickle-500 selection:text-dark-900">
+<header class="bg-dark-800 border-b border-dark-700 sticky top-0 z-10 shadow-lg">
+<div class="container mx-auto px-4 py-4 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<div class="bg-pickle-500 text-dark-900 p-2 rounded-lg rotate-12"><i class="fa-solid fa-table-tennis-paddle-ball text-xl"></i></div>
+<div><h1 class="text-2xl font-bold text-white leading-none">Pickle<span class="text-pickle-500">Stack</span></h1><p class="text-xs text-gray-400 font-medium">QUEUE, SCORES & LOG</p></div>
+</div>
+<div class="text-sm text-gray-400 flex items-center gap-2 bg-dark-900 py-1 px-3 rounded-full border border-dark-700"><i class="fa-solid fa-wifi text-green-400" id="ci"></i><span id="ct" class="hidden sm:inline">Saved on this device</span></div>
 </div>
 </header>
-<div id="msg" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none flex flex-col gap-2"></div>
+<div id="msg" class="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none flex flex-col gap-2"></div>
 
-<main class="max-w-5xl mx-auto px-4 py-6">
-<div id="viewer" class="hidden"></div>
+<main class="flex-grow container mx-auto px-4 py-8">
+<div id="viewer" class="hidden max-w-xl mx-auto"></div>
+<div id="app" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-<div id="setup" class="hidden space-y-5 max-w-xl mx-auto pb-24">
-<div class="card space-y-4">
-<label class="block"><span class="mut">Session name</span><input id="sn" class="inp mt-1" oninput="S.name=this.value;save()"></label>
-<div class="flex items-center justify-between"><span class="mut">Courts</span><div class="flex items-center gap-3"><button class="sb" onclick="cc(-1)">−</button><b id="cn" class="text-2xl w-6 text-center"></b><button class="sb" onclick="cc(1)">+</button></div></div>
-<div class="flex items-center justify-between"><span class="mut">Game type</span><div class="flex gap-2"><button class="sg" data-ty="2" onclick="sty(2)">Doubles</button><button class="sg" data-ty="1" onclick="sty(1)">Singles</button></div></div>
-<label class="flex items-center justify-between"><span class="mut">Record game scores</span><input type="checkbox" id="sc" class="w-5 h-5 accent-green-600" onchange="S.sc=this.checked?1:0;save()"></label>
+<section class="lg:col-span-4 bg-dark-800 rounded-2xl border border-dark-700 shadow-xl overflow-hidden flex flex-col" style="max-height:80vh">
+<div class="p-6 border-b border-dark-700">
+<h2 class="text-xl text-white mb-4"><i class="fa-solid fa-users text-pickle-500"></i> The Stack (<span id="qc">0</span>)</h2>
+<form id="f" class="flex gap-2">
+<input id="pn" type="text" placeholder="Name, several with commas, or Ana | 3.5" autocomplete="off" class="flex-grow min-w-0 bg-dark-900 border border-dark-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-pickle-500">
+<button class="bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-sport font-bold px-5 rounded-lg active:scale-95">ADD</button>
+</form>
 </div>
-<div class="card">
-<h3>Matching</h3>
-<button class="md" data-md="bal" onclick="smd('bal')"><b>Balanced</b><small>Evens out teams by skill level and avoids repeat partners.</small></button>
-<button class="md" data-md="soc" onclick="smd('soc')"><b>Social mix</b><small>Rotates partners and opponents. Skill levels are ignored.</small></button>
+<div class="p-4 flex-grow overflow-y-auto">
+<ul id="ql" class="space-y-3"></ul>
+<div id="qe" class="flex flex-col items-center text-gray-500 py-10 opacity-60"><i class="fa-solid fa-box-open text-4xl mb-3"></i><p class="text-sm">Stack is empty. Add players above.</p></div>
 </div>
-<div class="card">
-<h3>Add players</h3>
-<textarea id="at" rows="4" class="inp mt-2" placeholder="One name per line, or separate with commas. Add a rating after a bar: Ana | 3.5"></textarea>
-<button class="btn w" onclick="addT('at',0)">Add to not yet here</button>
-<div id="nyh1" class="mt-4"></div>
+<div class="p-4 border-t border-dark-700">
+<button id="go" class="w-full bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-sport text-xl py-4 rounded-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"><i class="fa-solid fa-play"></i> SEND NEXT 4 TO COURT</button>
 </div>
-<div class="fixed bottom-0 inset-x-0 bg-white/95 border-t border-slate-200 p-3"><div class="max-w-xl mx-auto"><button id="st" class="btn w !mt-0 !py-3 !text-base" onclick="start()"></button></div></div>
-</div>
+</section>
 
-<div id="sess" class="hidden space-y-8">
-<section>
-<div class="flex justify-between items-center mb-3"><h2 class="text-xl">Courts</h2><button class="btn g" onclick="addCourt()">+ Add court</button></div>
-<div id="courts" class="grid md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+<div class="lg:col-span-8 space-y-10">
+<section class="bg-dark-800 rounded-2xl border border-dark-700 p-5">
+<div class="flex flex-wrap justify-between items-center gap-3 mb-4"><div><h2 class="text-2xl text-white">Up Next</h2><p class="text-gray-400 text-sm">Teams for the next four players in the stack.</p></div>
+<div class="flex items-center gap-2 text-xs"><button id="mdb" onclick="smd('bal')">Balanced</button><button id="mds" onclick="smd('soc')">Social mix</button><button onclick="shuf()" class="px-3 py-1.5 rounded-lg border border-dark-700 text-gray-300 hover:border-pickle-500"><i class="fa-solid fa-shuffle"></i> Reshuffle</button></div></div>
+<div id="unxb"></div>
 </section>
 <section>
-<div class="flex justify-between items-center mb-3"><h2 class="text-xl">Up next</h2><button class="btn g" onclick="S.up=[];upd()"><i class="fa-solid fa-rotate"></i> Refresh</button></div>
-<div id="up" class="grid md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
-</section>
-<div class="grid lg:grid-cols-2 gap-6 items-start">
-<section class="card"><div class="flex justify-between items-center"><h3>Queue (<span id="qh">0</span>)</h3></div>
-<form class="flex gap-2 mt-3" onsubmit="event.preventDefault();addT('aq',1)"><input id="aq" class="inp" placeholder="Add a player and check them in" autocomplete="off"><button class="btn">Add</button></form>
-<div id="ql"></div></section>
-<section class="card" id="nyh2"></section>
+<div class="flex flex-wrap justify-between items-end gap-3 mb-6">
+<div><h2 class="text-3xl text-white">Active Courts</h2><p class="text-gray-400 text-sm mt-1">Score matches, share them, and clear courts when they finish.</p></div>
+<div class="flex items-center gap-4 text-xs text-gray-400">
+<label>Play to <select id="tg" class="bg-dark-900 border border-dark-700 rounded px-2 py-1 text-white"><option>11</option><option>15</option><option>21</option></select></label>
+<button id="rs" class="hover:text-red-400"><i class="fa-solid fa-rotate-right"></i> Reset all</button>
 </div>
-<section>
-<div class="flex justify-between items-center mb-3"><h2 class="text-xl">Leaderboard</h2><button id="lbt" class="btn g" onclick="S.lb=!S.lb;save();render()"></button></div>
-<div id="lb" class="card overflow-x-auto p-0"></div>
+</div>
+<div id="courts" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
 </section>
+
 <section>
-<div class="flex justify-between items-center mb-3"><h2 class="text-xl">Match log</h2><div class="flex gap-2"><button class="btn g" onclick="cpLog()">Copy</button><button class="btn g" onclick="clrLog()">Clear</button></div></div>
-<div id="log" class="card p-0 divide-y divide-slate-100"></div>
+<div class="mb-4"><h2 class="text-3xl text-white">Leaderboard</h2><p class="text-gray-400 text-sm mt-1">Built from the match log. Sorted by wins, then point difference.</p></div>
+<div id="lb" class="bg-dark-800 border border-dark-700 rounded-2xl overflow-x-auto"></div>
 </section>
+
+<section>
+<div class="flex justify-between items-end mb-4">
+<div><h2 class="text-3xl text-white">Match Log</h2><p class="text-gray-400 text-sm mt-1">Finished matches, newest first.</p></div>
+<div class="flex gap-4 text-xs text-gray-400">
+<button id="cp" class="hover:text-pickle-500"><i class="fa-solid fa-copy"></i> Copy log</button>
+<button id="cl" class="hover:text-red-400"><i class="fa-solid fa-trash"></i> Clear</button>
+</div>
+</div>
+<div id="log" class="bg-dark-800 border border-dark-700 rounded-2xl divide-y divide-dark-700 overflow-hidden"></div>
+</section>
+</div>
 </div>
 </main>
+<footer class="bg-dark-900 border-t border-dark-700 py-6 text-center text-sm text-gray-500"><p>&copy; 2026 PickleStack App. <i class="fa-solid fa-bolt text-pickle-500"></i> Data stays on your device.</p></footer>
 
 <script>
-const K='pickleStackV2',$=id=>document.getElementById(id);
-/* Live view: paste your Supabase project URL and anon key (see README). Leave empty to share snapshot links instead. */
+const K='pickleStackState',$=id=>document.getElementById(id);
+/* Live sharing: paste your Supabase project URL and anon key (see README). Leave empty to share snapshot links instead. */
 const SB_URL='https://wochetemsnrysnjrgoed.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvY2hldGVtc25yeXNuanJnb2VkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1NzYyMjYsImV4cCI6MjEwNjE1MjIyNn0.tdXEQwJGU0zNK-dPRgWD4IVhqS21_AEAay2LnpKIsBU';
-const sb=SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY):null;
-const mk=()=>({ph:'setup',name:'Open Play',cn:1,ty:2,md:'bal',sc:1,lb:0,pl:[],cts:[],up:[],log:[],h:{},t0:0,code:'',n:1});
+const sb=SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY):null,lt={};
+function push(c,st){if(!sb||!c.mid)return;
+const row={code:c.mid,court:c.name,players:c.players,score:c.score,target:S.target,status:st||'live',updated_at:new Date().toISOString()};
+clearTimeout(lt[c.mid]);lt[c.mid]=setTimeout(()=>sb.from('live_matches').upsert(row).then(q=>q.error&&console.warn(q.error.message)),st?0:300)}
+const mk=()=>({queue:[],log:[],target:11,lv:{},md:'bal',sd:0,courts:[1,2,3,4].map(id=>({id,name:'Court '+id,isActive:false,players:[],score:[0,0],mid:'',t:0}))});
 let S=mk(),V=null;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const P=id=>S.pl.find(p=>p.id==id);
-const names=t=>t.map(i=>P(i)?P(i).n:'?').join(' & ');
-const star=l=>l?'★'.repeat(l):'Unrated';
-const mins=t=>Math.max(0,Math.round((Date.now()-t)/60000));
+const win=(s,t)=>Math.max(s[0],s[1])>=t&&Math.abs(s[0]-s[1])>=2?(s[0]>s[1]?0:1):-1;
+const tx=(p,i)=>p.slice(i*2,i*2+2).join(' & ');
+const nm=(p,i)=>esc(tx(p,i));
 const hm=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
-const enc=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
-const dec=h=>JSON.parse(decodeURIComponent(escape(atob(h))));
-function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.pl)S={...mk(),...s}}catch(e){}}
+const mins=t=>Math.max(0,Math.round((Date.now()-t)/60000));
+
+function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.courts){S=s;S.log=S.log||[];S.target=S.target||11;S.lv=S.lv||{};S.md=S.md||'bal';S.sd=S.sd||0;S.courts.forEach(c=>{c.score=c.score||[0,0]})}}catch(e){}}
 function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
-function toast(m,type){const d=document.createElement('div');d.className='mb border px-4 py-3 rounded-lg shadow-xl pointer-events-auto text-sm font-medium text-white '+(type=='error'?'bg-red-600':type=='success'?'bg-green-600':'bg-slate-800');d.textContent=m;$('msg').append(d);setTimeout(()=>d.remove(),3000)}
-function ask(t,m,fn){const d=document.createElement('div');d.className='mb bg-white border border-slate-200 p-5 rounded-xl shadow-2xl pointer-events-auto text-center text-slate-900';
-d.innerHTML=`<h3 class="mb-2">${t}</h3><p class="mut mb-4">${m}</p><div class="flex gap-3 justify-center"><button class="btn g x">Cancel</button><button class="btn r y">Confirm</button></div>`;
+
+function toast(m,type){const d=document.createElement('div');
+d.className='mb border px-4 py-3 rounded-lg shadow-xl pointer-events-auto text-sm font-medium '+(type=='error'?'bg-red-500/90 border-red-400':type=='success'?'bg-pickle-500/90 border-pickle-400 text-dark-900':'bg-dark-700/90 border-dark-700');
+d.textContent=m;$('msg').append(d);setTimeout(()=>d.remove(),3000)}
+function ask(t,m,fn){const d=document.createElement('div');
+d.className='mb bg-dark-800 border border-red-500/50 p-5 rounded-xl shadow-2xl pointer-events-auto text-center';
+d.innerHTML=`<h3 class="text-white text-lg mb-2">${t}</h3><p class="text-gray-400 text-sm mb-4">${m}</p><div class="flex gap-3 justify-center"><button class="x px-4 py-2 bg-dark-700 rounded-lg">Cancel</button><button class="y px-4 py-2 bg-red-500 rounded-lg">Confirm</button></div>`;
 d.querySelector('.x').onclick=()=>d.remove();d.querySelector('.y').onclick=()=>{d.remove();fn()};$('msg').append(d)}
 
-/* Matching */
-const hc=(x,y,k)=>S.h[k+(x<y?x+'-'+y:y+'-'+x)]||0;
-const bump=(k,x,y)=>{const q=k+(x<y?x+'-'+y:y+'-'+x);S.h[q]=(S.h[q]||0)+1};
-function pool(){const b=new Set();S.cts.forEach(c=>c.m&&[...c.m.a,...c.m.b].forEach(i=>b.add(i)));return S.pl.filter(p=>p.in&&!b.has(p.id)).sort((x,y)=>x.gp-y.gp||x.since-y.since)}
-function split(g){if(S.ty==1)return{a:[g[0]],b:[g[1]]};
-let best,bc=1e9;[[[0,1],[2,3]],[[0,2],[1,3]],[[0,3],[1,2]]].forEach(o=>{const a=o[0].map(i=>g[i]),b=o[1].map(i=>g[i]);
-let c=(hc(a[0],a[1],'p')+hc(b[0],b[1],'p'))*3+Math.random()*.5;
-if(S.md=='bal')c+=Math.abs(a.reduce((s,i)=>s+P(i).lv,0)-b.reduce((s,i)=>s+P(i).lv,0))*2;
-else a.forEach(x=>b.forEach(y=>c+=hc(x,y,'o')));
-if(c<bc){bc=c;best={a,b}}});return best}
-function fill(){const need=S.ty*2,t=Math.min(3,Math.max(1,S.cts.length||S.cn));
-S.up=S.up.filter(u=>[...u.a,...u.b].every(i=>P(i)&&P(i).in));
-while(S.up.length<t){const b=new Set(S.up.flatMap(u=>[...u.a,...u.b]));
-const g=pool().filter(p=>!b.has(p.id)).slice(0,need).map(p=>p.id);if(g.length<need)break;S.up.push(split(g))}}
-function upd(){if(S.ph=='sess')fill();save();render();pub()}
+/* Stack */
+$('f').onsubmit=e=>{e.preventDefault();const n=$('pn').value.split(/[,\n]/).map(s=>s.trim()).filter(Boolean);if(!n.length)return;S.queue.push(...n.map(q=>{const[a,t]=q.split('|').map(x=>x.trim()),x=parseFloat(t);if(x)S.lv[a.toLowerCase()]=x<2.25?1:x<2.75?2:x<3.25?3:x<3.75?4:x<4.25?5:6;return a}).filter(Boolean));$('pn').value='';save();render()};
+function rm(i){S.queue.splice(i,1);save();render()}
+$('go').onclick=()=>{
+if(S.queue.length<4)return toast('Need at least 4 players in the stack.','error');
+const c=S.courts.find(c=>!c.isActive);if(!c)return toast('No court free. Finish a match first.','error');
+Object.assign(c,{isActive:true,players:takeNext(),score:[0,0],mid:Math.random().toString(36).slice(2,8),t:Date.now()});
+push(c);save();render();toast(c.players.join(', ')+' → '+c.name,'success')};
 
-/* Setup + players */
-function cc(d){S.cn=Math.min(8,Math.max(1,S.cn+d));upd()}
-function sty(n){S.ty=n;upd()}
-function smd(m){S.md=m;upd()}
-function addT(id,inn){const el=$(id);const lines=el.value.split(/[\n,]/).map(s=>s.trim().replace(/^\d+[.)]\s+/,'')).filter(Boolean);
-if(!lines.length)return toast('Type at least one name.','error');
-lines.forEach(l=>{const[n,r]=l.split('|').map(s=>s.trim());if(!n)return;const x=parseFloat(r);
-S.pl.push({id:S.n++,n,lv:x?(x<2.25?1:x<2.75?2:x<3.25?3:x<3.75?4:x<4.25?5:6):0,in:!!inn,gp:0,w:0,l:0,d:0,since:Date.now()})});
-el.value='';upd()}
-function ci(id){const p=P(id);p.in=true;p.since=Date.now();upd()}
-function ciAll(){S.pl.forEach(p=>{if(!p.in){p.in=true;p.since=Date.now()}});upd()}
-function out(id){P(id).in=false;upd()}
-function lv(id,v){P(id).lv=v;S.up=[];upd()}
-function rem(id){if(S.cts.some(c=>c.m&&[...c.m.a,...c.m.b].includes(id)))return toast('Finish their match first.','error');S.pl=S.pl.filter(p=>p.id!=id);upd()}
-function start(){S.cts=Array.from({length:S.cn},(_,i)=>({id:i+1,n:'Court '+(i+1),m:null}));S.ph='sess';S.t0=Date.now();S.up=[];S.h={};upd()}
-function addCourt(){S.cts.push({id:S.cts.length+1,n:'Court '+(S.cts.length+1),m:null});upd()}
-function endS(){ask('End session?','Courts clear and everyone is checked out. The match log is kept.',()=>{pub('ended');S.ph='setup';S.cts=[];S.up=[];S.h={};S.code='';S.pl.forEach(p=>Object.assign(p,{in:false,gp:0,w:0,l:0,d:0}));upd()})}
+/* Scoring + finishing */
+function sc(id,i,d){const c=S.courts.find(x=>x.id==id);c.score[i]=Math.max(0,c.score[i]+d);push(c);save();render()}
+function clear(c){Object.assign(c,{isActive:false,players:[],score:[0,0],mid:'',t:0})}
+function fin(id){const c=S.courts.find(x=>x.id==id),w=win(c.score,S.target);
+if(c.score[0]+c.score[1]>0){S.log.unshift({mid:c.mid,c:c.name,p:c.players,s:c.score,w,tg:S.target,t:Date.now(),d:Date.now()-c.t});S.log=S.log.slice(0,200)}
+const o=w==1?[1,0]:[0,1];S.queue.push(...c.players.slice(o[0]*2,o[0]*2+2),...c.players.slice(o[1]*2,o[1]*2+2));
+const n=c.name;push(c,'final');clear(c);save();render();toast(n+' is free. Winners are back in the stack first.','info')}
+function drop(id){const c=S.courts.find(x=>x.id==id);ask('Cancel match?','Players go back to the top of the stack. Nothing is logged.',()=>{S.queue.unshift(...c.players);push(c,'cancelled');clear(c);save();render()})}
 
-/* Matches */
-function send(i){const c=S.cts.find(c=>!c.m),u=S.up[i];if(!c||!u)return toast('No court is free.','error');S.up.splice(i,1);c.m={...u,sa:0,sb:0,t:Date.now()};upd()}
-function sc(i,k,d){const m=S.cts[i].m;if(k)m.sb=Math.max(0,m.sb+d);else m.sa=Math.max(0,m.sa+d);upd()}
-function drop(i){ask('Cancel match?','Nothing is logged. Players return to the queue.',()=>{S.cts[i].m=null;upd()})}
-function fin(i,w){const c=S.cts[i],m=c.m;
-if(w==null){if(m.sa==m.sb)return toast('Scores are tied.','error');w=m.sa>m.sb?0:1}
-const s=S.sc?[m.sa,m.sb]:[0,0];
-[m.a,m.b].forEach((t,k)=>t.forEach(id=>{const p=P(id);p.gp++;k==w?p.w++:p.l++;p.d+=s[k]-s[1-k];p.since=Date.now()}));
-[m.a,m.b].forEach(t=>t.length>1&&bump('p',t[0],t[1]));m.a.forEach(x=>m.b.forEach(y=>bump('o',x,y)));
-S.log.unshift({t:Date.now(),c:c.n,a:m.a.map(i=>P(i).n),b:m.b.map(i=>P(i).n),s:S.sc?s:null,w,d:Date.now()-m.t,ss:S.t0});S.log=S.log.slice(0,500);
-c.m=null;S.up=[];upd();toast('Match logged. Players are back in the queue.','success')}
-
-/* Stats + log */
-function stats(all){const m={};S.log.filter(l=>all||l.ss==S.t0).forEach(l=>[l.a,l.b].forEach((t,k)=>t.forEach(n=>{const q=n.toLowerCase(),x=m[q]||(m[q]={n,w:0,l:0,d:0});l.w==k?x.w++:x.l++;if(l.s)x.d+=l.s[k]-l.s[1-k]})));
-return Object.values(m).sort((a,b)=>b.w-a.w||b.d-a.d||a.l-b.l)}
-function lbHtml(r){return r.length?`<table class="w-full text-sm"><thead class="text-xs text-slate-500"><tr><th class="p-3 text-left">#</th><th class="text-left">Player</th><th>W-L</th><th>Win%</th><th class="pr-3">+/-</th></tr></thead><tbody class="divide-y divide-slate-100 text-center">${r.map((x,i)=>`<tr><td class="p-3 text-left text-slate-400">${i+1}</td><td class="text-left ${i?'':'font-bold text-green-700'}">${esc(x.n)}</td><td>${x.w}-${x.l}</td><td>${Math.round(100*x.w/(x.w+x.l))}%</td><td class="pr-3">${x.d>0?'+':''}${x.d}</td></tr>`).join('')}</tbody></table>`:'<p class="mut p-6 text-center">Finish a match to start the leaderboard.</p>'}
-function cpLog(){if(!S.log.length)return toast('Nothing to copy yet.','error');
-navigator.clipboard.writeText(S.log.map(l=>`${new Date(l.t).toLocaleDateString()} ${hm(l.t)} ${l.c}: ${l.a.join(' & ')} ${l.s?l.s[0]+'-'+l.s[1]:'(won: team '+(l.w+1)+')'} ${l.b.join(' & ')}`).join('\n')).then(()=>toast('Log copied','success'),()=>toast('Copy blocked by browser.','error'))}
-function clrLog(){ask('Clear match log?','This also resets the leaderboard.',()=>{S.log=[];upd()})}
-
-/* Live view */
-function view(){return{n:S.name,c:S.cts.map(c=>({n:c.n,a:c.m?names(c.m.a):'',b:c.m?names(c.m.b):'',sa:c.m?c.m.sa:0,sb:c.m?c.m.sb:0,on:!!c.m})),u:S.up.map(u=>names(u.a)+' vs '+names(u.b)),q:pool().map(p=>p.n),st:stats(0).slice(0,10),ts:Date.now()}}
-let pt;function pub(st){if(!sb||!S.code)return;clearTimeout(pt);
-const r={code:S.code,court:S.name,players:view(),score:[0,0],target:0,status:st||'live',updated_at:new Date().toISOString()};
-pt=setTimeout(()=>sb.from('live_matches').upsert(r).then(q=>q.error&&console.warn(q.error.message)),st?0:400)}
-async function live(){if(!S.code){S.code=Math.random().toString(36).slice(2,8);save()}
-let ok=false;if(sb){const q=await sb.from('live_matches').upsert({code:S.code,court:S.name,players:view(),score:[0,0],target:0,status:'live',updated_at:new Date().toISOString()});ok=!q.error}
-const url=location.origin+location.pathname+'#v='+(ok?S.code:enc(view())),t=S.name+' live view';
-try{if(navigator.share)await navigator.share({title:t,url});else{await navigator.clipboard.writeText(url);toast(ok?'Live link copied':'Snapshot link copied (live needs Supabase)','success')}}catch(e){}}
-function rv(){['setup','sess'].forEach(i=>$(i).classList.add('hidden'));$('ha').classList.add('hidden');$('viewer').classList.remove('hidden');$('hn').textContent=V.n;$('hs').textContent=V.code?'Live view':'Snapshot';
-$('viewer').innerHTML=`<p class="mut mb-4">${V.code?'Updates live.':'Snapshot from '+hm(V.ts)+'. Ask for a new link for fresh scores.'}</p><div class="grid md:grid-cols-2 gap-4">`+V.c.map(c=>`<div class="card"><h3>${esc(c.n)}</h3>${c.on?`<div class="vr"><span>${esc(c.a)}</span><b>${c.sa}</b></div><div class="vr"><span>${esc(c.b)}</span><b>${c.sb}</b></div>`:'<p class="mut mt-2">Open</p>'}</div>`).join('')+`</div><div class="card mt-4"><h3>Up next</h3>${V.u.map(x=>`<p class="mt-1">${esc(x)}</p>`).join('')||'<p class="mut">None yet</p>'}</div><div class="card mt-4"><h3>Queue</h3><p class="mt-1">${V.q.map(esc).join(', ')||'Empty'}</p></div><h2 class="text-xl mt-6 mb-3">Standings</h2><div class="card p-0 overflow-x-auto">${lbHtml(V.st)}</div>`}
+/* Sharing */
+const enc=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+const dec=h=>JSON.parse(decodeURIComponent(escape(atob(h))));
+function snap(m){const c=S.courts.find(x=>x.mid==m&&x.isActive);if(c)return{m,n:c.name,p:c.players,s:c.score,tg:S.target,ts:Date.now()};
+const l=S.log.find(x=>x.mid==m);return l&&{m,n:l.c,p:l.p,s:l.s,tg:l.tg,f:1,ts:l.t}}
+async function share(m){const s=snap(m);if(!s)return;
+let ok=false;
+if(sb){const q=await sb.from('live_matches').upsert({code:s.m,court:s.n,players:s.p,score:s.s,target:s.tg,status:s.f?'final':'live',updated_at:new Date().toISOString()});ok=!q.error}
+const url=location.origin+location.pathname+'#m='+(ok?s.m:enc(s)),t=`${s.n}: ${tx(s.p,0)} ${s.s[0]}-${s.s[1]} ${tx(s.p,1)}`;
+try{if(navigator.share)await navigator.share({title:'PickleStack match',text:t,url});else{await navigator.clipboard.writeText(t+'\n'+url);toast('Match link copied','success')}}catch(e){}}
 
 /* Render */
-const sel=p=>`<select class="sl" onchange="lv(${p.id},+this.value)">${[0,1,2,3,4,5,6].map(i=>`<option value="${i}" ${i==p.lv?'selected':''}>${star(i)}</option>`).join('')}</select>`;
-function nyh(el){const a=S.pl.filter(p=>!p.in);
-el.innerHTML=a.length?`<div class="flex justify-between items-center"><h3>Not yet here (${a.length})</h3><button class="btn" onclick="ciAll()">Check in all</button></div>`+a.map(p=>`<div class="row"><b class="flex-1 truncate">${esc(p.n)}</b>${sel(p)}<button class="btn" onclick="ci(${p.id})">Check in</button><button class="lk" onclick="rem(${p.id})">Remove</button></div>`).join(''):`<h3>Not yet here</h3><p class="mut mt-2">${S.pl.length?'Everyone is checked in.':'Add players to get started.'}</p>`}
-function court(c,i){const m=c.m;
-if(!m){const u=S.up[0];return `<div class="card"><div class="flex items-center gap-2"><h3>${esc(c.n)}</h3><span class="chip g">OPEN</span></div><p class="mut my-3">${u?esc(names(u.a))+' vs '+esc(names(u.b)):'Waiting for enough players.'}</p><button class="btn w !mt-0" ${u?'':'disabled'} onclick="send(0)">Send up next here</button></div>`}
-const row=(t,k,x)=>`<div class="tm ${k?'o':'b'}"><div class="min-w-0 flex-1"><small>Team ${k+1}</small><div class="truncate font-medium">${esc(names(t))}</div></div>${S.sc?`<button class="sb" onclick="sc(${i},${k},-1)">−</button><b class="n">${x}</b><button class="sb" onclick="sc(${i},${k},1)">+</button>`:`<button class="btn" onclick="fin(${i},${k})">Won</button>`}</div>`;
-return `<div class="card ring"><div class="flex items-center justify-between"><h3>${esc(c.n)}</h3><span class="chip r"><i class="fa-solid fa-circle live"></i> IN PLAY ${mins(m.t)}m</span></div>${row(m.a,0,m.sa)}${row(m.b,1,m.sb)}${S.sc?`<button class="btn w" onclick="fin(${i})">Finish match</button>`:''}<button class="lk mt-2" onclick="drop(${i})">Cancel match</button></div>`}
-function renderUp(){const tc=t=>t.map(id=>`<div>${esc(P(id).n)}<small>${star(P(id).lv)}</small></div>`).join('');
-$('up').innerHTML=S.up.length?S.up.map((u,i)=>`<div class="card !p-0 overflow-hidden"><div class="grid grid-cols-2"><div class="th b">TEAM 1</div><div class="th o">TEAM 2</div><div class="tc b">${tc(u.a)}</div><div class="tc o">${tc(u.b)}</div></div><div class="p-3"><button class="btn" ${S.cts.some(c=>!c.m)?'':'disabled'} onclick="send(${i})">Send to court</button></div></div>`).join(''):'<p class="mut">Check in at least '+S.ty*2+' players to build the next match.</p>'}
-function renderQ(){const q=pool(),u=new Set(S.up.flatMap(x=>[...x.a,...x.b]));$('qh').textContent=q.length;
-$('ql').innerHTML=q.map((p,i)=>`<div class="row ${u.has(p.id)?'hl':''}"><span class="rk">${i+1}</span><div class="flex-1 min-w-0"><b class="truncate block">${esc(p.n)}</b><small>${p.gp} games · waiting ${mins(p.since)}m</small></div>${sel(p)}<button class="lk" title="Step out" onclick="out(${p.id})">✕</button></div>`).join('')||'<p class="mut mt-3">Nobody is waiting.</p>'}
-function render(){if(V)return rv();
-const s=S.ph=='sess';$('setup').classList.toggle('hidden',s);$('sess').classList.toggle('hidden',!s);$('viewer').classList.add('hidden');$('ha').classList.toggle('hidden',!s);$('hn').textContent=S.name||'PickleStack';
-if(!s){if(document.activeElement!=$('sn'))$('sn').value=S.name;$('cn').textContent=S.cn;$('sc').checked=!!S.sc;
-document.querySelectorAll('[data-ty]').forEach(b=>b.classList.toggle('on',b.dataset.ty==S.ty));
-document.querySelectorAll('[data-md]').forEach(b=>b.classList.toggle('on',b.dataset.md==S.md));
-nyh($('nyh1'));const n=S.pl.filter(p=>p.in).length,need=S.ty*2;$('st').disabled=n<need;$('st').textContent=`Start session (${n}/${need} checked in)`;$('hs').textContent='Session setup';return}
-$('hs').textContent=`Courts ${S.cts.filter(c=>c.m).length}/${S.cts.length} · Players ${S.pl.length} · Queue ${pool().length}`;
-$('courts').innerHTML=S.cts.map(court).join('');renderUp();renderQ();nyh($('nyh2'));
-$('lbt').textContent=S.lb?'All time':'This session';$('lb').innerHTML=lbHtml(stats(S.lb));
-$('log').innerHTML=S.log.length?S.log.slice(0,50).map(l=>`<div class="flex items-center gap-3 p-3 text-sm"><div class="text-xs text-slate-500 w-24 flex-none">${hm(l.t)}<br>${esc(l.c)} · ${Math.max(1,Math.round(l.d/60000))}m</div><div class="flex-1"><span class="${l.w==0?'font-bold text-green-700':''}">${esc(l.a.join(' & '))}</span> <b class="px-1">${l.s?l.s[0]+'-'+l.s[1]:'vs'}</b> <span class="${l.w==1?'font-bold text-green-700':''}">${esc(l.b.join(' & '))}</span></div></div>`).join(''):'<p class="mut p-6 text-center">No matches yet.</p>'}
+function team(c,i){const w=win(c.score,S.target)==i;
+return `<div class="flex items-center justify-between gap-2 p-3 rounded-xl border ${w?'bg-pickle-500/15 border-pickle-500/50':'bg-dark-900 border-dark-700'}">
+<div class="min-w-0"><div class="text-[11px] text-gray-500 font-semibold">Team ${i+1}</div><div class="truncate text-gray-100">${nm(c.players,i)}</div></div>
+<div class="flex items-center gap-2"><button class="sb" aria-label="Minus point" onclick="sc(${c.id},${i},-1)">−</button><span class="font-sport text-3xl w-10 text-center ${w?'text-pickle-500':''}">${c.score[i]}</span><button class="sb" aria-label="Plus point" onclick="sc(${c.id},${i},1)">+</button></div></div>`}
+function renderCourts(){$('courts').innerHTML=S.courts.map(c=>c.isActive?
+`<div class="bg-dark-800 rounded-2xl border border-pickle-500/30 overflow-hidden flex flex-col relative"><div class="absolute top-0 inset-x-0 h-1 bg-pickle-500"></div>
+<div class="p-4 border-b border-dark-700 flex justify-between items-center"><h3 class="text-xl text-pickle-500">${c.name}</h3><span class="text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1"><i class="fa-solid fa-circle live text-[8px]"></i> LIVE ${mins(c.t)}m</span></div>
+<div class="p-4 space-y-2 flex-grow">${team(c,0)}${team(c,1)}<p class="text-[11px] text-gray-500 text-center">First to ${S.target}, win by 2</p></div>
+<div class="p-3 border-t border-dark-700 flex gap-2"><button onclick="share('${c.mid}')" title="Share match" class="sb"><i class="fa-solid fa-share-nodes"></i></button>
+<button onclick="fin(${c.id})" class="flex-grow rounded-lg text-sm font-bold ${win(c.score,S.target)>=0?'bg-pickle-500 text-dark-900':'border border-dark-700 text-gray-300 hover:border-pickle-500'}">FINISH & LOG</button>
+<button onclick="drop(${c.id})" title="Cancel match" class="sb hover:!bg-red-500 hover:!text-white"><i class="fa-solid fa-xmark"></i></button></div></div>`:
+`<div class="bg-dark-900 rounded-2xl border border-dark-700 opacity-70 flex flex-col items-center justify-center py-10 px-5 text-center"><i class="fa-solid fa-check text-2xl text-gray-500 mb-3"></i><h3 class="text-xl text-gray-400">${c.name}</h3><p class="text-sm text-gray-500">Open and waiting for players.</p></div>`).join('')}
+const lvl=n=>S.lv[n.toLowerCase()]||0;
+const pc=(a,b)=>S.log.reduce((n,l)=>n+[0,2].filter(i=>{const t=l.p.slice(i,i+2);return t.includes(a)&&t.includes(b)}).length,0);
+const oc=(a,b)=>S.log.reduce((n,l)=>n+((l.p.slice(0,2).includes(a)&&l.p.slice(2).includes(b))||(l.p.slice(0,2).includes(b)&&l.p.slice(2).includes(a))?1:0),0);
+function split4(g){let best,bc=1e9;[[0,1,2,3],[0,2,1,3],[0,3,1,2]].forEach((o,k)=>{const a=[g[o[0]],g[o[1]]],b=[g[o[2]],g[o[3]]];
+let c=(pc(a[0],a[1])+pc(b[0],b[1]))*3+(((S.sd*9301+k*49297)%100)/200);
+if(S.md=='bal')c+=Math.abs(lvl(a[0])+lvl(a[1])-lvl(b[0])-lvl(b[1]))*2;else a.forEach(x=>b.forEach(y=>c+=oc(x,y)));
+if(c<bc){bc=c;best=a.concat(b)}});return best}
+function takeNext(){const t=split4(S.queue.slice(0,4));S.queue.splice(0,4);S.sd++;return t}
+function smd(m){S.md=m;save();render()}
+function shuf(){S.sd++;save();render()}
+function setLv(i,v){S.lv[S.queue[i].toLowerCase()]=v;save();render()}
+const lsel=i=>`<select onchange="setLv(${i},+this.value)" title="Skill level" class="bg-dark-900 border border-dark-700 rounded text-xs text-gray-300 p-1">${[0,1,2,3,4,5,6].map(v=>`<option value="${v}" ${v==lvl(S.queue[i])?'selected':''}>${v?'★'.repeat(v):'—'}</option>`).join('')}</select>`;
+function renderNext(){const q=S.queue;
+$('mdb').className='px-3 py-1.5 rounded-lg border '+(S.md=='bal'?'bg-pickle-500 text-dark-900 border-pickle-500 font-semibold':'border-dark-700 text-gray-300');
+$('mds').className='px-3 py-1.5 rounded-lg border '+(S.md=='soc'?'bg-pickle-500 text-dark-900 border-pickle-500 font-semibold':'border-dark-700 text-gray-300');
+if(q.length<4){$('unxb').innerHTML='<p class="text-sm text-gray-500">Add at least 4 players to see the next teams.</p>';return}
+const t=split4(q.slice(0,4));
+$('unxb').innerHTML='<div class="grid grid-cols-2 gap-3">'+[[t.slice(0,2),'Team 1','bg-blue-500','bg-blue-500/10'],[t.slice(2),'Team 2','bg-orange-500','bg-orange-500/10']].map(([p,l,h,b])=>`<div class="rounded-xl overflow-hidden border border-dark-700"><div class="${h} text-white text-xs font-bold px-3 py-1.5">${l}</div><div class="${b} p-3 space-y-1">${p.map(n=>`<div>${esc(n)} <span class="text-xs text-gray-500">${'★'.repeat(lvl(n))}</span></div>`).join('')}</div></div>`).join('')+'</div>'}
+function renderQueue(){$('qc').textContent=S.queue.length;$('qe').style.display=S.queue.length?'none':'flex';
+$('ql').innerHTML=S.queue.map((p,i)=>`<li class="flex items-center justify-between p-3 rounded-xl border ${i<4?'border-pickle-500/50 bg-pickle-500/10':'border-dark-700 bg-dark-900'}"><div class="flex items-center gap-3 min-w-0"><span class="w-6 h-6 rounded-full flex flex-none items-center justify-center text-xs font-bold ${i<4?'text-pickle-400 bg-pickle-500/20':'text-gray-500 bg-dark-700'}">${i+1}</span><span class="truncate">${esc(p)}</span></div><div class="flex items-center gap-1">${lsel(i)}<button onclick="rm(${i})" title="Remove" class="text-gray-500 hover:text-red-400 w-8 h-8"><i class="fa-solid fa-xmark"></i></button></div></li>`).join('');
+$('go').disabled=S.queue.length<4||!S.courts.some(c=>!c.isActive)}
+function renderLog(){$('log').innerHTML=S.log.length?S.log.map(l=>`<div class="flex items-center gap-3 p-3"><div class="text-xs text-gray-500 w-24 flex-none">${hm(l.t)}<br>${l.c} · ${Math.max(1,Math.round(l.d/60000))}m</div>
+<div class="flex-1 min-w-0 text-sm"><span class="${l.w==0?'text-pickle-500 font-semibold':''}">${nm(l.p,0)}</span><span class="font-sport text-lg px-2">${l.s[0]}-${l.s[1]}</span><span class="${l.w==1?'text-pickle-500 font-semibold':''}">${nm(l.p,1)}</span></div>
+<button onclick="share('${l.mid}')" title="Share result" class="sb"><i class="fa-solid fa-share-nodes"></i></button></div>`).join(''):'<p class="text-sm text-gray-500 py-8 text-center">No matches yet. Finish a match to log it.</p>'}
 
-/* Init */
+function stats(){const m={};S.log.forEach(l=>{if(l.w<0)return;l.p.forEach((n,i)=>{const t=i<2?0:1,k=n.toLowerCase(),x=m[k]||(m[k]={n,w:0,l:0,d:0});l.w==t?x.w++:x.l++;x.d+=l.s[t]-l.s[1-t]})});
+return Object.values(m).sort((a,b)=>b.w-a.w||b.d-a.d||a.l-b.l)}
+function renderLB(){const r=stats();$('lb').innerHTML=r.length?`<table class="w-full text-sm"><thead class="text-xs text-gray-500"><tr><th class="p-3 text-left">#</th><th class="text-left">Player</th><th>W-L</th><th>Win%</th><th class="pr-3">+/-</th></tr></thead><tbody class="divide-y divide-dark-700 text-center">${r.map((x,i)=>`<tr><td class="p-3 text-left text-gray-500">${i+1}</td><td class="text-left ${i==0?'text-pickle-500 font-semibold':''}">${esc(x.n)}</td><td>${x.w}-${x.l}</td><td>${Math.round(100*x.w/(x.w+x.l))}%</td><td class="pr-3 ${x.d>0?'text-green-400':x.d<0?'text-red-400':''}">${x.d>0?'+':''}${x.d}</td></tr>`).join('')}</tbody></table>`:'<p class="text-sm text-gray-500 py-8 text-center">Finish a scored match to start the leaderboard.</p>'}
+function renderViewer(){let s=V;const c=S.courts.find(x=>x.mid==s.m&&x.isActive);
+if(c)s={...s,p:c.players,s:c.score};else{const l=S.log.find(x=>x.mid==s.m);if(l)s={...s,p:l.p,s:l.s,f:1}}
+const lv=c||(s.code&&s.p.length&&!s.fin),w=win(s.s,s.tg||11),row=i=>`<div class="flex items-center justify-between gap-3 p-5 rounded-2xl border ${w==i?'bg-pickle-500/15 border-pickle-500/50':'bg-dark-800 border-dark-700'}"><div class="min-w-0"><div class="text-xs text-gray-500">Team ${i+1}</div><div class="text-xl truncate">${nm(s.p,i)}</div></div><div class="font-sport text-6xl ${w==i?'text-pickle-500':''}">${s.s[i]}</div></div>`;
+$('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><h2 class="text-2xl text-white">${esc(s.n)}</h2><span class="text-xs font-bold rounded px-2 py-1 ${lv?'text-red-400 bg-red-500/10':'text-gray-300 bg-dark-700'}">${lv?'<i class="fa-solid fa-circle live text-[8px]"></i> LIVE':(s.f||s.fin)?'FINAL':'SNAPSHOT'}</span></div><div class="space-y-3">${row(0)}${row(1)}</div>
+<p class="text-xs text-gray-500 mt-4">${lv?(s.code?'Updating live.':'Updating live on this device.'):s.code?'Final score.':'Score as of '+hm(s.ts)+'. Ask for a new link for the latest score.'}</p><a href="${location.pathname}" class="inline-block mt-4 text-sm text-pickle-500 underline">Open PickleStack</a>`}
+
+function render(){if(V)return renderViewer();$('tg').value=S.target;renderQueue();renderNext();renderCourts();renderLB();renderLog()}
+
+/* Controls */
+$('tg').onchange=e=>{S.target=+e.target.value;save();render()};
+$('rs').onclick=()=>ask('Reset everything?','Clears the stack, courts and match log. This cannot be undone.',()=>{S=mk();save();render();toast('Data reset','success')});
+$('cl').onclick=()=>ask('Clear match log?','All logged matches will be removed.',()=>{S.log=[];save();render()});
+$('cp').onclick=async()=>{if(!S.log.length)return toast('Nothing to copy yet.','error');
+const t=S.log.map(l=>`${new Date(l.t).toLocaleDateString()} ${hm(l.t)} ${l.c}: ${tx(l.p,0)} ${l.s[0]}-${l.s[1]} ${tx(l.p,1)}`).join('\n');
+try{await navigator.clipboard.writeText(t);toast('Log copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
+
+/* Init + live sync (other tabs on this device update instantly) */
 load();
-const h=location.hash;
-if(h.startsWith('#v=')){const c=h.slice(3);
-try{V=c.length<=10?{n:'Live view',c:[],u:[],q:[],st:[],code:1,ts:Date.now()}:dec(c)}catch(e){}
-if(V&&V.code&&sb){const ap=q=>{V={...q.players,code:1};render()};
-sb.from('live_matches').select('*').eq('code',c).maybeSingle().then(q=>q.data&&ap(q.data));
-sb.channel('v'+c).on('postgres_changes',{event:'*',schema:'public',table:'live_matches',filter:'code=eq.'+c},q=>q.new&&ap(q.new)).subscribe()}}
-if(!V&&S.ph=='sess')fill();
+if(location.hash.startsWith('#m=')){const h=location.hash.slice(3);try{V=h.length<=10?{m:h,code:1,n:'Match',p:[],s:[0,0],tg:11,ts:Date.now()}:dec(h);$('app').classList.add('hidden');$('viewer').classList.remove('hidden')}catch(e){}}
+if(V&&V.code&&sb){const ap=q=>{V={...V,n:q.court,p:q.players,s:q.score,tg:q.target,fin:q.status!='live',ts:Date.parse(q.updated_at)};render()};
+sb.from('live_matches').select('*').eq('code',V.m).maybeSingle().then(q=>q.data&&ap(q.data));
+sb.channel('m'+V.m).on('postgres_changes',{event:'*',schema:'public',table:'live_matches',filter:'code=eq.'+V.m},q=>q.new&&ap(q.new)).subscribe()}
 render();
+addEventListener('storage',e=>{if(e.key==K){load();render()}});
 onhashchange=()=>location.reload();
-addEventListener('storage',e=>{if(e.key==K&&!V){load();render()}});
-setInterval(()=>{if(!V&&S.ph=='sess')render()},30000);
+setInterval(()=>{if(!V)renderCourts()},30000);
+const net=()=>{const on=navigator.onLine;$('ci').className='fa-solid fa-wifi '+(on?'text-green-400':'text-red-500');$('ct').textContent=on?'Saved on this device':'Offline'};
+addEventListener('online',net);addEventListener('offline',net);net();
 </script>
 </body>
 </html>

@@ -151,6 +151,7 @@ function ask(t,m,fn){
   const d=modal('<div class="p-6 text-center"><h3 class="text-xl text-white mb-2">'+esc(t)+'</h3><p class="text-gray-400 text-sm mb-6">'+esc(m)+'</p><div class="flex gap-3"><button data-x class="flex-1 '+bS+'">Cancel</button><button class="y flex-1 '+bD+'">Confirm</button></div></div>');
   d.querySelector('.y').onclick=()=>{d.remove();fn()}
 }
+const qrSvg=u=>{try{const q=qrcode(0,'M');q.addData(u);q.make();return q.createSvgTag({cellSize:6,margin:0,scalable:true})}catch(e){return ''}};
 async function live(){
   if(S.ended)return showRes();
   if(!sb)return toast('Live View needs Supabase.','error');

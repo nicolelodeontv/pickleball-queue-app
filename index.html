@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PickleStack - Free Pickleball Paddle Stacking & Queue App</title>
 <meta name="description" content="Manage your open play pickleball sessions effortlessly with PickleStack. A free paddle stacking, live scoring and match log web app. Remove the chaos from court rotation.">
 <meta name="keywords" content="pickleball, paddle stacking, queue management, court rotation, open play, pickleball scoring, match log">
@@ -32,6 +32,46 @@ html{color-scheme:dark}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#334155;border-radius:8px}
 ::-webkit-scrollbar-thumb:hover{background:#ccff00}
+
+/* ===== Mobile fixes ===== */
+html{-webkit-text-size-adjust:100%}
+body{min-height:100dvh!important}
+header{padding-top:env(safe-area-inset-top)}
+footer{padding-bottom:calc(1.5rem + env(safe-area-inset-bottom))}
+button,select,input{touch-action:manipulation}
+.sb{user-select:none;-webkit-user-select:none}
+
+/* iOS zooms the page on focus if an input is under 16px */
+@media(max-width:767px){
+  input,select,textarea{font-size:16px!important}
+}
+
+/* Header wraps instead of overflowing; hide hint text that crowds "Not yet here" */
+@media(max-width:639px){
+  header .container{flex-wrap:wrap;row-gap:.5rem}
+  header p.text-xs{display:none}
+  #sstk span.text-\[11px\]{display:none}
+}
+
+/* Toolbars and list rows wrap instead of squeezing */
+#sstk .flex.items-center.justify-between,
+#sun .flex{flex-wrap:wrap;gap:.5rem}
+
+/* vh includes the phone's address bar; dvh doesn't */
+@media(max-width:1023px){.max-h-\[80vh\]{max-height:80dvh!important}}
+.max-h-\[90vh\]{max-height:90dvh!important}
+
+/* Touch devices: 44px tap targets */
+@media(pointer:coarse){
+  button,select{min-height:44px}
+  header button{min-width:44px}
+  h3>button{min-height:0;min-width:0;padding:.5rem}
+  .sb{width:2.75rem;height:2.75rem}
+  #ql .dg{width:2rem;height:2.75rem}
+}
+
+/* Score buttons stay lime after a tap on touch screens without this */
+@media(hover:none){.sb:hover{background:#1E293B;color:#fff}}
 </style>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B0F19">

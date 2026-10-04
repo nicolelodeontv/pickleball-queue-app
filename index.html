@@ -117,7 +117,7 @@ const nm=(p,i)=>esc(tx(p,i));
 const hm=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
 const mins=t=>Math.max(0,Math.round((Date.now()-t)/60000));
 
-function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.courts){S=s;S.log=S.log||[];S.target=S.target||11;S.lv=S.lv||{};S.md=S.md||'bal';S.sd=S.sd||0;S.courts.forEach(c=>{c.score=c.score||[0,0]})}}catch(e){}}
+function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.courts){S=s;S.log=S.log||[];S.waiting=S.waiting||[];S.target=S.target||11;S.lv=S.lv||{};S.md=S.md||'bal';S.sd=S.sd||0;S.courts.forEach(c=>{c.score=c.score||[0,0]})}}catch(e){}}
 function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}pushS()}
 
 function toast(m,type){const d=document.createElement('div');

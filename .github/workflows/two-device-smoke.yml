@@ -38,8 +38,7 @@ jobs:
           const browser = await chromium.launch({headless:true});
 
           const host = await browser.newContext({
-            viewport: {width: 1440, height: 900},
-            deviceScaleFactor: 1
+            ...devices['iPhone 13']
           });
           const phone = await browser.newContext({
             ...devices['Pixel 7']
@@ -87,7 +86,7 @@ jobs:
             }));
             console.log('LIVE_VIEWER_STATE', JSON.stringify(viewerState));
             await vp.waitForFunction(
-              () => /\\bAlpha\\b/.test(document.querySelector('#viewer')?.innerText || ''),
+              () => /\bAlpha\b/.test(document.querySelector('#viewer')?.innerText || ''),
               null,
               {timeout:10000}
             );

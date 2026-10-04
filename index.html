@@ -78,6 +78,7 @@ html{color-scheme:dark}
 <section id="sun" class="bg-dark-800 rounded-2xl border border-dark-700 p-5">
 <div class="flex flex-wrap justify-between items-center gap-3 mb-4"><div><h2 class="text-2xl text-white">Up Next</h2><p class="text-gray-400 text-sm">Teams for the next four players in the stack.</p></div>
 <div class="flex items-center gap-2 text-xs"><button id="mdb" onclick="smd('bal')">Balanced</button><button id="mds" onclick="smd('soc')">Social mix</button><button onclick="shuf()" class="px-3 py-1.5 rounded-lg border border-dark-700 text-gray-300 hover:border-pickle-500"><i class="fa-solid fa-shuffle"></i> Reshuffle</button></div></div>
+<p id="mdi" class="text-xs text-gray-400 mb-4"></p>
 <div id="unxb"></div>
 </section>
 <section id="scr">
@@ -88,7 +89,7 @@ html{color-scheme:dark}
 <button id="rs" class="bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg px-3 py-1.5"><i class="fa-solid fa-stop"></i> End session</button>
 </div>
 </div>
-<div id="courts" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+<div id="courts" class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6"></div>
 </section>
 
 <section id="slb">
@@ -100,7 +101,6 @@ html{color-scheme:dark}
 <div class="flex justify-between items-end mb-4">
 <div><h2 class="text-3xl text-white">Match Log</h2><p class="text-gray-400 text-sm mt-1">Finished matches, newest first.</p></div>
 <div class="flex gap-4 text-xs text-gray-400">
-<button id="cp" class="hover:text-pickle-500"><i class="fa-solid fa-copy"></i> Copy log</button>
 <button id="cl" class="hover:text-red-400"><i class="fa-solid fa-trash"></i> Clear</button>
 </div>
 </div>
@@ -208,9 +208,9 @@ function showRes(){
   const url=S.rid?location.origin+location.pathname+'#s='+S.rid:'',r=stats();
   const rows=r.length?r.map((x,i)=>'<div class="flex items-center gap-3 p-3 '+(i<3?'bg-pickle-500/10':'')+'"><span class="w-8 text-center font-sport text-lg '+(i<3?'text-pickle-500':'text-gray-500')+'">'+(i<3?['🥇','🥈','🥉'][i]:i+1)+'</span><div class="flex-1 min-w-0"><div class="truncate text-white">'+esc(x.n)+'</div><div class="text-xs text-gray-400">'+Math.round(100*x.w/(x.w+x.l))+'% win rate · '+(x.w+x.l)+' games · '+(x.d>0?'+':'')+x.d+'</div></div><div class="font-sport text-2xl text-green-400">'+x.w+'</div></div>').join(''):'<p class="p-6 text-center text-sm text-gray-500">No scored matches this session.</p>';
   const lk=url?'<div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:180px;max-width:100%">'+qrSvg(url)+'</div><div class="mt-3 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-xs text-gray-300 break-all">'+esc(url)+'</div><button class="cp w-full mt-3 '+bS+'">Copy results link</button>':'<p class="text-sm text-gray-500">Results link unavailable. Supabase could not be reached.</p>';
-  const d=modal('<div class="p-5 border-b border-dark-700"><h3 class="text-2xl text-white">Session Results</h3><p class="text-xs text-gray-400">'+S.log.length+' games played · session ended</p></div><div class="divide-y divide-dark-700">'+rows+'</div><div class="p-5 border-t border-dark-700 text-center">'+lk+'</div><div class="p-4 border-t border-dark-700 grid grid-cols-2 gap-3"><button class="sh col-span-2 '+bP+'"><i class="fa-solid fa-image"></i> Share results image</button><button class="lg '+bS+'">Copy log</button><button class="nw '+bD+'">New session</button></div>',true);
+  const d=modal('<div class="p-5 border-b border-dark-700"><h3 class="text-2xl text-white">Session Results</h3><p class="text-xs text-gray-400">'+S.log.length+' games played · session ended</p></div><div class="divide-y divide-dark-700">'+rows+'</div><div class="p-5 border-t border-dark-700 text-center">'+lk+'</div><div class="p-4 border-t border-dark-700 grid grid-cols-2 gap-3"><button class="sh col-span-2 '+bP+'"><i class="fa-solid fa-image"></i> Share results image</button><button class="nw col-span-2 '+bD+'">New session</button></div>',true);
   const cp=d.querySelector('.cp');if(cp)cp.onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
-  d.querySelector('.sh').onclick=shareImg;d.querySelector('.lg').onclick=()=>$('cp').click();
+  d.querySelector('.sh').onclick=shareImg;
   d.querySelector('.nw').onclick=()=>ask('Start new session?','This clears the stack, courts, leaderboard and log. Make sure you have shared the results.',()=>{d.remove();S=mk();save();render();toast('New session started','success')})
 }
 
@@ -276,6 +276,9 @@ const lsel=i=>`<select onchange="setLv(${i},+this.value)" title="Skill level" cl
 function renderNext(){const q=S.queue;
 $('mdb').className='px-3 py-1.5 rounded-lg border '+(S.md=='bal'?'bg-pickle-500 text-dark-900 border-pickle-500 font-semibold':'border-dark-700 text-gray-300');
 $('mds').className='px-3 py-1.5 rounded-lg border '+(S.md=='soc'?'bg-pickle-500 text-dark-900 border-pickle-500 font-semibold':'border-dark-700 text-gray-300');
+$('mdi').innerHTML=S.md=='bal'
+?'<b class="text-gray-200">Balanced:</b> evens out teams by skill rating and avoids repeating the same partners when possible. Set stars on players for best results.'
+:'<b class="text-gray-200">Social mix:</b> rotates partners before repeating, then spreads opponents as fairly as possible. Ratings are not used.';
 const ix=pick4();if(ix.length<4){$('unxb').innerHTML='<p class="text-sm text-gray-500">Add at least 4 players to see the next teams.</p>';return}
 const t=split4(ix.map(i=>q[i]));
 $('unxb').innerHTML='<div class="grid grid-cols-2 gap-3">'+[[t.slice(0,2),'Team 1','bg-blue-500','bg-blue-500/10'],[t.slice(2),'Team 2','bg-orange-500','bg-orange-500/10']].map(([p,l,h,b])=>`<div class="rounded-xl overflow-hidden border border-dark-700"><div class="${h} text-white text-xs font-bold px-3 py-1.5">${l}</div><div class="${b} p-3 space-y-1">${p.map(n=>`<div>${esc(n)} <span class="text-xs text-gray-500">${'★'.repeat(lvl(n))}</span></div>`).join('')}</div></div>`).join('')+'</div>'}
@@ -334,9 +337,6 @@ function render(){if(SV)return renderSession();if(V)return renderViewer();$('tg'
 $('tg').onchange=e=>{S.target=+e.target.value;save();render()};
 $('rs').onclick=()=>ask('End session?','Active matches will be cancelled and the session closes for good. You can still share the results afterwards.',endS);
 $('cl').onclick=()=>ask('Clear match log?','All logged matches will be removed.',()=>{S.log=[];save();render()});
-$('cp').onclick=async()=>{if(!S.log.length)return toast('Nothing to copy yet.','error');
-const t=S.log.map(l=>`${new Date(l.t).toLocaleDateString()} ${hm(l.t)} ${l.c}: ${tx(l.p,0)} ${l.s[0]}-${l.s[1]} ${tx(l.p,1)}`).join('\n');
-try{await navigator.clipboard.writeText(t);toast('Log copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
 
 /* Init + live sync (other tabs on this device update instantly) */
 load();

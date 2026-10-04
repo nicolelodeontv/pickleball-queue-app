@@ -42,19 +42,20 @@ h1,h2,h3,.font-sport{font-family:Oswald,sans-serif;text-transform:uppercase;lett
 <div id="msg" class="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none flex flex-col gap-2"></div>
 
 <main class="flex-grow container mx-auto px-4 py-8">
+<div id="nav" class="flex gap-2 mb-6 overflow-x-auto"><button id="nvp" onclick="nav('play')">Play</button><button id="nvl" onclick="nav('lb')">Leaderboard</button><button id="nvg" onclick="nav('log')">Match Log</button></div>
 <div id="viewer" class="hidden max-w-xl mx-auto"></div>
 <div id="app" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-<section class="lg:col-span-4 bg-dark-800 rounded-2xl border border-dark-700 shadow-xl overflow-hidden flex flex-col" style="max-height:80vh">
+<section id="sstk" class="lg:col-span-4 bg-dark-800 rounded-2xl border border-dark-700 shadow-xl overflow-hidden flex flex-col" style="max-height:80vh">
 <div class="p-6 border-b border-dark-700">
-<h2 class="text-xl text-white mb-4"><i class="fa-solid fa-users text-pickle-500"></i> The Stack (<span id="qc">0</span>)</h2>
+<div class="flex items-center justify-between mb-4"><h2 class="text-xl text-white"><i class="fa-solid fa-users text-pickle-500"></i> The Stack (<span id="qc">0</span>)</h2><button onclick="clAll()" class="text-xs text-gray-400 hover:text-red-400"><i class="fa-solid fa-trash"></i> Clear all</button></div>
 <form id="f" class="flex gap-2">
 <input id="pn" type="text" placeholder="Name, several with commas, or Ana | 3.5" autocomplete="off" class="flex-grow min-w-0 bg-dark-900 border border-dark-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-pickle-500">
 <button class="bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-sport font-bold px-5 rounded-lg active:scale-95">ADD</button>
 </form>
 </div>
 <div class="px-4 pt-4">
-<div class="flex items-center justify-between mb-2"><h3 class="text-xs font-bold uppercase tracking-wide text-gray-400">Not yet here (<span id="wc">0</span>)</h3><span class="text-[11px] text-gray-500">Check in players as they arrive</span></div>
+<div class="flex items-center justify-between mb-2"><h3 class="text-xs font-bold uppercase tracking-wide text-gray-400">Not yet here (<span id="wc">0</span>)</h3><div class="flex items-center gap-2"><span class="text-[11px] text-gray-500">Check in players as they arrive</span><button onclick="ciAll()" class="bg-pickle-500 text-dark-900 font-bold rounded px-2 py-1 text-xs">Check in all</button></div></div>
 <ul id="wl" class="space-y-2"></ul>
 <div id="we" class="text-xs text-gray-600 py-2">Everyone is checked in.</div>
 </div>
@@ -67,13 +68,13 @@ h1,h2,h3,.font-sport{font-family:Oswald,sans-serif;text-transform:uppercase;lett
 </div>
 </section>
 
-<div class="lg:col-span-8 space-y-10">
-<section class="bg-dark-800 rounded-2xl border border-dark-700 p-5">
+<div id="rcol" class="lg:col-span-8 space-y-10">
+<section id="sun" class="bg-dark-800 rounded-2xl border border-dark-700 p-5">
 <div class="flex flex-wrap justify-between items-center gap-3 mb-4"><div><h2 class="text-2xl text-white">Up Next</h2><p class="text-gray-400 text-sm">Teams for the next four players in the stack.</p></div>
 <div class="flex items-center gap-2 text-xs"><button id="mdb" onclick="smd('bal')">Balanced</button><button id="mds" onclick="smd('soc')">Social mix</button><button onclick="shuf()" class="px-3 py-1.5 rounded-lg border border-dark-700 text-gray-300 hover:border-pickle-500"><i class="fa-solid fa-shuffle"></i> Reshuffle</button></div></div>
 <div id="unxb"></div>
 </section>
-<section>
+<section id="scr">
 <div class="flex flex-wrap justify-between items-end gap-3 mb-6">
 <div><h2 class="text-3xl text-white">Active Courts</h2><p class="text-gray-400 text-sm mt-1">Score matches, share them, and clear courts when they finish.</p></div>
 <div class="flex items-center gap-4 text-xs text-gray-400">
@@ -84,7 +85,6 @@ h1,h2,h3,.font-sport{font-family:Oswald,sans-serif;text-transform:uppercase;lett
 <div id="courts" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
 </section>
 
-<div class="flex gap-2"><button id="tbl" onclick="tab('lb')">Leaderboard</button><button id="tbm" onclick="tab('log')">Match Log</button></div>
 <section id="slb">
 <div class="mb-4"><h2 class="text-3xl text-white">Leaderboard</h2><p class="text-gray-400 text-sm mt-1">Built from the match log. Sorted by wins, then point difference.</p></div>
 <div id="lb" class="bg-dark-800 border border-dark-700 rounded-2xl overflow-x-auto"></div>
@@ -234,11 +234,16 @@ q('.bk').onclick=()=>{d.remove();S.ended=false;save();render()};
 q('.nw').onclick=()=>{d.remove();const sn=S.snd;S=mk();S.snd=sn;save();render();toast('New session started','success')};
 document.body.append(d)}
 
-let TB='lb';
-function tab(t){TB=t;$('slb').classList.toggle('hidden',t!='lb');$('slg').classList.toggle('hidden',t!='log');
+
+let NV='play';
+function nav(v){NV=v;const p=v=='play';
+['sstk','sun','scr'].forEach(i=>$(i).classList.toggle('hidden',!p));
+$('slb').classList.toggle('hidden',v!='lb');$('slg').classList.toggle('hidden',v!='log');
+$('rcol').classList.toggle('lg:col-span-8',p);$('rcol').classList.toggle('lg:col-span-12',!p);
 const on='bg-pickle-500 text-dark-900 font-semibold border-pickle-500',off='border-dark-700 text-gray-300';
-$('tbl').className='px-4 py-2 rounded-lg border text-sm '+(t=='lb'?on:off);
-$('tbm').className='px-4 py-2 rounded-lg border text-sm '+(t=='log'?on:off)}
+[['nvp','play'],['nvl','lb'],['nvg','log']].forEach(([i,k])=>$(i).className='px-4 py-2 rounded-lg border text-sm whitespace-nowrap '+(v==k?on:off))}
+function ciAll(){if(!S.waiting||!S.waiting.length)return;S.queue.push(...S.waiting);S.waiting=[];save();render()}
+function clAll(){ask('Clear all players?','Removes everyone from the stack and the Not yet here list. Courts and the log stay.',()=>{S.queue=[];S.waiting=[];save();render()})}
 
 const isRest=n=>!!(S.rest&&S.rest[n.toLowerCase()]);
 const pick4=()=>{const ix=[];S.queue.forEach((p,i)=>{if(ix.length<4&&!isRest(p))ix.push(i)});return ix};

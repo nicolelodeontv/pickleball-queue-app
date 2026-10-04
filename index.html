@@ -235,7 +235,7 @@ const lv=c||(s.code&&s.p.length&&!s.fin),w=win(s.s,s.tg||11),row=i=>`<div class=
 $('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><h2 class="text-2xl text-white">${esc(s.n)}</h2><span class="text-xs font-bold rounded px-2 py-1 ${lv?'text-red-400 bg-red-500/10':'text-gray-300 bg-dark-700'}">${lv?'<i class="fa-solid fa-circle live text-[8px]"></i> LIVE':(s.f||s.fin)?'FINAL':'SNAPSHOT'}</span></div><div class="space-y-3">${row(0)}${row(1)}</div>
 <p class="text-xs text-gray-500 mt-4">${lv?(s.code?'Updating live.':'Updating live on this device.'):s.code?'Final score.':'Score as of '+hm(s.ts)+'. Ask for a new link for the latest score.'}</p><a href="${location.pathname}" class="inline-block mt-4 text-sm text-pickle-500 underline">Open PickleStack</a>`}
 
-function render(){if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderQueue();renderNext();renderCourts();renderLB();renderLog()}
+function render(){if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog()}
 
 /* Controls */
 $('tg').onchange=e=>{S.target=+e.target.value;save();render()};

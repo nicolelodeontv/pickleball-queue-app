@@ -22,7 +22,7 @@ await page.getByRole('button',{name:'Close'}).click();await page.getByRole('butt
 await check('permanent end results',async()=>{await page.getByText('Session Results',{exact:true}).waitFor();if(await page.getByRole('button',{name:/Back to session/i}).count())throw Error('Back to session exists');await page.getByRole('button',{name:/Share results image/i}).waitFor()});
 const resultsUrl=await page.locator('.break-all').last().innerText();await page.getByRole('button',{name:'Copy results link'}).click();await check('results clipboard',async()=>{if(await page.evaluate(()=>navigator.clipboard.readText())!==resultsUrl)throw Error('results clipboard mismatch')});
 await page.getByRole('button',{name:/Share results image/i}).click();await check('results image share wiring',async()=>{const x=await page.evaluate(()=>window.__shared);if(!x?.hasFiles||x.fileName!=='picklestack-results.png')throw Error('image share mismatch')});
-await check('old live link final',async()=>{const p=await context.newPage();await p.goto(liveUrl,{waitUntil:'networkidle'});await p.getByText('Final Results',{exact:true}).waitFor({timeout:15000});await p.close()});
+await check('old live link final',async()=>{const p=await context.newPage();await p.goto(liveUrl,{waitUntil:'networkidle'});await p.getByText('Session Results',{exact:true}).waitFor({timeout:15000});await p.close()});
 await check('results survive refresh',async()=>{await page.reload({waitUntil:'networkidle'});await page.getByText('Session Results',{exact:true}).waitFor()});
 console.log('INFO native navigator.share in CI Chromium:',await page.evaluate(()=>window.__nativeShareAvailable));
 console.log('INFO viewport:',await page.evaluate(()=>`${innerWidth}x${innerHeight}`));

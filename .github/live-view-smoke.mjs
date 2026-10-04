@@ -23,6 +23,8 @@ try {
 
   await organizer.locator('#pn').fill('Ana, Bea, Cara, Dani');
   await organizer.locator('#f button').click();
+  await organizer.getByRole('button', { name: 'Check in all' }).waitFor();
+  await organizer.getByRole('button', { name: 'Check in all' }).click();
   await organizer.waitForFunction(() => {
     const el = document.getElementById('qc');
     return el && el.textContent === '4';

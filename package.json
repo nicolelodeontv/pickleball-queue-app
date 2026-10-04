@@ -2,7 +2,7 @@
   "name": "queuezerotwo",
   "private": true,
   "scripts": {
-    "build:css": "tailwindcss -i ./src/input.css -o ./tailwind.css --minify && cp package-lock.json lockfile.txt",
+    "build:css": "tailwindcss -i ./src/input.css -o ./tailwind.css --minify",
     "watch:css": "tailwindcss -i ./src/input.css -o ./tailwind.css --watch"
   },
   "devDependencies": {

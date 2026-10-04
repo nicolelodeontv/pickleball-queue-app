@@ -152,7 +152,7 @@ jobs:
             await vp.goto(liveUrl, {waitUntil:'networkidle'});
             await waitText(vp, 'Live Session', 10000);
             const liveBeforeSecond = await vp.locator('#viewer').innerText();
-            assert.match(liveBeforeSecond, /Live Session/);
+            assert.match(liveBeforeSecond, /LIVE SESSION/);
 
             await hp.locator('button[aria-label="Plus point"]').first().click();
             await vp.waitForFunction(

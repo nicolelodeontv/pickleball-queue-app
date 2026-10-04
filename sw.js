@@ -1,4 +1,4 @@
-/* PickleStack service worker. Bump V on each release to refresh the cache. */
+/* PickleStack service worker. Bump V on each release to refresh the cache. Profiles are included in the app shell. */
 const V = 'picklestack-v2';
 const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
 const CDN = [

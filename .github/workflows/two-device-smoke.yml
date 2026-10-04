@@ -86,7 +86,11 @@ jobs:
               body: document.querySelector('#viewer')?.innerText || ''
             }));
             console.log('LIVE_VIEWER_STATE', JSON.stringify(viewerState));
-            await waitText(vp, 'Alpha', 10000);
+            await vp.waitForFunction(
+              () => /\\bAlpha\\b/.test(document.querySelector('#viewer')?.innerText || ''),
+              null,
+              {timeout:10000}
+            );
 
             const before = await vp.locator('#viewer').innerText();
             assert.match(before, /0/);

@@ -33,6 +33,12 @@ html{color-scheme:dark}
 ::-webkit-scrollbar-thumb{background:#334155;border-radius:8px}
 ::-webkit-scrollbar-thumb:hover{background:#ccff00}
 </style>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0B0F19">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PickleStack">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-pickle-500 selection:text-dark-900">
 <header class="bg-dark-800 border-b border-dark-700 sticky top-0 z-10 shadow-lg">
@@ -342,6 +348,7 @@ setInterval(()=>{if(!V)renderCourts()},30000);
 setInterval(()=>{if(!V&&!SV)document.querySelectorAll('.tm').forEach(e=>e.textContent=fmt(+e.dataset.t))},1000);
 const net=()=>{const on=navigator.onLine;$('ci').className='fa-solid fa-wifi '+(on?'text-green-400':'text-red-500');$('ct').textContent=on?'Saved on this device':'Offline'};
 addEventListener('online',net);addEventListener('offline',net);net();
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 </script>
 </body>
 </html>

@@ -47,7 +47,7 @@ html{color-scheme:dark}
 <div class="bg-pickle-500 text-dark-900 p-2 rounded-lg rotate-12"><i class="fa-solid fa-table-tennis-paddle-ball text-xl"></i></div>
 <div><h1 class="text-2xl font-bold text-white leading-none">Pickle<span class="text-pickle-500">Stack</span></h1><p class="text-xs text-gray-400 font-medium">QUEUE, SCORES & LOG</p></div>
 </div>
-<div class="flex items-center gap-2"><button onclick="stand()" title="Standings" class="bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10"><i class="fa-solid fa-trophy"></i></button><button id="snb" onclick="snd()" title="Sound" class="bg-dark-700 rounded-lg w-10 h-10"></button><button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm" title="Open a read-only live view for players"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live View</span></button></div>
+<div class="flex items-center gap-2"><button onclick="stand()" title="Standings" class="bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10"><i class="fa-solid fa-trophy"></i></button><button id="snb" onclick="snd()" title="Sound" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="tsb" onclick="tts()" title="Voice announcements" class="bg-dark-700 rounded-lg w-10 h-10"></button><button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm" title="Open a read-only live view for players"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live View</span></button></div>
 <div class="text-sm text-gray-400 flex items-center gap-2 bg-dark-900 py-1 px-3 rounded-full border border-dark-700"><i class="fa-solid fa-wifi text-green-400" id="ci"></i><span id="ct" class="hidden sm:inline">Saved on this device</span></div>
 </div>
 </header>
@@ -84,7 +84,7 @@ html{color-scheme:dark}
 <div id="rcol" class="lg:col-span-8 space-y-10">
 <section id="sun" class="bg-dark-800 rounded-2xl border border-dark-700 p-5">
 <div class="flex flex-wrap justify-between items-center gap-3 mb-4"><div><h2 class="text-2xl text-white">Up Next</h2><p class="text-gray-400 text-sm">Teams for the next four players in the stack.</p></div>
-<div class="flex items-center gap-2 text-xs"><button id="mdb" onclick="smd('bal')">Balanced</button><button id="mds" onclick="smd('soc')">Social mix</button><button onclick="shuf()" class="px-3 py-1.5 rounded-lg border border-dark-700 text-gray-300 hover:border-pickle-500"><i class="fa-solid fa-shuffle"></i> Reshuffle</button></div></div>
+<div class="flex items-center gap-2 text-xs"><button id="mdb" onclick="smd('bal')">Balanced</button><button id="mds" onclick="smd('soc')">Social mix</button><button onclick="shuf()" class="px-3 py-1.5 rounded-lg border border-dark-700 text-gray-300 hover:border-pickle-500"><i class="fa-solid fa-shuffle"></i> Reshuffle</button><button onclick="announceNext()" title="Say the next teams out loud" class="px-3 py-1.5 rounded-lg border border-dark-700 text-gray-300 hover:border-pickle-500"><i class="fa-solid fa-bullhorn"></i> Announce</button></div></div>
 <p id="mdi" class="text-xs text-gray-400 mb-3"></p>
 <div class="flex flex-wrap items-center gap-2 text-xs mb-3"><button id="wsb" onclick="tws()"></button><button id="eqb" onclick="teq()"></button><label id="wlw" class="text-gray-400 flex items-center gap-1">Max wins in a row <select id="wls" onchange="swl(+this.value)" class="bg-dark-900 border border-dark-700 rounded px-2 py-1 text-white"><option value="0">No limit</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label></div>
 <p id="wsi" class="text-xs text-gray-400 mb-4 hidden"></p>
@@ -128,7 +128,7 @@ const sb=SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY):nu
 function push(c,st){if(!sb||!c.mid)return;
 const row={code:c.mid,court:c.name,players:c.players,score:c.score,target:S.target,status:st||'live',updated_at:new Date().toISOString()};
 clearTimeout(lt[c.mid]);lt[c.mid]=setTimeout(()=>sb.from('live_matches').upsert(row).then(q=>q.error&&console.warn(q.error.message)),st?0:300)}
-const mk=()=>({queue:[],waiting:[],rest:{},log:[],target:11,lv:{},md:'bal',sd:0,gp:{},ws:false,wl:2,eq:false,courts:[1,2,3,4].map(id=>({id,name:'Court '+id,isActive:false,players:[],score:[0,0],mid:'',t:0}))});
+const mk=()=>({queue:[],waiting:[],rest:{},log:[],target:11,lv:{},md:'bal',sd:0,gp:{},ws:false,wl:2,eq:false,tts:false,courts:[1,2,3,4].map(id=>({id,name:'Court '+id,isActive:false,players:[],score:[0,0],mid:'',t:0}))});
 let S=mk(),V=null,SV=null;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const win=(s,t)=>Math.max(s[0],s[1])>=t&&Math.abs(s[0]-s[1])>=2?(s[0]>s[1]?0:1):-1;
@@ -137,7 +137,7 @@ const nm=(p,i)=>esc(tx(p,i));
 const hm=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
 const mins=t=>Math.max(0,Math.round((Date.now()-t)/60000));
 
-function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.courts){S=s;S.log=S.log||[];S.waiting=S.waiting||[];S.rest=S.rest||{};S.target=S.target||11;S.lv=S.lv||{};S.md=S.md||'bal';S.sd=S.sd||0;S.gp=S.gp||{};S.ws=!!S.ws;S.eq=!!S.eq;S.wl=S.wl==null?2:S.wl;S.courts.forEach(c=>{c.score=c.score||[0,0]})}}catch(e){}}
+function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.courts){S=s;S.log=S.log||[];S.waiting=S.waiting||[];S.rest=S.rest||{};S.target=S.target||11;S.lv=S.lv||{};S.md=S.md||'bal';S.sd=S.sd||0;S.gp=S.gp||{};S.ws=!!S.ws;S.eq=!!S.eq;S.tts=!!S.tts;S.wl=S.wl==null?2:S.wl;S.courts.forEach(c=>{c.score=c.score||[0,0]})}}catch(e){}}
 function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}pushS()}
 
 function toast(m,type){const d=document.createElement('div');
@@ -212,7 +212,7 @@ function showRes(){
   const d=modal('<div class="p-5 border-b border-dark-700"><h3 class="text-2xl text-white">Session Results</h3><p class="text-xs text-gray-400">'+S.log.length+' games played · session ended</p></div><div class="divide-y divide-dark-700">'+rows+'</div><div class="p-5 border-t border-dark-700 text-center">'+lk+'</div><div class="p-4 border-t border-dark-700 grid grid-cols-2 gap-3"><button class="sh col-span-2 '+bP+'"><i class="fa-solid fa-image"></i> Share results image</button><button class="nw col-span-2 '+bD+'">New session</button></div>',true);
   const cp=d.querySelector('.cp');if(cp)cp.onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
   d.querySelector('.sh').onclick=shareImg;
-  d.querySelector('.nw').onclick=()=>ask('Start new session?','This clears the stack, courts, leaderboard and log. Make sure you have shared the results.',()=>{d.remove();const k={snd:S.snd,md:S.md,ws:S.ws,wl:S.wl,eq:S.eq,target:S.target};S=Object.assign(mk(),k);save();render();toast('New session started','success')})
+  d.querySelector('.nw').onclick=()=>ask('Start new session?','This clears the stack, courts, leaderboard and log. Make sure you have shared the results.',()=>{d.remove();const k={snd:S.snd,tts:S.tts,md:S.md,ws:S.ws,wl:S.wl,eq:S.eq,target:S.target};S=Object.assign(mk(),k);save();render();toast('New session started','success')})
 }
 
 /* Stack */
@@ -225,10 +225,10 @@ $('go').onclick=()=>{
 if(pick4().length<4)return toast('Need at least 4 players who are not resting.','error');
 const c=S.courts.find(c=>!c.isActive);if(!c)return toast('No court free. Finish a match first.','error');
 Object.assign(c,{isActive:true,players:takeNext(),score:[0,0],mid:Math.random().toString(36).slice(2,8),t:Date.now()});
-push(c);beep(660,.2);save();render();toast(c.players.join(', ')+' → '+c.name,'success')};
+push(c);beep(660,.2);callMatch(c);save();render();toast(c.players.join(', ')+' → '+c.name,'success')};
 
 /* Scoring + finishing */
-function sc(id,i,d){const c=S.courts.find(x=>x.id==id),b=win(c.score,S.target);c.score[i]=Math.max(0,c.score[i]+d);if(b<0&&win(c.score,S.target)>=0)beep(1000,.35);push(c);save();render()}
+function sc(id,i,d){const c=S.courts.find(x=>x.id==id),b=win(c.score,S.target);c.score[i]=Math.max(0,c.score[i]+d);if(b<0&&win(c.score,S.target)>=0){beep(1000,.35);callWin(c)}push(c);save();render()}
 function clear(c){Object.assign(c,{isActive:false,players:[],score:[0,0],mid:'',t:0,hold:null,stk:0})}
 function fin(id){const c=S.courts.find(x=>x.id==id),w=win(c.score,S.target);
 if(c.score[0]+c.score[1]>0){S.log.unshift({mid:c.mid,c:c.name,p:c.players,s:c.score,w,tg:S.target,t:Date.now(),d:Date.now()-c.t});S.log=S.log.slice(0,200)}
@@ -240,11 +240,11 @@ if(!S.wl||stk<S.wl){const ix=pickN(2);
 if(ix.length==2){const ch=ix.map(i=>S.queue[i]);for(let k=ix.length-1;k>=0;k--)S.queue.splice(ix[k],1);S.queue.push(...lo);
 push(c,'final');const pl=[...wn,...ch];pl.forEach(gpi);
 Object.assign(c,{players:pl,score:[0,0],mid:Math.random().toString(36).slice(2,8),t:Date.now(),hold:wn,stk});
-S.sd++;push(c);save();render();toast(wn.join(' & ')+' stay on '+n+' ('+stk+' in a row) vs '+ch.join(' & '),'success');return}}
+S.sd++;push(c);save();render();say(n+'. '+wn.join(' and ')+' stay on, versus '+ch.join(' and ')+'.');toast(wn.join(' & ')+' stay on '+n+' ('+stk+' in a row) vs '+ch.join(' & '),'success');return}}
 S.queue.push(...lo,...wn);push(c,'final');clear(c);save();render();
-toast(n+' is free. '+(S.wl&&stk>=S.wl?'Winners hit the '+S.wl+'-win limit and go to the back.':'Not enough players to challenge, so everyone is back in the stack.'),'info');return}
+callNext(n);toast(n+' is free. '+(S.wl&&stk>=S.wl?'Winners hit the '+S.wl+'-win limit and go to the back.':'Not enough players to challenge, so everyone is back in the stack.'),'info');return}
 const o=w==1?[1,0]:[0,1];S.queue.push(...c.players.slice(o[0]*2,o[0]*2+2),...c.players.slice(o[1]*2,o[1]*2+2));
-push(c,'final');clear(c);save();render();toast(n+' is free. Winners are back in the stack first.','info')}
+push(c,'final');clear(c);save();render();callNext(n);toast(n+' is free. Winners are back in the stack first.','info')}
 function drop(id){const c=S.courts.find(x=>x.id==id);ask('Cancel match?','Players go back to the top of the stack. Nothing is logged.',()=>{c.players.forEach(gpd);S.queue.unshift(...c.players);push(c,'cancelled');clear(c);save();render()})}
 function ren(id){const c=S.courts.find(x=>x.id==id);if(!c)return;
 const d=modal('<form class="p-6"><h3 class="text-xl text-white mb-4">Rename court</h3><input class="n w-full bg-dark-900 border border-dark-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-pickle-500 mb-5" maxlength="20" value="'+esc(c.name)+'"><div class="flex gap-3"><button type="button" data-x class="flex-1 '+bS+'">Cancel</button><button class="flex-1 '+bP+'">Save</button></div></form>');
@@ -284,6 +284,21 @@ let AC,MG=1;const son=()=>S.snd!==false;
 function beep(f,d){if(!son())return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f;g.gain.value=.15;o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
 function sndUi(){const b=$('snb');if(b)b.innerHTML='<i class="fa-solid '+(son()?'fa-volume-high text-green-400':'fa-volume-xmark text-gray-500')+'"></i>'}
 function snd(){S.snd=!son();save();sndUi();beep(880,.12)}
+
+/* Voice announcements (browser speech, no extra service) */
+const ttsOk=!!(window.speechSynthesis&&window.SpeechSynthesisUtterance),tm=(p,i)=>p.slice(i*2,i*2+2).join(' and ');
+function say(t,force){if(!ttsOk||(!S.tts&&!force))return;try{const u=new SpeechSynthesisUtterance(t);u.rate=.95;speechSynthesis.speak(u)}catch(e){}}
+function ttsUi(){const b=$('tsb');if(b)b.innerHTML='<i class="fa-solid fa-bullhorn '+(S.tts&&ttsOk?'text-pickle-500':'text-gray-500')+'"></i>'}
+function tts(){if(!ttsOk)return toast('This browser has no speech support.','error');
+S.tts=!S.tts;save();ttsUi();if(S.tts)say('Announcements on.',true);else try{speechSynthesis.cancel()}catch(e){}
+toast('Voice announcements '+(S.tts?'on':'off'),'info')}
+function callMatch(c){say(c.name+'. '+tm(c.players,0)+' versus '+tm(c.players,1)+'.')}
+function callWin(c){const w=win(c.score,S.target);if(w>=0)say(c.name+', game over. '+tm(c.players,w)+' win, '+c.score[w]+' to '+c.score[1-w]+'.')}
+function nextText(){const ix=pick4();if(ix.length<4)return '';const t=split4(ix.map(i=>S.queue[i]));return 'Next up: '+tm(t,0)+' versus '+tm(t,1)+'.'}
+function callNext(n){const t=nextText();say(n+' is free.'+(t?' '+t:''))}
+function announceNext(){if(!ttsOk)return toast('This browser has no speech support.','error');
+const t=nextText();if(!t)return toast('Add at least 4 players to announce the next teams.','error');
+const c=S.courts.find(x=>!x.isActive);say(t+(c?' Please head to '+c.name+'.':''),true)}
 function stand(){const d=modal(''),box=d.querySelector('.mb');
 const draw=()=>{const r=stats().filter(x=>x.w+x.l>=MG).sort((a,b)=>b.w-a.w||b.w/(b.w+b.l)-a.w/(a.w+a.l)||b.d-a.d);let rk=0,prev='';
 box.innerHTML=`<div class="p-5 border-b border-dark-700 flex justify-between items-start"><div><h3 class="text-xl text-white">Live Standings</h3><p class="text-xs text-gray-400">${S.log.length} games logged</p></div><button data-x class="text-gray-400 text-xl" aria-label="Close">✕</button></div>
@@ -385,7 +400,7 @@ const lv=c||(s.code&&s.p.length&&!s.fin),w=win(s.s,s.tg||11),row=i=>`<div class=
 $('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><h2 class="text-2xl text-white">${esc(s.n)}</h2><span class="text-xs font-bold rounded px-2 py-1 ${lv?'text-red-400 bg-red-500/10':'text-gray-300 bg-dark-700'}">${lv?'<i class="fa-solid fa-circle live text-[8px]"></i> LIVE':(s.f||s.fin)?'FINAL':'SNAPSHOT'}</span></div><div class="space-y-3">${row(0)}${row(1)}</div>
 <p class="text-xs text-gray-500 mt-4">${lv?(s.code?'Updating live.':'Updating live on this device.'):s.code?'Final score.':'Score as of '+hm(s.ts)+'. Ask for a new link for the latest score.'}</p><a href="${location.pathname}" class="inline-block mt-4 text-sm text-pickle-500 underline">Open PickleStack</a>`}
 
-function render(){sndUi();if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();nav(NV)}
+function render(){sndUi();ttsUi();if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();nav(NV)}
 
 /* Controls */
 $('tg').onchange=e=>{S.target=+e.target.value;save();render()};

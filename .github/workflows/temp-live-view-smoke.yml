@@ -24,3 +24,5 @@ jobs:
         env:
           PICKLESTACK_PREVIEW: https://pickleball-queue-pmuwy47zx-meow-7e9e.vercel.app/
         run: node .github/live-view-smoke.mjs
+
+# Browser smoke is temporary and preview-only.

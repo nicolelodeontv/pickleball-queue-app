@@ -26,6 +26,12 @@ h1,h2,h3,.font-sport{font-family:Oswald,sans-serif;text-transform:uppercase;lett
 .mb{animation:s .3s ease-out}@keyframes s{from{transform:translateY(-50%);opacity:0}}
 @media(prefers-reduced-motion:reduce){.live,.mb{animation:none}}
 .qrb svg{width:100%;height:auto;display:block}
+html{color-scheme:dark}
+*{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:#ccff00}
 </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-pickle-500 selection:text-dark-900">
@@ -154,6 +160,9 @@ const o=w==1?[1,0]:[0,1];S.queue.push(...c.players.slice(o[0]*2,o[0]*2+2),...c.p
 const n=c.name;push(c,'final');clear(c);save();render();toast(n+' is free. Winners are back in the stack first.','info')}
 function drop(id){const c=S.courts.find(x=>x.id==id);ask('Cancel match?','Players go back to the top of the stack. Nothing is logged.',()=>{S.queue.unshift(...c.players);push(c,'cancelled');clear(c);save();render()})}
 
+const fmt=t=>{const s=Math.max(0,Math.floor((Date.now()-t)/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+function ren(id){const c=S.courts.find(x=>x.id==id),n=prompt('Court name',c.name);if(n&&n.trim()){c.name=n.trim().slice(0,20);push(c);save();render()}}
+
 /* Sharing */
 const enc=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
 const dec=h=>JSON.parse(decodeURIComponent(escape(atob(h))));
@@ -181,11 +190,11 @@ return `<div class="flex items-center justify-between gap-2 p-3 rounded-xl borde
 <div class="flex items-center gap-2"><button class="sb" aria-label="Minus point" onclick="sc(${c.id},${i},-1)">−</button><span class="font-sport text-3xl w-10 text-center ${w?'text-pickle-500':''}">${c.score[i]}</span><button class="sb" aria-label="Plus point" onclick="sc(${c.id},${i},1)">+</button></div></div>`}
 function renderCourts(){$('courts').innerHTML=S.courts.map(c=>c.isActive?
 `<div class="bg-dark-800 rounded-2xl border border-pickle-500/30 overflow-hidden flex flex-col relative"><div class="absolute top-0 inset-x-0 h-1 bg-pickle-500"></div>
-<div class="p-4 border-b border-dark-700 flex justify-between items-center"><h3 class="text-xl text-pickle-500">${c.name}</h3><span class="text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1"><i class="fa-solid fa-circle live text-[8px]"></i> LIVE ${mins(c.t)}m</span></div>
+<div class="p-4 border-b border-dark-700 flex justify-between items-center"><h3 class="text-xl text-pickle-500">${esc(c.name)} <button onclick="ren(${c.id})" title="Rename" class="text-gray-500 hover:text-pickle-500 text-sm"><i class="fa-solid fa-pencil"></i></button></h3><span class="text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1"><i class="fa-solid fa-circle live text-[8px]"></i> LIVE <span class="tm" data-t="${c.t}">${fmt(c.t)}</span></span></div>
 <div class="p-4 space-y-2 flex-grow">${team(c,0)}${team(c,1)}<p class="text-[11px] text-gray-500 text-center">First to ${S.target}, win by 2</p></div>
 <div class="p-3 border-t border-dark-700 flex gap-2"><button onclick="fin(${c.id})" class="flex-grow rounded-lg text-sm font-bold ${win(c.score,S.target)>=0?'bg-pickle-500 text-dark-900':'border border-dark-700 text-gray-300 hover:border-pickle-500'}">FINISH & LOG</button>
 <button onclick="drop(${c.id})" title="Cancel match" class="sb hover:!bg-red-500 hover:!text-white"><i class="fa-solid fa-xmark"></i></button></div></div>`:
-`<div class="bg-dark-900 rounded-2xl border border-dark-700 opacity-70 flex flex-col items-center justify-center py-10 px-5 text-center"><i class="fa-solid fa-check text-2xl text-gray-500 mb-3"></i><h3 class="text-xl text-gray-400">${c.name}</h3><p class="text-sm text-gray-500">Open and waiting for players.</p></div>`).join('')}
+`<div class="bg-dark-900 rounded-2xl border border-dark-700 opacity-70 flex flex-col items-center justify-center py-10 px-5 text-center"><i class="fa-solid fa-check text-2xl text-gray-500 mb-3"></i><h3 class="text-xl text-gray-400">${esc(c.name)} <button onclick="ren(${c.id})" title="Rename" class="text-gray-500 hover:text-pickle-500 text-sm"><i class="fa-solid fa-pencil"></i></button></h3><p class="text-sm text-gray-500">Open and waiting for players.</p></div>`).join('')}
 const lvl=n=>S.lv[n.toLowerCase()]||0;
 const pc=(a,b)=>S.log.reduce((n,l)=>n+[0,2].filter(i=>{const t=l.p.slice(i,i+2);return t.includes(a)&&t.includes(b)}).length,0);
 const oc=(a,b)=>S.log.reduce((n,l)=>n+((l.p.slice(0,2).includes(a)&&l.p.slice(2).includes(b))||(l.p.slice(0,2).includes(b)&&l.p.slice(2).includes(a))?1:0),0);
@@ -277,10 +286,10 @@ try{await navigator.clipboard.writeText(t);toast('Log copied','success')}catch(e
 
 /* Init + live sync (other tabs on this device update instantly) */
 load();
-if(location.hash.startsWith('#m=')){const h=location.hash.slice(3);try{V=h.length<=10?{m:h,code:1,n:'Match',p:[],s:[0,0],tg:11,ts:Date.now()}:dec(h);$('app').classList.add('hidden');$('viewer').classList.remove('hidden')}catch(e){}}
+if(location.hash.startsWith('#m=')){const h=location.hash.slice(3);try{V=h.length<=10?{m:h,code:1,n:'Match',p:[],s:[0,0],tg:11,ts:Date.now()}:dec(h);$('app').classList.add('hidden');$('viewer').classList.remove('hidden');$('nav').classList.add('hidden')}catch(e){}}
 if(V&&V.code&&sb){const ap=q=>{V={...V,n:q.court,p:q.players,s:q.score,tg:q.target,fin:q.status!='live',ts:Date.parse(q.updated_at)};render()};
 sb.from('live_matches').select('*').eq('code',V.m).maybeSingle().then(q=>q.data&&ap(q.data));
-sb.channel('m'+V.m).on('postgres_changes',{event:'*',schema:'public',table:'live_matches',filter:'code=eq.'+V.m},q=>q.new&&ap(q.new)).subscribe()}if(location.hash.startsWith('#s=')){SV={code:location.hash.slice(3),d:null,ts:Date.now()};$('app').classList.add('hidden');$('viewer').classList.remove('hidden','max-w-xl');$('viewer').classList.add('max-w-3xl');
+sb.channel('m'+V.m).on('postgres_changes',{event:'*',schema:'public',table:'live_matches',filter:'code=eq.'+V.m},q=>q.new&&ap(q.new)).subscribe()}if(location.hash.startsWith('#s=')){SV={code:location.hash.slice(3),d:null,ts:Date.now()};$('app').classList.add('hidden');$('viewer').classList.remove('hidden','max-w-xl');$('nav').classList.add('hidden');$('viewer').classList.add('max-w-3xl');
 if(sb){const ap=q=>{SV.d=q.data;SV.ts=Date.parse(q.updated_at);render()};
 sb.from('live_sessions').select('*').eq('code',SV.code).maybeSingle().then(q=>q.data&&ap(q.data));
 sb.channel('s'+SV.code).on('postgres_changes',{event:'*',schema:'public',table:'live_sessions',filter:'code=eq.'+SV.code},q=>q.new&&ap(q.new)).subscribe()}}
@@ -289,6 +298,7 @@ render();
 addEventListener('storage',e=>{if(e.key==K){load();render()}});
 onhashchange=()=>location.reload();
 setInterval(()=>{if(!V)renderCourts()},30000);
+setInterval(()=>{if(!V&&!SV)document.querySelectorAll('.tm').forEach(e=>e.textContent=fmt(+e.dataset.t))},1000);
 const net=()=>{const on=navigator.onLine;$('ci').className='fa-solid fa-wifi '+(on?'text-green-400':'text-red-500');$('ct').textContent=on?'Saved on this device':'Offline'};
 addEventListener('online',net);addEventListener('offline',net);net();
 </script>

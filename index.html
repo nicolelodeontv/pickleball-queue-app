@@ -217,6 +217,7 @@ const K='pickleStackState',$=id=>document.getElementById(id);
 /* Live sharing: paste your Supabase project URL and anon key (see README). Leave empty to share snapshot links instead. */
 const SB_URL='https://wochetemsnrysnjrgoed.supabase.co',SB_KEY='sb_publishable_vk1EKES125_AzGi9iPHxSw_XiliPhcA';
 const sb=SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY):null,lt={};
+const viewerClient=code=>SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY,{global:{headers:{'x-picklestack-session-code':code}}}):null;
 function push(c,st){if(!sb||!c.mid)return;
 const row={code:c.mid,court:c.name,players:c.players,score:c.score,target:S.target,status:st||'live',updated_at:new Date().toISOString()};
 clearTimeout(lt[c.mid]);lt[c.mid]=setTimeout(()=>sb.from('live_matches').upsert(row).then(q=>q.error&&console.warn(q.error.message)),st?0:300)}
@@ -255,8 +256,8 @@ const qrSvg=u=>{try{const q=qrcode(0,'M');q.addData(u);q.make();return q.createS
 async function live(){
   if(S.ended)return showRes();
   if(!sb)return toast('Live View needs Supabase.','error');
-  if(!S.sid)S.sid=Math.random().toString(36).slice(2,8);
-  const q=await sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()});
+  ensureLiveIdentity();
+  const q=await publishSession(sdata());
   if(q.error)return toast('Publish failed: '+q.error.message,'error');
   save();const url=location.origin+location.pathname+'#s='+S.sid;
   const d=modal('<div class="p-6 text-center"><div class="flex items-center justify-center gap-2 mb-1"><h3 class="text-xl text-white">Live View</h3><span class="text-[10px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-full px-2 py-1">VIEW ONLY</span></div><p class="text-xs text-gray-400 mb-4">Players can scan the QR code or open the link to watch courts, Up Next, the stack and leaderboard in real time.</p><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:200px;max-width:100%">'+qrSvg(url)+'</div><div class="mt-4 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-xs text-gray-300 break-all">'+esc(url)+'</div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"><button class="cp '+bS+'">Copy link</button><button class="sh '+bP+'">Share</button><button class="op '+bS+'">Open view</button></div><button data-x class="mt-4 text-sm text-gray-400 hover:text-white">Close</button></div>');
@@ -292,8 +293,8 @@ async function shareImg(){
 async function endS(){
   S.courts.forEach(c=>{if(c.isActive){push(c,'cancelled');clear(c)}});
   S.rid=Math.random().toString(36).slice(2,8);S.ended=true;
-  const pay={...sdata(),e:1,n:S.log.length,g:S.log.slice(0,60).map(l=>({p:l.p,s:l.s,c:l.c,w:l.w}))},now=new Date().toISOString();
-  if(sb){const rows=[{code:S.rid,data:pay,updated_at:now}];if(S.sid)rows.push({code:S.sid,data:pay,updated_at:now});const q=await sb.from('live_sessions').upsert(rows);if(q.error){S.rid='';console.warn(q.error.message)}}
+  const pay={...sdata(),e:1,n:S.log.length,g:S.log.slice(0,60).map(l=>({p:l.p,s:l.s,c:l.c,w:l.w}))};
+  if(sb){ensureLiveIdentity();const q=await publishSession(pay);if(q.error){S.rid='';console.warn(q.error.message)}else S.rid=S.sid}
   save();render();showRes()
 }
 function showRes(){
@@ -489,7 +490,12 @@ hd.addEventListener('pointermove',mv);hd.addEventListener('pointerup',up);hd.add
 })();
 
 function sdata(){const q=S.queue;return{t:S.target,courts:S.courts.map(c=>({n:c.name,a:c.isActive,p:c.players,s:c.score})),nx:pick4().length>=4?split4(pick4().map(i=>q[i])):[],q:q,lb:stats().slice(0,20)}}
-let st;function pushS(){if(!sb||!S.sid||S.ended)return;clearTimeout(st);st=setTimeout(()=>{if(S.ended)return;sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()}).then(q=>q.error&&console.warn(q.error.message))},400)}
+const LIVE_ALPH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const randLiveCode=()=>{const a=new Uint8Array(10);crypto.getRandomValues(a);return Array.from(a,v=>LIVE_ALPH[v%LIVE_ALPH.length]).join('')};
+const randHostKey=()=>{const a=new Uint8Array(32);crypto.getRandomValues(a);return Array.from(a,v=>v.toString(16).padStart(2,'0')).join('')};
+function ensureLiveIdentity(){if(!S.sid||!S.sh){S.sid=randLiveCode();S.sh=randHostKey()}}
+async function publishSession(payload){if(!sb)return {error:new Error('Supabase unavailable')};ensureLiveIdentity();let q=await sb.rpc('publish_pickle_session',{p_code:S.sid,p_host_key:S.sh,p_payload:payload});if(q.error&&/Invalid host key|expired session/i.test(q.error.message||'')){S.sid=randLiveCode();S.sh=randHostKey();q=await sb.rpc('publish_pickle_session',{p_code:S.sid,p_host_key:S.sh,p_payload:payload})}return q}
+let st;function pushS(){if(!sb||S.ended)return;ensureLiveIdentity();clearTimeout(st);st=setTimeout(async()=>{if(S.ended)return;const q=await publishSession(sdata());if(q.error)console.warn(q.error.message)},400)}
 function renderSession(){const d=SV.d;if(!d){$('viewer').innerHTML='<div class="bg-dark-800 border border-dark-700 rounded-2xl p-8 text-center"><div class="text-blue-300 text-sm font-semibold mb-2">LIVE VIEW</div><p class="text-gray-400 text-sm">'+(SV.missing?'This live session is unavailable or has ended.':'Connecting to the shared session…')+'</p><p class="text-xs text-gray-500 mt-2">'+(SV.missing?'Ask the organizer for a new Live View link.':'Your screen will update automatically once connected.')+'</p></div>';return}
 if(d.e)return renderResults(d);
 const courts=(d.courts||[]).map(c=>c.a?`<div class="bg-dark-800 border border-pickle-500/30 rounded-2xl p-4"><div class="flex justify-between mb-2"><h3 class="text-pickle-500 text-lg">${esc(c.n)}</h3><span class="text-xs text-red-400"><i class="fa-solid fa-circle live text-[8px]"></i> LIVE</span></div>${[0,1].map(i=>`<div class="flex justify-between items-center py-1"><span class="truncate">${nm(c.p,i)}</span><span class="font-sport text-3xl ${win(c.s,d.t)==i?'text-pickle-500':''}">${c.s[i]}</span></div>`).join('')}</div>`:`<div class="bg-dark-900 border border-dark-700 rounded-2xl p-4 text-center text-gray-500 opacity-70">${esc(c.n)} · open</div>`).join('');
@@ -517,9 +523,9 @@ if(location.hash.startsWith('#m=')){const h=location.hash.slice(3);try{V=h.lengt
 if(V&&V.code&&sb){const ap=q=>{V={...V,n:q.court,p:q.players,s:q.score,tg:q.target,fin:q.status!='live',ts:Date.parse(q.updated_at)};render()};
 sb.from('live_matches').select('*').eq('code',V.m).maybeSingle().then(q=>q.data&&ap(q.data));
 sb.channel('m'+V.m).on('postgres_changes',{event:'*',schema:'public',table:'live_matches',filter:'code=eq.'+V.m},q=>q.new&&ap(q.new)).subscribe()}if(location.hash.startsWith('#s=')){SV={code:location.hash.slice(3),d:null,ts:Date.now(),status:'CONNECTING'};$('app').classList.add('hidden');$('viewer').classList.remove('hidden','max-w-xl');$('nav').classList.add('hidden');$('viewer').classList.add('max-w-3xl');
-if(sb){const ap=q=>{SV.d=q.data;SV.ts=Date.parse(q.updated_at);render()};
-sb.from('live_sessions').select('*').eq('code',SV.code).maybeSingle().then(q=>{if(q.data)ap(q.data);else{SV.missing=true;render()}});
-sb.channel('s'+SV.code).on('postgres_changes',{event:'*',schema:'public',table:'live_sessions',filter:'code=eq.'+SV.code},q=>q.new&&ap(q.new)).subscribe(status=>{SV.status=status||'CONNECTING';render()})}}
+if(sb){const sv=viewerClient(SV.code),ap=q=>{SV.d=q.data;SV.ts=Date.parse(q.updated_at);render()};
+sv.from('live_sessions').select('code,data,updated_at,expires_at').eq('code',SV.code).maybeSingle().then(q=>{if(q.data)ap(q.data);else{SV.missing=true;render()}});
+sv.channel('s'+SV.code).on('postgres_changes',{event:'*',schema:'public',table:'live_sessions',filter:'code=eq.'+SV.code},q=>q.new&&ap(q.new)).subscribe(status=>{SV.status=status||'CONNECTING';render()})}}
 
 render();
 if(S.ended&&!V&&!SV)showRes();

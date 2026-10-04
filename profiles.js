@@ -1,0 +1,86 @@
+/* PickleStack: all-time player profiles. Saved on this device, separate from the session, so New session keeps them. */
+(function(){
+const PK='pickleStackPlayers',ky=n=>n.toLowerCase();
+let P={};
+try{P=JSON.parse(localStorage.getItem(PK))||{}}catch(e){P={}}
+const sv=()=>{try{localStorage.setItem(PK,JSON.stringify(P))}catch(e){}};
+const row=n=>P[ky(n)]||(P[ky(n)]={n,w:0,l:0,pf:0,pa:0,s:0,last:0,form:[],pt:{},lv:0});
+const dt=t=>t?new Date(t).toLocaleDateString([],{month:'short',day:'numeric'}):'never';
+const pct=r=>r.w+r.l?Math.round(100*r.w/(r.w+r.l)):0;
+
+/* Record each finished, scored match */
+const _fin=fin;
+fin=function(id){
+  const c=S.courts.find(x=>x.id==id);
+  if(c&&c.isActive){
+    const w=win(c.score,S.target);
+    if(w>=0){
+      S.pseen=S.pseen||{};
+      c.players.forEach((n,i)=>{
+        const t=i<2?0:1,r=row(n),won=w==t,m=c.players[t*2+(1-i%2)];
+        won?r.w++:r.l++;r.pf+=c.score[t];r.pa+=c.score[1-t];r.last=Date.now();
+        r.form.unshift(won?'W':'L');r.form=r.form.slice(0,10);
+        if(!S.pseen[ky(n)]){S.pseen[ky(n)]=1;r.s++}
+        const p=r.pt[ky(m)]||(r.pt[ky(m)]={n:m,g:0,w:0});p.g++;if(won)p.w++;
+        if(S.lv&&S.lv[ky(n)])r.lv=S.lv[ky(n)];
+      });
+      sv();
+    }
+  }
+  return _fin(id);
+};
+
+function addP(n){
+  const k=ky(n),all=[...S.queue,...S.waiting,...S.courts.flatMap(c=>c.isActive?c.players:[])];
+  if(all.some(x=>ky(x)==k))return toast(n+' is already in this session.','error');
+  S.waiting.push(n);
+  const r=P[k];if(r&&r.lv&&!S.lv[k])S.lv[k]=r.lv;
+  save();render();toast(n+' added to Not yet here','success');
+}
+function best(r){
+  const a=Object.values(r.pt).filter(x=>x.g>=2).sort((a,b)=>b.w/b.g-a.w/a.g||b.g-a.g)[0]||Object.values(r.pt).sort((a,b)=>b.g-a.g)[0];
+  return a?a.n+' ('+a.w+'-'+(a.g-a.w)+' together)':'none yet';
+}
+function profile(r){
+  const g=r.w+r.l,d=r.pf-r.pa,box=modal('').querySelector('.mb');
+  box.innerHTML='<div class="p-5 border-b border-dark-700 flex justify-between items-start"><div><h3 class="text-xl text-white">'+esc(r.n)+'</h3><p class="text-xs text-gray-400">'+(r.lv?'★'.repeat(r.lv)+' · ':'')+'Last played '+dt(r.last)+'</p></div><button data-x class="text-gray-400 text-xl" aria-label="Close">✕</button></div>'
+  +'<div class="grid grid-cols-3 gap-3 p-5 text-center">'+[[r.w+'-'+r.l,'W-L'],[pct(r)+'%','Win rate'],[g,'Games'],[r.s,'Sessions'],[g?(r.pf/g).toFixed(1):'0','Avg points'],[(d>0?'+':'')+d,'+/-']].map(x=>'<div class="bg-dark-900 border border-dark-700 rounded-xl p-3"><div class="font-sport text-2xl text-white">'+x[0]+'</div><div class="text-[10px] text-gray-500">'+x[1]+'</div></div>').join('')+'</div>'
+  +'<div class="px-5 pb-4 text-sm text-gray-300"><div class="mb-2">Recent form: '+(r.form.length?r.form.map(f=>'<span class="inline-block w-6 text-center rounded text-xs font-bold '+(f=='W'?'bg-green-500/20 text-green-400':'bg-red-500/20 text-red-400')+'">'+f+'</span>').join(' '):'<span class="text-gray-500">no games yet</span>')+'</div><div>Best partner: '+esc(best(r))+'</div></div>'
+  +'<div class="p-4 border-t border-dark-700 grid grid-cols-2 gap-3"><button data-x class="'+bS+'">Back</button><button class="ad '+bP+'">Add to session</button></div>';
+  box.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>box.parentElement.remove());
+  box.querySelector('.ad').onclick=()=>{addP(r.n);box.parentElement.remove()};
+}
+function open(){
+  const d=modal(''),box=d.querySelector('.mb');
+  box.innerHTML='<div class="p-5 border-b border-dark-700 flex justify-between items-start"><div><h3 class="text-xl text-white">Players</h3><p class="text-xs text-gray-400">All-time stats on this device</p></div><button data-x class="text-gray-400 text-xl" aria-label="Close">✕</button></div>'
+  +'<div class="p-4 flex gap-2 border-b border-dark-700"><input class="q flex-grow min-w-0 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-pickle-500" placeholder="Search"><select class="so bg-dark-900 border border-dark-700 rounded px-2 text-sm text-white"><option value="w">Wins</option><option value="p">Win %</option><option value="g">Games</option><option value="r">Recent</option><option value="n">Name</option></select></div>'
+  +'<div class="ls divide-y divide-dark-700"></div>'
+  +'<div class="p-4 border-t border-dark-700 grid grid-cols-2 gap-3"><button class="ex '+bS+'">Back up</button><button class="im '+bS+'">Restore</button><input type="file" accept=".json,application/json" class="fl hidden"></div>';
+  const ls=box.querySelector('.ls'),q=box.querySelector('.q'),so=box.querySelector('.so');
+  const draw=()=>{
+    const k=q.value.trim().toLowerCase(),v=so.value,
+    s={w:(a,b)=>b.w-a.w||pct(b)-pct(a),p:(a,b)=>pct(b)-pct(a)||b.w-a.w,g:(a,b)=>(b.w+b.l)-(a.w+a.l),r:(a,b)=>b.last-a.last,n:(a,b)=>a.n.localeCompare(b.n)}[v];
+    const L=Object.values(P).filter(r=>!k||r.n.toLowerCase().includes(k)).sort(s);
+    ls.innerHTML=L.length?L.map(r=>'<div class="flex items-center gap-2 p-3"><button class="pr flex-1 min-w-0 text-left" data-k="'+esc(ky(r.n))+'"><div class="truncate text-white">'+esc(r.n)+'</div><div class="text-xs text-gray-400">'+r.w+'-'+r.l+' · '+pct(r)+'% · '+r.s+' sessions</div></button><button class="pa w-9 h-9 rounded-lg bg-pickle-500 text-dark-900" title="Add to session" data-k="'+esc(ky(r.n))+'"><i class="fa-solid fa-plus"></i></button></div>').join('')
+    :'<p class="p-8 text-center text-sm text-gray-500">'+(Object.keys(P).length?'No match.':'No players yet. Finish a scored match and they appear here.')+'</p>';
+    ls.querySelectorAll('.pr').forEach(b=>b.onclick=()=>profile(P[b.dataset.k]));
+    ls.querySelectorAll('.pa').forEach(b=>b.onclick=()=>addP(P[b.dataset.k].n));
+  };
+  q.oninput=draw;so.onchange=draw;draw();
+  box.querySelector('[data-x]').onclick=()=>d.remove();
+  box.querySelector('.ex').onclick=()=>{
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({v:1,players:P})],{type:'application/json'}));
+    a.download='picklestack-players.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Backup saved','success')};
+  const fl=box.querySelector('.fl');box.querySelector('.im').onclick=()=>fl.click();
+  fl.onchange=()=>{const f=fl.files[0];if(!f)return;const rd=new FileReader();
+    rd.onload=()=>{try{const o=JSON.parse(rd.result).players;let n=0;
+      Object.keys(o).forEach(k=>{const x=o[k];if(!x||!x.n)return;const c=P[k];if(!c||x.w+x.l>c.w+c.l){P[k]=Object.assign({form:[],pt:{},lv:0,s:0,last:0,pf:0,pa:0,w:0,l:0},x);n++}});
+      sv();draw();toast('Restored '+n+' players','success')}catch(e){toast('That file could not be read.','error')}};
+    rd.readAsText(f)};
+}
+const b=document.createElement('button');
+b.title='Players';b.setAttribute('aria-label','Players');
+b.className='bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10';
+b.innerHTML='<i class="fa-solid fa-address-book"></i>';b.onclick=open;
+const anchor=document.getElementById('snb');if(anchor)anchor.before(b);
+})();

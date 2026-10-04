@@ -35,6 +35,7 @@ h1,h2,h3,.font-sport{font-family:Oswald,sans-serif;text-transform:uppercase;lett
 <div class="bg-pickle-500 text-dark-900 p-2 rounded-lg rotate-12"><i class="fa-solid fa-table-tennis-paddle-ball text-xl"></i></div>
 <div><h1 class="text-2xl font-bold text-white leading-none">Pickle<span class="text-pickle-500">Stack</span></h1><p class="text-xs text-gray-400 font-medium">QUEUE, SCORES & LOG</p></div>
 </div>
+<button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live link</span></button>
 <div class="text-sm text-gray-400 flex items-center gap-2 bg-dark-900 py-1 px-3 rounded-full border border-dark-700"><i class="fa-solid fa-wifi text-green-400" id="ci"></i><span id="ct" class="hidden sm:inline">Saved on this device</span></div>
 </div>
 </header>
@@ -121,7 +122,7 @@ const nm=(p,i)=>esc(tx(p,i));
 const hm=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
 const mins=t=>Math.max(0,Math.round((Date.now()-t)/60000));
 
-function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.courts){S=s;S.log=S.log||[];S.waiting=S.waiting||[];S.rest=S.rest||{};S.target=S.target||11;S.lv=S.lv||{};S.md=S.md||'bal';S.sd=S.sd||0;S.courts.forEach(c=>{c.score=c.score||[0,0]})}}catch(e){}}
+function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.courts){S=s;S.ended=false;S.log=S.log||[];S.waiting=S.waiting||[];S.rest=S.rest||{};S.target=S.target||11;S.lv=S.lv||{};S.md=S.md||'bal';S.sd=S.sd||0;S.courts.forEach(c=>{c.score=c.score||[0,0]})}}catch(e){}}
 function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}pushS()}
 
 function toast(m,type){const d=document.createElement('div');
@@ -243,7 +244,7 @@ const isRest=n=>!!(S.rest&&S.rest[n.toLowerCase()]);
 const pick4=()=>{const ix=[];S.queue.forEach((p,i)=>{if(ix.length<4&&!isRest(p))ix.push(i)});return ix};
 function rest(i){const k=S.queue[i].toLowerCase();S.rest=S.rest||{};if(S.rest[k])delete S.rest[k];else S.rest[k]=1;save();render()}
 
-function sdata(){const q=S.queue;return{t:S.target,courts:S.courts.map(c=>({n:c.name,a:c.isActive,p:c.players,s:c.score})),nx:pick4().length>=4?split4(pick4().map(i=>q[i])):[],q:q,lb:stats().slice(0,20),e:S.ended?1:0}}
+function sdata(){const q=S.queue;return{t:S.target,courts:S.courts.map(c=>({n:c.name,a:c.isActive,p:c.players,s:c.score})),nx:pick4().length>=4?split4(pick4().map(i=>q[i])):[],q:q,lb:stats().slice(0,20)}}
 let st;function pushS(){if(!sb||!S.sid)return;clearTimeout(st);st=setTimeout(()=>sb.from('live_sessions').upsert({code:S.sid,data:sdata(),updated_at:new Date().toISOString()}).then(q=>q.error&&console.warn(q.error.message)),400)}
 async function sess(mode){if(!sb)return toast('Session sharing needs Supabase set up.','error');
 if(!S.sid)S.sid=Math.random().toString(36).slice(2,8);
@@ -265,7 +266,7 @@ const lv=c||(s.code&&s.p.length&&!s.fin),w=win(s.s,s.tg||11),row=i=>`<div class=
 $('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><h2 class="text-2xl text-white">${esc(s.n)}</h2><span class="text-xs font-bold rounded px-2 py-1 ${lv?'text-red-400 bg-red-500/10':'text-gray-300 bg-dark-700'}">${lv?'<i class="fa-solid fa-circle live text-[8px]"></i> LIVE':(s.f||s.fin)?'FINAL':'SNAPSHOT'}</span></div><div class="space-y-3">${row(0)}${row(1)}</div>
 <p class="text-xs text-gray-500 mt-4">${lv?(s.code?'Updating live.':'Updating live on this device.'):s.code?'Final score.':'Score as of '+hm(s.ts)+'. Ask for a new link for the latest score.'}</p><a href="${location.pathname}" class="inline-block mt-4 text-sm text-pickle-500 underline">Open PickleStack</a>`}
 
-function render(){if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();tab(TB)}
+function render(){if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();nav(NV)}
 
 /* Controls */
 $('tg').onchange=e=>{S.target=+e.target.value;save();render()};

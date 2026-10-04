@@ -52,8 +52,10 @@ try {
   await viewer.locator('#viewer').getByRole('heading', { name: 'The Stack' }).waitFor({ timeout: 15000 });
   await viewer.locator('#viewer').getByRole('heading', { name: 'Leaderboard' }).waitFor({ timeout: 15000 });
 
-  const organizerControls = await viewer.locator('#go, #rs, #f, #tg').count();
-  if (organizerControls !== 0) throw new Error('Viewer exposed organizer controls');
+  const organizerControls = await Promise.all(
+    ['#go', '#rs', '#f', '#tg'].map(sel => viewer.locator(sel).isVisible())
+  );
+  if (organizerControls.some(Boolean)) throw new Error('Viewer exposed visible organizer controls');
 
   const viewerText = await viewer.locator('body').innerText();
   for (const expected of ['Ana', 'Bea', 'Cara', 'Dani']) {

@@ -330,7 +330,7 @@ push(c);beep(660,.2);callMatch(c);save();render();toast(c.players.join(', ')+' â
 function sc(id,i,d){const c=S.courts.find(x=>x.id==id),b=win(c.score,S.target);c.score[i]=Math.max(0,c.score[i]+d);if(b<0&&win(c.score,S.target)>=0){beep(1000,.35);callWin(c)}push(c);save();render()}
 function clear(c){Object.assign(c,{isActive:false,players:[],score:[0,0],mid:'',t:0,hold:null,stk:0})}
 function fin(id){const c=S.courts.find(x=>x.id==id),w=win(c.score,S.target);
-if(c.score[0]+c.score[1]>0){S.log.unshift({mid:c.mid,c:c.name,p:c.players,s:c.score,w,tg:S.target,t:Date.now(),d:Date.now()-c.t});S.log=S.log.slice(0,200)}
+if(c.score[0]+c.score[1]>0){S.log.unshift({mid:c.mid,c:c.name,p:c.players,s:c.score,w,tg:S.target,t:Date.now(),d:Date.now()-c.t})}
 const n=c.name;
 if(S.ws&&w>=0){
 const wn=c.players.slice(w*2,w*2+2),lo=c.players.slice((1-w)*2,(1-w)*2+2),key=a=>a.map(x=>x.toLowerCase()).sort().join('|');

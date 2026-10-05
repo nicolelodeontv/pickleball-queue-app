@@ -1,7 +1,7 @@
 const { chromium } = require('@playwright/test');
 const fs = require('fs');
 
-const BASE = 'https://queuezerotwo.vercel.app/';
+const BASE = 'https://queuezerotwo.vercel.app/'; // production verification
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {

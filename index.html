@@ -196,7 +196,7 @@ html[data-theme=light]{color-scheme:light}
 <div class="bg-pickle-500 text-dark-900 p-2 rounded-lg rotate-12"><i class="fa-solid fa-table-tennis-paddle-ball text-xl"></i></div>
 <div><h1 class="text-2xl font-bold text-white leading-none">Queue<span class="text-pickle-500">ZeroTwo</span></h1><p class="text-xs text-gray-400 font-medium">QUEUE, SCORES & LOG</p></div>
 </div>
-<div class="flex items-center gap-2"><button onclick="stand()" title="Standings" class="bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10"><i class="fa-solid fa-trophy"></i></button><button id="snb" onclick="snd()" title="Sound" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="hpb" onclick="hapt()" title="Haptics" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="thb" onclick="theme()" title="Light or dark theme" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="tsb" onclick="tts()" title="Voice announcements" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="exp" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Export a backup of this device's QueueZeroTwo data"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Export</span></button><button id="impbtn" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Import a QueueZeroTwo backup"><i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Import</span></button><button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm" title="Open a read-only live view for players"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live View</span></button></div>
+<div class="flex items-center gap-2"><button onclick="stand()" title="Standings" class="bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10"><i class="fa-solid fa-trophy"></i></button><button id="snb" onclick="snd()" title="Sound" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="hpb" onclick="hapt()" title="Vibration" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="thb" onclick="theme()" title="Light or dark theme" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="tsb" onclick="tts()" title="Voice announcements" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="exp" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Export a backup of this device's QueueZeroTwo data"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Export</span></button><button id="impbtn" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Import a QueueZeroTwo backup"><i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Import</span></button><button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm" title="Open a read-only live view for players"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live View</span></button></div>
 <div class="text-sm text-gray-400 flex items-center gap-2 bg-dark-900 py-1 px-3 rounded-full border border-dark-700"><i class="fa-solid fa-wifi text-green-400" id="ci"></i><span id="ct" class="hidden sm:inline">Saved on this device</span></div>
 </div>
 </header>
@@ -283,7 +283,7 @@ const SB_URL='https://wochetemsnrysnjrgoed.supabase.co',SB_KEY='sb_publishable_v
 const sb=SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY):null,lt={};
 const viewerClient=code=>SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY,{global:{headers:{'x-picklestack-session-code':code}}}):null;
 function push(){}
-const mk=()=>({queue:[],waiting:[],rest:{},log:[],target:11,lv:{},md:'bal',sd:0,gp:{},ws:false,wl:2,eq:false,tts:false,courts:[1,2,3,4].map(id=>({id,name:'Court '+id,isActive:false,players:[],score:[0,0],mid:'',t:0}))});
+const mk=()=>({queue:[],waiting:[],rest:{},log:[],target:11,lv:{},md:'bal',sd:0,gp:{},ws:false,wl:2,eq:false,tts:false,hap:true,courts:[1,2,3,4].map(id=>({id,name:'Court '+id,isActive:false,players:[],score:[0,0],mid:'',t:0}))});
 let S=mk(),V=null,SV=null;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const win=(s,t)=>Math.max(s[0],s[1])>=t&&Math.abs(s[0]-s[1])>=2?(s[0]>s[1]?0:1):-1;
@@ -385,7 +385,7 @@ function showRes(){
   const d=modal('<div class="p-5 border-b border-dark-700"><h3 class="text-2xl text-white">Session Results</h3><p class="text-xs text-gray-400">'+S.log.length+' games played · session ended</p></div><div class="divide-y divide-dark-700">'+rows+'</div><div class="p-5 border-t border-dark-700 text-center">'+lk+'</div><div class="p-4 border-t border-dark-700 grid grid-cols-2 gap-3"><button class="sh col-span-2 '+bP+'"><i class="fa-solid fa-image"></i> Share results image</button><button class="nw col-span-2 '+bD+'">New session</button></div>',true);
   const cp=d.querySelector('.cp');if(cp)cp.onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
   d.querySelector('.sh').onclick=shareImg;
-  d.querySelector('.nw').onclick=()=>ask('Start new session?','This clears the stack, courts, leaderboard and log. Make sure you have shared the results.',()=>{d.__close();const k={snd:S.snd,tts:S.tts,md:S.md,ws:S.ws,wl:S.wl,eq:S.eq,target:S.target};S=Object.assign(mk(),k);save();render();toast('New session started','success')})
+  d.querySelector('.nw').onclick=()=>ask('Start new session?','This clears the stack, courts, leaderboard and log. Make sure you have shared the results.',()=>{d.__close();const k={snd:S.snd,hap:S.hap,tts:S.tts,md:S.md,ws:S.ws,wl:S.wl,eq:S.eq,target:S.target};S=Object.assign(mk(),k);save();render();toast('New session started','success')})
 }
 
 /* Stack */
@@ -407,7 +407,7 @@ Object.assign(c,{isActive:true,players:takeNext(),score:[0,0],mid:Math.random().
 push(c);buzz(30);beep(660,.2);callMatch(c);save();render();toast(c.players.join(', ')+' → '+c.name,'success')};
 
 /* Scoring + finishing */
-function sc(id,i,d){const c=S.courts.find(x=>x.id==id),b=win(c.score,S.target);c.score[i]=Math.max(0,c.score[i]+d);buzz(d<0?25:15);if(b<0&&win(c.score,S.target)>=0){beep(1000,.35);callWin(c)}push(c);save();$('sr').textContent=c.name+': '+c.score[0]+' to '+c.score[1];render()}
+function sc(id,i,d){const c=S.courts.find(x=>x.id==id),b=win(c.score,S.target);c.score[i]=Math.max(0,c.score[i]+d);buzz(d<0?25:15);if(b<0&&win(c.score,S.target)>=0){beep(1000,.35);buzz([40,60,40]);callWin(c)}push(c);save();$('sr').textContent=c.name+': '+c.score[0]+' to '+c.score[1];render()}
 function clear(c){Object.assign(c,{isActive:false,players:[],score:[0,0],mid:'',t:0,hold:null,stk:0})}
 function fin(id){buzz([40,60,40]);const c=S.courts.find(x=>x.id==id),w=win(c.score,S.target);
 if(c.score[0]+c.score[1]>0){S.log.unshift({mid:c.mid,c:c.name,p:c.players,s:c.score,w,tg:S.target,t:Date.now(),d:Date.now()-c.t})}
@@ -505,11 +505,11 @@ function teq(){S.eq=!S.eq;save();render()}
 function swl(v){S.wl=v;save();render()}
 let AC,MG=1;const son=()=>S.snd!==false;
 function beep(f,d){if(!son())return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f;g.gain.value=.15;o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
-function buzz(p){if(S.hap===false||!navigator.vibrate)return;try{navigator.vibrate(p)}catch(_){} }
+function buzz(p){if(S.hap===false||!navigator.vibrate||matchMedia('(prefers-reduced-motion: reduce)').matches)return;try{navigator.vibrate(p)}catch(_){} }
 function sndUi(){const b=$('snb');if(b)b.innerHTML='<i class="fa-solid '+(son()?'fa-volume-high text-green-400':'fa-volume-xmark text-gray-400')+'"></i>'}
 function snd(){S.snd=!son();save();sndUi();beep(880,.12)}
-function hapUi(){const b=$('hpb');if(!b)return;b.hidden=!navigator.vibrate;if(navigator.vibrate)b.innerHTML='<i class="fa-solid fa-mobile-screen-button '+(S.hap===false?'text-gray-400':'text-green-400')+'"></i>'}
-function hapt(){if(!navigator.vibrate)return;S.hap=S.hap===false;save();hapUi();toast('Haptics '+(S.hap?'on':'off'),'info')}
+function hapUi(){const b=$('hpb');if(!b)return;b.hidden=!navigator.vibrate;if(navigator.vibrate){b.setAttribute('aria-pressed',String(S.hap!==false));b.innerHTML='<i class="fa-solid fa-mobile-screen-button '+(S.hap===false?'text-gray-400':'text-green-400')+'"></i>'}}
+function hapt(){if(!navigator.vibrate)return;S.hap=S.hap===false;save();hapUi();toast('Vibration '+(S.hap?'on':'off'),'info')}
 const isLight=()=>document.documentElement.dataset.theme==='light';
 function themeApply(l){document.documentElement.dataset.theme=l?'light':'dark';const m=document.querySelector('meta[name=theme-color]');if(m)m.content=l?'#F4F6FA':'#0B0F19'}
 function themeUi(){const b=$('thb');if(b)b.innerHTML='<i class="fa-solid '+(isLight()?'fa-sun':'fa-moon')+'"></i>'}

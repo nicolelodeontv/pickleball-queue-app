@@ -39,8 +39,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   console.log('STEP A_ADD');
   await a.locator('#pn').fill('Handoff-A, Handoff-B, Handoff-C, Handoff-D');
   await a.locator('#f button').click();
+  await a.getByRole('button', {name:'Check in all'}).click();
   await a.locator('#ql li').nth(3).waitFor();
-  ok('A added four players');
+  ok('A added and checked in four players');
 
   const dl = await Promise.all([
     a.waitForEvent('download'),

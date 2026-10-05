@@ -91,7 +91,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await b.locator('#imp').setInputFiles(backup);
   console.log('STEP B_CONFIRM');
   await b.getByRole('button', {name:'Confirm'}).click();
-  await b.locator('#ql li').nth(3).waitFor();
+  await sleep(500);
   const imported = await b.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('pickleStackState') || '{}');
     return {

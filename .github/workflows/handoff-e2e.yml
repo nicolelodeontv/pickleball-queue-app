@@ -1,0 +1,16 @@
+name: Temporary host handoff E2E
+on:
+  push:
+    branches: [handoff-e2e-20261006]
+jobs:
+  handoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-save @playwright/test@1.63.0
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/handoff-e2e.cjs

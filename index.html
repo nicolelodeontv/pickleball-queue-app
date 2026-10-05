@@ -139,7 +139,7 @@ button,select,input{touch-action:manipulation}
 <div class="bg-pickle-500 text-dark-900 p-2 rounded-lg rotate-12"><i class="fa-solid fa-table-tennis-paddle-ball text-xl"></i></div>
 <div><h1 class="text-2xl font-bold text-white leading-none">Queue<span class="text-pickle-500">ZeroTwo</span></h1><p class="text-xs text-gray-400 font-medium">QUEUE, SCORES & LOG</p></div>
 </div>
-<div class="flex items-center gap-2"><button onclick="stand()" title="Standings" class="bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10"><i class="fa-solid fa-trophy"></i></button><button id="snb" onclick="snd()" title="Sound" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="tsb" onclick="tts()" title="Voice announcements" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="exp" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Export a backup of this device's QueueZeroTwo data"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Export</span></button><button id="impbtn" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Import a QueueZeroTwo backup"><i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Import</span></button><button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm" title="Open a read-only live view for players"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live View</span></button></div>
+<div class="flex items-center gap-2"><button onclick="stand()" title="Standings" class="bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10"><i class="fa-solid fa-trophy"></i></button><button id="snb" onclick="snd()" title="Sound" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="hpb" onclick="hapt()" title="Haptics" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="tsb" onclick="tts()" title="Voice announcements" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="exp" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Export a backup of this device's QueueZeroTwo data"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Export</span></button><button id="impbtn" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Import a QueueZeroTwo backup"><i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Import</span></button><button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm" title="Open a read-only live view for players"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live View</span></button></div>
 <div class="text-sm text-gray-400 flex items-center gap-2 bg-dark-900 py-1 px-3 rounded-full border border-dark-700"><i class="fa-solid fa-wifi text-green-400" id="ci"></i><span id="ct" class="hidden sm:inline">Saved on this device</span></div>
 </div>
 </header>
@@ -347,12 +347,12 @@ $('go').onclick=()=>{
 if(pick4().length<4)return toast('Need at least 4 players who are not resting.','error');
 const c=S.courts.find(c=>!c.isActive);if(!c)return toast('No court free. Finish a match first.','error');
 Object.assign(c,{isActive:true,players:takeNext(),score:[0,0],mid:Math.random().toString(36).slice(2,8),t:Date.now()});
-push(c);beep(660,.2);callMatch(c);save();render();toast(c.players.join(', ')+' → '+c.name,'success')};
+push(c);buzz(30);beep(660,.2);callMatch(c);save();render();toast(c.players.join(', ')+' → '+c.name,'success')};
 
 /* Scoring + finishing */
-function sc(id,i,d){const c=S.courts.find(x=>x.id==id),b=win(c.score,S.target);c.score[i]=Math.max(0,c.score[i]+d);if(b<0&&win(c.score,S.target)>=0){beep(1000,.35);callWin(c)}push(c);save();$('sr').textContent=c.name+': '+c.score[0]+' to '+c.score[1];render()}
+function sc(id,i,d){const c=S.courts.find(x=>x.id==id),b=win(c.score,S.target);c.score[i]=Math.max(0,c.score[i]+d);buzz(d<0?25:15);if(b<0&&win(c.score,S.target)>=0){beep(1000,.35);callWin(c)}push(c);save();$('sr').textContent=c.name+': '+c.score[0]+' to '+c.score[1];render()}
 function clear(c){Object.assign(c,{isActive:false,players:[],score:[0,0],mid:'',t:0,hold:null,stk:0})}
-function fin(id){const c=S.courts.find(x=>x.id==id),w=win(c.score,S.target);
+function fin(id){buzz([40,60,40]);const c=S.courts.find(x=>x.id==id),w=win(c.score,S.target);
 if(c.score[0]+c.score[1]>0){S.log.unshift({mid:c.mid,c:c.name,p:c.players,s:c.score,w,tg:S.target,t:Date.now(),d:Date.now()-c.t})}
 const n=c.name;
 if(S.ws&&w>=0){
@@ -391,7 +391,7 @@ function cleanState(o){
   R.rest=clean(s.rest,v=>v?1:0);
   R.lv=clean(s.lv,v=>Math.min(6,Math.max(0,Math.floor(Number(v))||0)));
   R.md=s.md==='soc'?'soc':'bal';R.sd=Number.isFinite(+s.sd)?+s.sd:0;R.gp=clean(s.gp,v=>Math.max(0,Math.floor(Number(v))||0));
-  R.ws=!!s.ws;R.wl=[2,3,4].includes(+s.wl)?+s.wl:2;R.eq=!!s.eq;R.tts=!!s.tts;R.snd=s.snd!==false;
+  R.ws=!!s.ws;R.wl=[2,3,4].includes(+s.wl)?+s.wl:2;R.eq=!!s.eq;R.tts=!!s.tts;R.snd=s.snd!==false;R.hap=s.hap!==false;
   R.target=[11,15,21].includes(+s.target)?+s.target:11;
   R.courts=s.courts.slice(0,12).map((c,i)=>{
     const base=R.courts[i]||{id:i+1,name:'Court '+(i+1),isActive:false,players:[],score:[0,0],mid:'',t:0,hold:null,stk:0};
@@ -449,8 +449,11 @@ function teq(){S.eq=!S.eq;save();render()}
 function swl(v){S.wl=v;save();render()}
 let AC,MG=1;const son=()=>S.snd!==false;
 function beep(f,d){if(!son())return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f;g.gain.value=.15;o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+function buzz(p){if(S.hap===false||!navigator.vibrate)return;try{navigator.vibrate(p)}catch(_){} }
 function sndUi(){const b=$('snb');if(b)b.innerHTML='<i class="fa-solid '+(son()?'fa-volume-high text-green-400':'fa-volume-xmark text-gray-400')+'"></i>'}
 function snd(){S.snd=!son();save();sndUi();beep(880,.12)}
+function hapUi(){const b=$('hpb');if(!b)return;b.hidden=!navigator.vibrate;if(navigator.vibrate)b.innerHTML='<i class="fa-solid fa-mobile-screen-button '+(S.hap===false?'text-gray-400':'text-green-400')+'"></i>'}
+function hapt(){if(!navigator.vibrate)return;S.hap=S.hap===false;save();hapUi();toast('Haptics '+(S.hap?'on':'off'),'info')}
 
 /* Voice announcements (browser speech, no extra service) */
 const ttsOk=!!(window.speechSynthesis&&window.SpeechSynthesisUtterance),tm=(p,i)=>p.slice(i*2,i*2+2).join(' and ');
@@ -602,12 +605,12 @@ $('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><h2 c
 <p class="text-xs text-gray-400 mt-4">${lv?(s.code?'Updating live.':'Updating live on this device.'):s.code?'Final score.':'Score as of '+hm(s.ts)+'. Ask for a new link for the latest score.'}</p><a href="${location.pathname}" class="inline-block mt-4 text-sm text-pickle-500 underline">Open QueueZeroTwo</a>`}
 
 function a11y(){document.querySelectorAll('button[title]:not([aria-label])').forEach(b=>b.setAttribute('aria-label',b.title));document.querySelectorAll('i.fa-solid').forEach(i=>i.setAttribute('aria-hidden','true'))}
-function render(){sndUi();ttsUi();if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();nav(NV);a11y()}
+function render(){sndUi();hapUi();ttsUi();if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();nav(NV);a11y()}
 
 /* Controls */
 $('tg').onchange=e=>{S.target=+e.target.value;save();render()};
-$('rs').onclick=()=>ask('End session?','Active matches will be cancelled and the session closes for good. You can still share the results afterwards.',endS);
-$('cl').onclick=()=>ask('Clear match log?','All logged matches will be removed.',()=>{S.log=[];save();render()});
+$('rs').onclick=()=>ask('End session?','Active matches will be cancelled and the session closes for good. You can still share the results afterwards.',()=>{buzz(60);endS()});
+$('cl').onclick=()=>ask('Clear match log?','All logged matches will be removed.',()=>{buzz(60);S.log=[];save();render()});
 
 /* Init + live sync (other tabs on this device update instantly) */
 load();

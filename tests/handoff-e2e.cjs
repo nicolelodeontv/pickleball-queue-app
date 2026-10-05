@@ -82,6 +82,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   if (initialViewerScore !== '0') fail('Viewer did not start at 0', {initialViewerScore});
   ok('Viewer connected at 0');
 
+  await v.evaluate((code) => {
+    window.__debugPayload = null;
+    const debug = window.supabase.createClient('https://wochetemsnrysnjrgoed.supabase.co', 'sb_publishable_vk1EKES125_AzGi9iPHxSw_XiliPhcA', {
+      global: {headers: {'x-picklestack-session-code': code}}
+    });
+    debug.channel('debug-' + code).on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'live_sessions', filter: 'code=eq.' + code
+    }, payload => { window.__debugPayload = payload.new; }).subscribe();
+  }, session.sid);
+  ok('Viewer debug realtime subscriber armed');
+
   console.log('STEP B_OPEN');
   await b.goto(BASE, {waitUntil:'commit', timeout:15000});
   await b.locator('#nvs').click();
@@ -129,7 +140,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   console.log('STEP B_NEW_SCORE');
   await b.locator('#courts .sbg[aria-label="Plus point, Team 1"]').first().click();
   await v.locator('#viewer .font-sport').first().waitFor({state:'visible'});
-  await expectScore(v, '1');
+  await expectScore(v, '1').catch(async err => {
+    const diag = await v.evaluate(() => ({
+      debug: window.__debugPayload ? window.__debugPayload.data?.courts?.[0]?.s : null,
+      sv: typeof SV !== 'undefined' && SV?.d ? SV.d.courts?.[0]?.s : null,
+      scores: Array.from(document.querySelectorAll('#viewer .font-sport')).map(e => e.textContent.trim())
+    }));
+    console.log('VIEWER_DIAG ' + JSON.stringify(diag));
+    throw err;
+  });
   ok('New host score reached viewer', {score:'1'});
 
   console.log('STEP REPLAY');

@@ -30,7 +30,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     p.on('pageerror', e => console.log('PAGE_ERROR', label, e.message));
   }
 
-  await a.goto(BASE, {waitUntil:'networkidle'});
+  await a.goto(BASE, {waitUntil:'domcontentloaded'});
   await a.locator('#pn').fill('Handoff-A, Handoff-B, Handoff-C, Handoff-D');
   await a.locator('#f button').click();
   await a.locator('#ql li').nth(3).waitFor();
@@ -64,13 +64,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const handoffHash = '#h=' + session.sid + '.' + session.sh;
   ok('A displayed handoff code', {sid:session.sid});
 
-  await v.goto(BASE + '#s=' + session.sid, {waitUntil:'networkidle'});
+  await v.goto(BASE + '#s=' + session.sid, {waitUntil:'domcontentloaded'});
   await v.getByText('LIVE · CONNECTED').waitFor({timeout:15000});
   const initialViewerScore = await v.locator('#viewer .font-sport').first().innerText();
   if (initialViewerScore !== '0') fail('Viewer did not start at 0', {initialViewerScore});
   ok('Viewer connected at 0');
 
-  await b.goto(BASE, {waitUntil:'networkidle'});
+  await b.goto(BASE, {waitUntil:'domcontentloaded'});
   await b.locator('#impbtn').click();
   await b.locator('#imp').setInputFiles(backup);
   await b.getByRole('button', {name:'Confirm'}).click();
@@ -83,7 +83,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   if (imported.queue.length !== 4) fail('Import did not restore stack', imported);
   ok('B imported backup before takeover');
 
-  await b.goto(BASE + handoffHash, {waitUntil:'networkidle'});
+  await b.goto(BASE + handoffHash, {waitUntil:'domcontentloaded'});
   await sleep(500);
   if (b.url().includes('#h=')) fail('B address bar still contains handoff fragment', {url:b.url()});
   await b.getByRole('button', {name:'Confirm'}).click();
@@ -104,7 +104,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await expectScore(v, '1');
   ok('New host score reached viewer', {score:'1'});
 
-  await b.goto(BASE + handoffHash, {waitUntil:'networkidle'});
+  await b.goto(BASE + handoffHash, {waitUntil:'domcontentloaded'});
   await sleep(500);
   if (b.url().includes('#h=')) fail('Replay fragment remained in address bar', {url:b.url()});
   await b.getByRole('button', {name:'Confirm'}).click();

@@ -335,16 +335,16 @@ function ask(t,m,fn){
 }
 const qrSvg=u=>{try{const q=qrcode(0,'M');q.addData(u);q.make();return q.createSvgTag({cellSize:6,margin:0,scalable:true})}catch(e){return ''}};
 async function live(){
-  if(S.ended)return showRes();
+  if(S.ended)return showRes();S.ho=false;
   if(!sb)return toast('Live View needs Supabase.','error');
   ensureLiveIdentity();
   const q=await publishSession(sdata());
   if(q.error)return toast('Publish failed: '+q.error.message,'error');
   save();const url=location.origin+location.pathname+'#s='+S.sid;
-  const d=modal('<div class="p-6 text-center"><div class="flex items-center justify-center gap-2 mb-1"><h3 class="text-xl text-white">Live View</h3><span class="text-[10px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-full px-2 py-1">VIEW ONLY</span></div><p class="text-xs text-gray-400 mb-4">Players can scan the QR code or open the link to watch courts, Up Next, the stack and leaderboard in real time. Player names and scores are visible to anyone with the link, and the session expires after 7 days.</p><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:200px;max-width:100%">'+qrSvg(url)+'</div><div class="mt-4 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-xs text-gray-300 break-all">'+esc(url)+'</div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"><button class="cp '+bS+'">Copy link</button><button class="sh '+bP+'">Share</button><button class="op '+bS+'">Open view</button></div><button data-x class="mt-4 text-sm text-gray-400 hover:text-white">Close</button></div>');
+  const d=modal('<div class="p-6 text-center"><div class="flex items-center justify-center gap-2 mb-1"><h3 class="text-xl text-white">Live View</h3><span class="text-[10px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-full px-2 py-1">VIEW ONLY</span></div><p class="text-xs text-gray-400 mb-4">Players can scan the QR code or open the link to watch courts, Up Next, the stack and leaderboard in real time. Player names and scores are visible to anyone with the link, and the session expires after 7 days.</p><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:200px;max-width:100%">'+qrSvg(url)+'</div><div class="mt-4 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-xs text-gray-300 break-all">'+esc(url)+'</div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"><button class="cp '+bS+'">Copy link</button><button class="sh '+bP+'">Share</button><button class="op '+bS+'">Open view</button></div><button class="ho mt-3 text-xs text-gray-400 underline">Move host to another device</button><br><button data-x class="mt-3 text-sm text-gray-400 hover:text-white">Close</button></div>');
   d.querySelector('.cp').onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
   d.querySelector('.sh').onclick=async()=>{try{if(navigator.share)await navigator.share({title:'QueueZeroTwo Live View',text:'Watch our open play live',url});else{await navigator.clipboard.writeText(url);toast('Link copied','success')}}catch(e){}};
-  d.querySelector('.op').onclick=()=>window.open(url,'_blank','noopener,noreferrer')
+  d.querySelector('.op').onclick=()=>window.open(url,'_blank','noopener,noreferrer');d.querySelector('.ho').onclick=()=>{d.__close();handoff()}
 }
 async function resImg(){
   try{await document.fonts.load('700 40px Oswald');await document.fonts.load('600 30px Inter')}catch(e){}
@@ -650,8 +650,9 @@ const LIVE_ALPH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const randLiveCode=()=>{const a=new Uint8Array(10);crypto.getRandomValues(a);return Array.from(a,v=>LIVE_ALPH[v%LIVE_ALPH.length]).join('')};
 const randHostKey=()=>{const a=new Uint8Array(32);crypto.getRandomValues(a);return Array.from(a,v=>v.toString(16).padStart(2,'0')).join('')};
 function ensureLiveIdentity(){if(!S.sid||!S.sh){S.sid=randLiveCode();S.sh=randHostKey()}}
-async function publishSession(payload){if(!sb)return {error:new Error('Supabase unavailable')};ensureLiveIdentity();let q=await sb.rpc('publish_pickle_session',{p_code:S.sid,p_host_key:S.sh,p_payload:payload});if(q.error&&/Invalid host key|expired session/i.test(q.error.message||'')){S.sid=randLiveCode();S.sh=randHostKey();q=await sb.rpc('publish_pickle_session',{p_code:S.sid,p_host_key:S.sh,p_payload:payload})}return q}
-let st;function pushS(){if(!sb||S.ended)return;ensureLiveIdentity();clearTimeout(st);st=setTimeout(async()=>{if(S.ended)return;const q=await publishSession(sdata());if(q.error)console.warn(q.error.message)},400)}
+async function publishSession(payload){if(!sb)return {error:new Error('Supabase unavailable')};ensureLiveIdentity();let q=await sb.rpc('publish_pickle_session',{p_code:S.sid,p_host_key:S.sh,p_payload:payload});if(q.error&&S.hoff&&Date.now()-S.hoff<864e5&&/Invalid host key/i.test(q.error.message||'')){S.hoff=0;S.ho=true;S.sid='';S.sh='';toast('Live View host moved to another device.','info');return {error:new Error('handed off')}}
+if(q.error&&/Invalid host key|expired session/i.test(q.error.message||'')){S.sid=randLiveCode();S.sh=randHostKey();q=await sb.rpc('publish_pickle_session',{p_code:S.sid,p_host_key:S.sh,p_payload:payload})}return q}
+let st;function pushS(){if(!sb||S.ended||S.ho)return;ensureLiveIdentity();clearTimeout(st);st=setTimeout(async()=>{if(S.ended)return;const q=await publishSession(sdata());if(q.error)console.warn(q.error.message)},400)}
 function renderSession(){const d=SV.d;if(!d){$('viewer').innerHTML='<div class="bg-dark-800 border border-dark-700 rounded-2xl p-8 text-center"><div class="text-blue-300 text-sm font-semibold mb-2">LIVE VIEW</div><p class="text-gray-400 text-sm">'+(SV.missing?'This Live View link is no longer active. The host may have ended the session or started a new one. Ask them for the current QR code.':'Connecting to the shared session…')+'</p><p class="text-xs text-gray-400 mt-2">'+(SV.missing?'Ask the organizer for a new Live View link.':'Your screen will update automatically once connected.')+'</p></div>';return}
 if(d.e)return renderResults(d);
 const courts=(d.courts||[]).map(c=>c.a?`<div class="bg-dark-800 border border-pickle-500/30 rounded-2xl p-4"><div class="flex justify-between mb-2"><h3 class="text-pickle-500 text-lg">${esc(c.n)}</h3><span class="text-xs text-red-400"><i class="fa-solid fa-circle live text-[8px]"></i> LIVE</span></div>${[0,1].map(i=>`<div class="flex justify-between items-center py-1"><span class="truncate">${nm(c.p,i)}</span><span class="font-sport text-3xl ${win(c.s,d.t)==i?'text-pickle-500':''}">${c.s[i]}</span></div>`).join('')}</div>`:`<div class="bg-dark-900 border border-dark-700 rounded-2xl p-4 text-center text-gray-400 opacity-70">${esc(c.n)} · open</div>`).join('');
@@ -669,6 +670,18 @@ $('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><h2 c
 function a11y(){document.querySelectorAll('button[title]:not([aria-label])').forEach(b=>b.setAttribute('aria-label',b.title));document.querySelectorAll('i.fa-solid').forEach(i=>i.setAttribute('aria-hidden','true'))}
 function render(){sndUi();hapUi();ttsUi();themeUi();if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;$('wbs').value=S.wb===1?1:2;$('ncs').value=S.courts.length;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();nav(NV);a11y();wake()}
 
+/* Release 2a: host handoff (key travels only in the URL fragment) */
+function handoff(){ensureLiveIdentity();
+const w=modal('<div class="p-6 text-center"><h3 class="text-xl text-white mb-2">Move host to another device</h3><p class="text-sm text-gray-300 mb-2">Anyone who scans the next code can control this session until it expires.</p><p class="text-xs text-gray-400 mb-4">Only show it on your own screen. The other device becomes the host and this one stops publishing. To keep your stack and courts, Import a backup on the other device before scanning.</p><div class="flex gap-3"><button data-x class="flex-1 '+bS+'">Cancel</button><button class="y flex-1 '+bP+'">Show code</button></div></div>');
+w.querySelector('.y').onclick=()=>{w.__close();S.hoff=Date.now();save();
+const u=location.origin+location.pathname+'#h='+S.sid+'.'+S.sh;
+const d=modal('<div class="p-6 text-center"><h3 class="text-xl text-white mb-2">Scan on the new host</h3><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:220px;max-width:100%">'+qrSvg(u)+'</div><p class="text-xs text-gray-400 mt-3">This closes in 2 minutes.</p><button data-x class="mt-4 w-full '+bS+'">Done</button></div>');
+setTimeout(()=>{if(d.isConnected)d.__close()},12e4)}}
+function takeover(){const m=/^#h=([A-Za-z0-9]{4,10})\.([0-9a-f]{64})$/.exec(location.hash);if(!m)return;history.replaceState(null,'',location.pathname+location.search);
+ask('Take over this Live View?',"This device becomes the host and the other device stops publishing. Viewers will see this device's stack and courts.",async()=>{
+if(!sb)return toast('Live View needs Supabase.','error');const nk=randHostKey(),q=await sb.rpc('rotate_pickle_host_key',{p_code:m[1],p_old_key:m[2],p_new_key:nk});
+if(q.error)return toast('Handoff failed: '+q.error.message,'error');S.sid=m[1];S.sh=nk;S.ho=false;S.hoff=0;save();render();toast('This device is now the host','success')})}
+ 
 /* Release 1: court count, undo, wake lock, demo */
 function setCourts(n){n=Math.max(1,Math.min(8,n|0));const cs=S.courts;
 if(n<cs.length){const busy=cs.slice(n).find(c=>c.isActive);if(busy){$('ncs').value=cs.length;return toast('Finish or cancel the match on '+busy.name+' first.','error')}cs.length=n}
@@ -704,6 +717,7 @@ sv.channel('s'+SV.code).on('postgres_changes',{event:'*',schema:'public',table:'
 
 render();
 if(V||SV)$('faq').remove();
+takeover();
 if(S.ended&&!V&&!SV)showRes();
 addEventListener('storage',e=>{if(e.key==K){load();render()}});
 onhashchange=()=>location.reload();

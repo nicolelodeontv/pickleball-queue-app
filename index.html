@@ -6,7 +6,6 @@
 <script>try{if(localStorage.getItem("qzt_theme")==="light")document.documentElement.dataset.theme="light"}catch(e){}</script>
 <title>QueueZeroTwo - Free Pickleball Queue & Court Rotation App</title>
 <meta name="description" content="Manage your open play pickleball sessions effortlessly with QueueZeroTwo. A free paddle stacking, live scoring and match log web app. Remove the chaos from court rotation.">
-<meta name="keywords" content="pickleball, paddle stacking, queue management, court rotation, open play, pickleball scoring, match log">
 <meta name="robots" content="index, follow">
 <meta property="og:title" content="QueueZeroTwo - Pickleball Queue Manager">
 <meta property="og:description" content="Stack players, keep score, share live matches and keep a match log for open play.">
@@ -194,7 +193,7 @@ html[data-theme=light]{color-scheme:light}
 <div class="container mx-auto px-4 py-4 flex justify-between items-center">
 <div class="flex items-center gap-3">
 <div class="bg-pickle-500 text-dark-900 p-2 rounded-lg rotate-12"><i class="fa-solid fa-table-tennis-paddle-ball text-xl"></i></div>
-<div><h1 class="text-2xl font-bold text-white leading-none">Queue<span class="text-pickle-500">ZeroTwo</span></h1><p class="text-xs text-gray-400 font-medium">QUEUE, SCORES & LOG</p></div>
+<div><h1 class="text-2xl font-bold text-white leading-none">Queue<span class="text-pickle-500">ZeroTwo</span></h1><p class="text-xs text-gray-400 font-medium">PICKLEBALL QUEUE & COURT ROTATION</p></div>
 </div>
 <div class="flex items-center gap-2"><button onclick="stand()" title="Standings" class="bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10"><i class="fa-solid fa-trophy"></i></button><button id="snb" onclick="snd()" title="Sound" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="hpb" onclick="hapt()" title="Vibration" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="thb" onclick="theme()" title="Light or dark theme" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="tsb" onclick="tts()" title="Voice announcements" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="exp" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Export a backup of this device's QueueZeroTwo data"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Export</span></button><button id="impbtn" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Import a QueueZeroTwo backup"><i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Import</span></button><button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm" title="Open a read-only live view for players"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live View</span></button></div>
 <div class="text-sm text-gray-400 flex items-center gap-2 bg-dark-900 py-1 px-3 rounded-full border border-dark-700"><i class="fa-solid fa-wifi text-green-400" id="ci"></i><span id="ct" class="hidden sm:inline">Saved on this device</span></div>
@@ -225,6 +224,7 @@ html[data-theme=light]{color-scheme:light}
 <div id="sq" class="p-4 flex-grow min-h-[8rem] overflow-y-auto">
 <ul id="ql" class="space-y-3"></ul>
 <div id="qe" class="flex flex-col items-center text-gray-400 py-10 opacity-60"><i class="fa-solid fa-box-open text-4xl mb-3"></i><p class="text-sm">Stack is empty. Add players above.</p></div>
+<div id="dm" class="text-center pb-4"><button onclick="demo()" class="bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-bold rounded-lg px-4 py-2 text-sm">Try a demo</button><p class="text-xs text-gray-400 mt-3">1. Add players &nbsp; 2. Send 4 to court &nbsp; 3. Tap +1 to score</p></div>
 </div>
 <div id="sgo" class="p-4 border-t border-dark-700 shrink-0">
 <button id="go" class="w-full bg-pickle-500 hover:bg-pickle-400 text-dark-900 font-sport text-xl py-4 rounded-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"><i class="fa-solid fa-play"></i> SEND NEXT 4 TO COURT</button>
@@ -243,9 +243,9 @@ html[data-theme=light]{color-scheme:light}
 <section id="scr">
 <div class="flex flex-wrap justify-between items-end gap-3 mb-6">
 <div><h2 class="text-3xl text-white">Active Courts</h2><p class="text-gray-400 text-sm mt-1">Score matches and clear courts when they finish.</p></div>
-<div class="flex items-center gap-4 text-xs text-gray-400">
+<div class="flex flex-wrap items-center gap-4 text-xs text-gray-400">
 <label>Play to <select id="tg" class="bg-dark-900 border border-dark-700 rounded px-2 py-1 text-white"><option>11</option><option>15</option><option>21</option></select></label>
-<button id="rs" class="bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg px-3 py-1.5"><i class="fa-solid fa-stop"></i> End session</button>
+<label>Win by <select id="wbs" class="bg-dark-900 border border-dark-700 rounded px-2 py-1 text-white"><option>1</option><option>2</option></select></label><label>Courts <select id="ncs" class="bg-dark-900 border border-dark-700 rounded px-2 py-1 text-white"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label><button id="rs" class="bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg px-3 py-1.5"><i class="fa-solid fa-stop"></i> End session</button>
 </div>
 </div>
 <div id="courts" class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6"></div>
@@ -274,7 +274,8 @@ html[data-theme=light]{color-scheme:light}
 <button id="nvt" onclick="tab('stats')"><i class="fa-solid fa-ranking-star text-lg"></i><span>Stats</span></button>
 <div class="w-20 flex items-center justify-center"><button id="fab" onclick="addPl()" aria-label="Add player" title="Add player" class="w-12 h-12 rounded-full bg-pickle-500 text-dark-900 shadow-lg active:scale-95"><i class="fa-solid fa-plus text-xl"></i></button></div>
 </nav>
-<footer class="bg-dark-900 border-t border-dark-700 py-6 text-center text-sm text-gray-400"><p>&copy; 2026 QueueZeroTwo App. <i class="fa-solid fa-bolt text-pickle-500"></i> Your session stays on this device. Share a Live View for players, or End session for a results link.</p></footer>
+<section id="faq" aria-labelledby="faq-h" class="max-w-3xl mx-auto px-4 py-10"><h2 id="faq-h" class="text-xl font-bold text-white mb-2">How pickleball paddle stacking works</h2><p class="text-sm text-gray-400 mb-6">Paddle stacking keeps open play fair: players line up, and the next four take the next free court.</p><div class="space-y-3 text-sm"><details class="bg-dark-800 border border-dark-700 rounded-lg p-4"><summary class="cursor-pointer font-medium text-white">What is paddle stacking?</summary><p class="mt-2 text-gray-400">Players leave their paddles in a line at the court. When a game ends, the next four paddles in line go on, and the finished players return to the back.</p></details><details class="bg-dark-800 border border-dark-700 rounded-lg p-4"><summary class="cursor-pointer font-medium text-white">How does QueueZeroTwo run the rotation?</summary><p class="mt-2 text-gray-400">Add players to the stack, send the next four to a free court, and score the match. You can balance teams by skill or mix partners socially, and cap winning streaks so everyone gets court time.</p></details><details class="bg-dark-800 border border-dark-700 rounded-lg p-4"><summary class="cursor-pointer font-medium text-white">Do players need an account?</summary><p class="mt-2 text-gray-400">No. Your session is saved on your device. Live View is optional and gives players a link to follow the queue and scores.</p></details><details class="bg-dark-800 border border-dark-700 rounded-lg p-4"><summary class="cursor-pointer font-medium text-white">Is it free?</summary><p class="mt-2 text-gray-400">Yes. Use Export to back up a session and Import to restore it on another device.</p></details></div></section>
+<footer class="bg-dark-900 border-t border-dark-700 py-6 text-center text-sm text-gray-400"><p>&copy; 2026 QueueZeroTwo. <i class="fa-solid fa-bolt text-pickle-500"></i> Pickleball queue &amp; court rotation. Your session stays on this device. Live View shares player names and scores with anyone who has the link, and expires after 7 days.</p></footer>
 
 <script>
 const K='pickleStackState',$=id=>document.getElementById(id);
@@ -286,7 +287,7 @@ function push(){}
 const mk=()=>({queue:[],waiting:[],rest:{},log:[],target:11,lv:{},md:'bal',sd:0,gp:{},ws:false,wl:2,eq:false,tts:false,hap:true,courts:[1,2,3,4].map(id=>({id,name:'Court '+id,isActive:false,players:[],score:[0,0],mid:'',t:0}))});
 let S=mk(),V=null,SV=null;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const win=(s,t)=>Math.max(s[0],s[1])>=t&&Math.abs(s[0]-s[1])>=2?(s[0]>s[1]?0:1):-1;
+const win=(s,t)=>Math.max(s[0],s[1])>=t&&Math.abs(s[0]-s[1])>=(S.wb===1?1:2)?(s[0]>s[1]?0:1):-1;
 const tx=(p,i)=>p.slice(i*2,i*2+2).join(' & ');
 const nm=(p,i)=>esc(tx(p,i));
 const hm=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
@@ -340,7 +341,7 @@ async function live(){
   const q=await publishSession(sdata());
   if(q.error)return toast('Publish failed: '+q.error.message,'error');
   save();const url=location.origin+location.pathname+'#s='+S.sid;
-  const d=modal('<div class="p-6 text-center"><div class="flex items-center justify-center gap-2 mb-1"><h3 class="text-xl text-white">Live View</h3><span class="text-[10px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-full px-2 py-1">VIEW ONLY</span></div><p class="text-xs text-gray-400 mb-4">Players can scan the QR code or open the link to watch courts, Up Next, the stack and leaderboard in real time.</p><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:200px;max-width:100%">'+qrSvg(url)+'</div><div class="mt-4 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-xs text-gray-300 break-all">'+esc(url)+'</div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"><button class="cp '+bS+'">Copy link</button><button class="sh '+bP+'">Share</button><button class="op '+bS+'">Open view</button></div><button data-x class="mt-4 text-sm text-gray-400 hover:text-white">Close</button></div>');
+  const d=modal('<div class="p-6 text-center"><div class="flex items-center justify-center gap-2 mb-1"><h3 class="text-xl text-white">Live View</h3><span class="text-[10px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-full px-2 py-1">VIEW ONLY</span></div><p class="text-xs text-gray-400 mb-4">Players can scan the QR code or open the link to watch courts, Up Next, the stack and leaderboard in real time. Player names and scores are visible to anyone with the link, and the session expires after 7 days.</p><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:200px;max-width:100%">'+qrSvg(url)+'</div><div class="mt-4 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-xs text-gray-300 break-all">'+esc(url)+'</div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"><button class="cp '+bS+'">Copy link</button><button class="sh '+bP+'">Share</button><button class="op '+bS+'">Open view</button></div><button data-x class="mt-4 text-sm text-gray-400 hover:text-white">Close</button></div>');
   d.querySelector('.cp').onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
   d.querySelector('.sh').onclick=async()=>{try{if(navigator.share)await navigator.share({title:'QueueZeroTwo Live View',text:'Watch our open play live',url});else{await navigator.clipboard.writeText(url);toast('Link copied','success')}}catch(e){}};
   d.querySelector('.op').onclick=()=>window.open(url,'_blank','noopener,noreferrer')
@@ -385,7 +386,7 @@ function showRes(){
   const d=modal('<div class="p-5 border-b border-dark-700"><h3 class="text-2xl text-white">Session Results</h3><p class="text-xs text-gray-400">'+S.log.length+' games played · session ended</p></div><div class="divide-y divide-dark-700">'+rows+'</div><div class="p-5 border-t border-dark-700 text-center">'+lk+'</div><div class="p-4 border-t border-dark-700 grid grid-cols-2 gap-3"><button class="sh col-span-2 '+bP+'"><i class="fa-solid fa-image"></i> Share results image</button><button class="nw col-span-2 '+bD+'">New session</button></div>',true);
   const cp=d.querySelector('.cp');if(cp)cp.onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
   d.querySelector('.sh').onclick=shareImg;
-  d.querySelector('.nw').onclick=()=>ask('Start new session?','This clears the stack, courts, leaderboard and log. Make sure you have shared the results.',()=>{d.__close();const k={snd:S.snd,hap:S.hap,tts:S.tts,md:S.md,ws:S.ws,wl:S.wl,eq:S.eq,target:S.target};S=Object.assign(mk(),k);save();render();toast('New session started','success')})
+  d.querySelector('.nw').onclick=()=>ask('Start new session?','This clears the stack, courts, leaderboard and log. Make sure you have shared the results.',()=>{d.__close();const nc=S.courts.length,k={snd:S.snd,hap:S.hap,tts:S.tts,md:S.md,ws:S.ws,wl:S.wl,eq:S.eq,target:S.target,wb:S.wb};S=Object.assign(mk(),k);setCourts(nc);save();render();toast('New session started','success')})
 }
 
 /* Stack */
@@ -409,7 +410,8 @@ push(c);buzz(30);beep(660,.2);callMatch(c);save();render();toast(c.players.join(
 /* Scoring + finishing */
 function sc(id,i,d){const c=S.courts.find(x=>x.id==id),b=win(c.score,S.target);c.score[i]=Math.max(0,c.score[i]+d);buzz(d<0?25:15);if(b<0&&win(c.score,S.target)>=0){beep(1000,.35);buzz([40,60,40]);callWin(c)}push(c);save();$('sr').textContent=c.name+': '+c.score[0]+' to '+c.score[1];render()}
 function clear(c){Object.assign(c,{isActive:false,players:[],score:[0,0],mid:'',t:0,hold:null,stk:0})}
-function fin(id){buzz([40,60,40]);const c=S.courts.find(x=>x.id==id),w=win(c.score,S.target);
+function fin(id){const snap=JSON.stringify(S);fin0(id);undoOffer(snap)}
+function fin0(id){buzz([40,60,40]);const c=S.courts.find(x=>x.id==id),w=win(c.score,S.target);
 if(c.score[0]+c.score[1]>0){S.log.unshift({mid:c.mid,c:c.name,p:c.players,s:c.score,w,tg:S.target,t:Date.now(),d:Date.now()-c.t})}
 const n=c.name;
 if(S.ws&&w>=0){
@@ -449,7 +451,7 @@ function cleanState(o){
   R.lv=clean(s.lv,v=>Math.min(6,Math.max(0,Math.floor(Number(v))||0)));
   R.md=s.md==='soc'?'soc':'bal';R.sd=Number.isFinite(+s.sd)?+s.sd:0;R.gp=clean(s.gp,v=>Math.max(0,Math.floor(Number(v))||0));
   R.ws=!!s.ws;R.wl=[2,3,4].includes(+s.wl)?+s.wl:2;R.eq=!!s.eq;R.tts=!!s.tts;R.snd=s.snd!==false;R.hap=s.hap!==false;
-  R.target=[11,15,21].includes(+s.target)?+s.target:11;
+  R.target=[11,15,21].includes(+s.target)?+s.target:11;R.wb=s.wb===1?1:2;R.courts=R.courts.slice(0,Math.max(1,Math.min(8,s.courts.length)));
   R.courts=s.courts.slice(0,12).map((c,i)=>{
     const base=R.courts[i]||{id:i+1,name:'Court '+(i+1),isActive:false,players:[],score:[0,0],mid:'',t:0,hold:null,stk:0};
     const sc=Array.isArray(c&&c.score)&&c.score.length===2?c.score.map(v=>Math.max(0,Number(v)||0)):[0,0];
@@ -487,7 +489,7 @@ return `<div class="p-3 rounded-xl border ${w?'bg-pickle-500/15 border-pickle-50
 <div class="flex items-stretch gap-2"><button class="sbg" aria-label="Minus point, Team ${i+1}" onclick="sc(${c.id},${i},-1)">−1</button><span class="sbn font-sport ${w?'text-pickle-500':''}">${c.score[i]}</span><button class="sbg sbp" aria-label="Plus point, Team ${i+1}" onclick="sc(${c.id},${i},1)">+1</button></div></div>`}function renderCourts(){$('courts').innerHTML=S.courts.map(c=>c.isActive?
 `<div class="bg-dark-800 rounded-2xl border border-pickle-500/30 overflow-hidden flex flex-col relative min-h-[322px]"><div class="absolute top-0 inset-x-0 h-1 bg-pickle-500"></div>
 <div class="p-4 border-b border-dark-700 flex justify-between items-center"><h3 class="text-xl text-pickle-500">${esc(c.name)} <button onclick="ren(${c.id})" title="Rename" class="text-gray-400 hover:text-pickle-500 text-sm"><i class="fa-solid fa-pencil"></i></button></h3><span class="text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1"><i class="fa-solid fa-circle live text-[8px]"></i> LIVE <span class="tm" data-t="${c.t}">${fmt(c.t)}</span></span></div>
-<div class="p-4 space-y-2 flex-grow">${team(c,0)}${team(c,1)}<p class="text-[11px] text-gray-400 text-center">First to ${S.target}, win by 2</p></div>
+<div class="p-4 space-y-2 flex-grow">${team(c,0)}${team(c,1)}<p class="text-[11px] text-gray-400 text-center">First to ${S.target}, win by ${S.wb===1?1:2}</p></div>
 <div class="p-3 border-t border-dark-700 flex gap-2"><button onclick="fin(${c.id})" class="flex-grow rounded-lg text-sm font-bold ${win(c.score,S.target)>=0?'bg-pickle-500 text-dark-900':'border border-dark-700 text-gray-300 hover:border-pickle-500'}">FINISH & LOG</button>
 <button onclick="drop(${c.id})" title="Cancel match" class="sb hover:!bg-red-500 hover:!text-white"><i class="fa-solid fa-xmark"></i></button></div></div>`:
 `<div class="bg-dark-900 rounded-2xl border border-dark-700 opacity-70 flex flex-col items-center justify-center py-10 px-5 text-center min-h-[322px]"><i class="fa-solid fa-check text-2xl text-gray-400 mb-3"></i><h3 class="text-xl text-gray-400">${esc(c.name)} <button onclick="ren(${c.id})" title="Rename" class="text-gray-400 hover:text-pickle-500 text-sm"><i class="fa-solid fa-pencil"></i></button></h3><p class="text-sm text-gray-400">Open and waiting for players.</p></div>`).join('')}
@@ -556,7 +558,7 @@ $('mdi').innerHTML=S.md=='bal'
 const ix=pick4();if(ix.length<4){$('unxb').innerHTML='<p class="text-sm text-gray-400">Add at least 4 players to see the next teams.</p>';return}
 const t=split4(ix.map(i=>q[i]));
 $('unxb').innerHTML='<div class="grid grid-cols-2 gap-3">'+[[t.slice(0,2),'Team 1','bg-blue-600','bg-blue-500/10'],[t.slice(2),'Team 2','bg-orange-700','bg-orange-500/10']].map(([p,l,h,b])=>`<div class="rounded-xl overflow-hidden border border-dark-700"><div class="${h} text-white text-xs font-bold px-3 py-1.5">${l}</div><div class="${b} p-3 space-y-1">${p.map(n=>`<div>${esc(n)} <span class="text-xs text-gray-400">${'★'.repeat(lvl(n))}</span></div>`).join('')}</div></div>`).join('')+'</div>'}
-function renderQueue(){const ix=pick4();$('qc').textContent=S.queue.length;$('nvc').textContent=S.queue.length;$('qe').style.display=S.queue.length?'none':'flex';
+function renderQueue(){const ix=pick4();$('qc').textContent=S.queue.length;$('nvc').textContent=S.queue.length;$('qe').style.display=S.queue.length?'none':'flex';$('dm').style.display=S.queue.length||S.waiting.length||S.log.length?'none':'block';
 $('ql').innerHTML=S.queue.map((p,i)=>`<li class="flex items-center justify-between p-3 rounded-xl border ${isRest(p)?'opacity-50 ':''}${ix.includes(i)?'border-pickle-500/50 bg-pickle-500/10':'border-dark-700 bg-dark-900'}"><div class="flex items-center gap-2 min-w-0"><span class="dg w-6 h-8 flex flex-none items-center justify-center text-gray-400 hover:text-pickle-500 cursor-grab" style="touch-action:none" title="Drag to reorder" tabindex="0" role="button" aria-keyshortcuts="ArrowUp ArrowDown" aria-label="Reorder ${esc(p)}, position ${i+1}. Use Arrow Up or Arrow Down to move."><i class="fa-solid fa-grip-vertical"></i></span><span class="w-6 h-6 rounded-full flex flex-none items-center justify-center text-xs font-bold ${ix.includes(i)?'text-pickle-400 bg-pickle-500/20':'text-gray-400 bg-dark-700'}">${i+1}</span><span class="truncate">${esc(p)}</span>${isRest(p)?'<span class="text-[10px] text-gray-400 border border-dark-700 rounded px-1.5">RESTING</span>':''}</div><div class="flex items-center gap-1">${lsel(i)}<button onclick="rest(${i})" title="${isRest(p)?'Back in':'Rest'}" class="w-8 h-8 ${isRest(p)?'text-pickle-500':'text-gray-400 hover:text-pickle-500'}"><i class="fa-solid ${isRest(p)?'fa-play':'fa-mug-hot'}"></i></button><button onclick="rm(${i})" title="Remove" class="text-gray-400 hover:text-red-400 w-8 h-8"><i class="fa-solid fa-xmark"></i></button></div></li>`).join('');
 $('go').disabled=ix.length<4||!S.courts.some(c=>!c.isActive)}
 function renderLog(){$('log').innerHTML=S.log.length?S.log.slice(0,50).map(l=>`<div class="flex items-center gap-3 p-3"><div class="text-xs text-gray-400 w-24 flex-none">${hm(l.t)}<br>${esc(l.c)} · ${Math.max(1,Math.round(l.d/60000))}m</div>
@@ -665,10 +667,27 @@ $('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><h2 c
 <p class="text-xs text-gray-400 mt-4">${lv?(s.code?'Updating live.':'Updating live on this device.'):s.code?'Final score.':'Score as of '+hm(s.ts)+'. Ask for a new link for the latest score.'}</p><a href="${location.pathname}" class="inline-block mt-4 text-sm text-pickle-500 underline">Open QueueZeroTwo</a>`}
 
 function a11y(){document.querySelectorAll('button[title]:not([aria-label])').forEach(b=>b.setAttribute('aria-label',b.title));document.querySelectorAll('i.fa-solid').forEach(i=>i.setAttribute('aria-hidden','true'))}
-function render(){sndUi();hapUi();ttsUi();themeUi();if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();nav(NV);a11y()}
+function render(){sndUi();hapUi();ttsUi();themeUi();if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;$('wbs').value=S.wb===1?1:2;$('ncs').value=S.courts.length;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();nav(NV);a11y();wake()}
+
+/* Release 1: court count, undo, wake lock, demo */
+function setCourts(n){n=Math.max(1,Math.min(8,n|0));const cs=S.courts;
+if(n<cs.length){const busy=cs.slice(n).find(c=>c.isActive);if(busy){$('ncs').value=cs.length;return toast('Finish or cancel the match on '+busy.name+' first.','error')}cs.length=n}
+else while(cs.length<n){const id=cs.length+1;cs.push({id,name:'Court '+id,isActive:false,players:[],score:[0,0],mid:'',t:0})}
+save();render()}
+function undoOffer(snap){const after=JSON.stringify(S);if(snap===after)return;const t=document.createElement('div');
+t.className='mb border px-4 py-3 rounded-lg shadow-xl pointer-events-auto text-sm font-medium bg-dark-700 border-dark-700 flex items-center justify-between gap-3';
+t.innerHTML='<span>Match logged.</span><button class="rounded-lg bg-pickle-500 text-dark-900 font-bold px-3 py-1.5">Undo</button>';
+t.querySelector('button').onclick=()=>{t.remove();if(JSON.stringify(S)!==after)return toast('Too late to undo: things have changed.','error');S=JSON.parse(snap);save();render();toast('Finish undone','success')};
+$('msg').append(t);setTimeout(()=>t.remove(),8000)}
+let WL=null;
+async function wake(){try{if(!('wakeLock' in navigator)||document.visibilityState!=='visible')return;const on=S.courts.some(c=>c.isActive);
+if(on&&!WL){WL=await navigator.wakeLock.request('screen');WL.addEventListener('release',()=>{WL=null})}else if(!on&&WL){await WL.release();WL=null}}catch(e){WL=null}}
+document.addEventListener('visibilitychange',wake);
+function demo(){S.waiting=[];S.queue=['Ana','Ben','Cara','Dan','Eli','Fay','Gus','Hana'];S.lv={ana:3,ben:3,cara:4,dan:2,eli:3,fay:4,gus:2,hana:3};save();render();toast('Demo players added. Tap Send next 4 to court.','success')}
 
 /* Controls */
 $('tg').onchange=e=>{S.target=+e.target.value;save();render()};
+$('wbs').onchange=e=>{S.wb=+e.target.value;save();render()};$('ncs').onchange=e=>setCourts(+e.target.value);
 $('rs').onclick=()=>ask('End session?','Active matches will be cancelled and the session closes for good. You can still share the results afterwards.',()=>{buzz(60);endS()});
 $('cl').onclick=()=>ask('Clear match log?','All logged matches will be removed.',()=>{buzz(60);S.log=[];save();render()});
 
@@ -684,6 +703,7 @@ sv.from('live_sessions').select('code,data,updated_at,expires_at').eq('code',SV.
 sv.channel('s'+SV.code).on('postgres_changes',{event:'*',schema:'public',table:'live_sessions',filter:'code=eq.'+SV.code},q=>q.new&&ap(q.new)).subscribe(status=>{SV.status=status||'CONNECTING';render()})}}
 
 render();
+if(V||SV)$('faq').remove();
 if(S.ended&&!V&&!SV)showRes();
 addEventListener('storage',e=>{if(e.key==K){load();render()}});
 onhashchange=()=>location.reload();
@@ -706,5 +726,6 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 }).catch(()=>{})});
 </script>
 <script src="/profiles.js"></script><!-- profiles -->
+<script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>

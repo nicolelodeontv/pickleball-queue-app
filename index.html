@@ -154,6 +154,11 @@ html[data-theme=light]{color-scheme:light}
 [data-theme=light] .focus:border-pickle-500:focus{border-color:#4d7c0f}
 [data-theme=light] *{scrollbar-color:#94a3b8 transparent}
 [data-theme=light] ::-webkit-scrollbar-thumb{background:#94a3b8}
+/* footer-fix-v1: Tailwind py-6 was overriding the footer clearance; remove Up Next dead space */
+@media(max-width:1023px){
+  body>footer{padding-bottom:calc(4.5rem + env(safe-area-inset-bottom))!important}
+}
+#unxb{min-height:0!important}
 /* header-fix-v1: header buttons wrap on phones so Live View stays reachable */
 @media(max-width:639px){
   header.sticky{position:static}

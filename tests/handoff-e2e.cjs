@@ -43,6 +43,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await a.locator('#ql li').nth(3).waitFor();
   ok('A added and checked in four players');
 
+  await a.locator('#go').click();
+  await a.locator('#nvp').click();
+  await a.locator('#courts .sbg[aria-label="Plus point, Team 1"]').first().waitFor();
+  ok('A sent four players to court');
+
   const dl = await Promise.all([
     a.waitForEvent('download'),
     a.locator('#exp').click()
@@ -50,12 +55,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const backup = '/tmp/queuezerotwo-handoff-backup.json';
   await dl[0].saveAs(backup);
   if (!fs.existsSync(backup)) fail('Backup was not exported');
-  ok('A exported backup', {path: backup});
-
-  await a.locator('#go').click();
-  await a.locator('#nvp').click();
-  await a.locator('#courts .sbg[aria-label="Plus point, Team 1"]').first().waitFor();
-  ok('A sent four players to court');
+  ok('A exported live-state backup', {path: backup});
 
   console.log('STEP A_LIVE');
   await a.getByRole('button', {name:'Live View'}).click();

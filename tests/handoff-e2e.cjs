@@ -33,8 +33,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   console.log('STEP A_OPEN');
   await a.goto(BASE, {waitUntil:'commit', timeout:15000});
-  await a.locator('#pn').waitFor({timeout:15000});
   await a.locator('#nvs').click();
+  await a.locator('#pn').waitFor({timeout:15000});
   console.log('STEP A_OPEN_OK');
   console.log('STEP A_ADD');
   await a.locator('#pn').fill('Handoff-A, Handoff-B, Handoff-C, Handoff-D');
@@ -83,8 +83,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   console.log('STEP B_OPEN');
   await b.goto(BASE, {waitUntil:'commit', timeout:15000});
-  await b.locator('#pn').waitFor({timeout:15000});
   await b.locator('#nvs').click();
+  await b.locator('#pn').waitFor({timeout:15000});
   console.log('STEP B_OPEN_OK');
   await b.locator('#impbtn').click();
   await b.locator('#imp').setInputFiles(backup);

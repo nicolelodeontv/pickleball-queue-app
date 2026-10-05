@@ -94,11 +94,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await b.locator('#ql li').nth(3).waitFor();
   const imported = await b.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('pickleStackState') || '{}');
-    return {sid:s.sid || '', sh:s.sh || '', queue:s.queue || []};
+    return {
+      sid:s.sid || '',
+      sh:s.sh || '',
+      queue:s.queue || [],
+      active:(s.courts || []).filter(c => c && c.isActive).map(c => ({players:c.players || [], score:c.score || []}))
+    };
   });
   if (imported.sid || imported.sh) fail('Import preserved Live View identity unexpectedly', imported);
-  if (imported.queue.length !== 4) fail('Import did not restore stack', imported);
-  ok('B imported backup before takeover');
+  if (imported.queue.length !== 0) fail('Imported live-state backup unexpectedly changed the queue', imported);
+  if (imported.active.length !== 1 || imported.active[0].players.length !== 4) fail('Import did not restore the live court', imported);
+  ok('B imported live-state backup before takeover', imported);
 
   console.log('STEP B_TAKEOVER');
   await b.goto(BASE + handoffHash, {waitUntil:'commit', timeout:15000});

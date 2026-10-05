@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<script>try{if(localStorage.getItem("qzt_theme")==="light")document.documentElement.dataset.theme="light"}catch(e){}</script>
 <title>QueueZeroTwo - Free Pickleball Queue & Court Rotation App</title>
 <meta name="description" content="Manage your open play pickleball sessions effortlessly with QueueZeroTwo. A free paddle stacking, live scoring and match log web app. Remove the chaos from court rotation.">
 <meta name="keywords" content="pickleball, paddle stacking, queue management, court rotation, open play, pickleball scoring, match log">
@@ -26,6 +27,13 @@ h1,h2,h3,.font-sport{font-family:Oswald,sans-serif;text-transform:uppercase;lett
 @media(prefers-reduced-motion:reduce){.live,.mb{animation:none}}
 .qrb svg{width:100%;height:auto;display:block}
 html{color-scheme:dark}
+body{font-variant-numeric:tabular-nums}
+/* Big score buttons for thumbs outdoors */
+.sbg{flex:1 1 0;min-height:3.5rem;border-radius:.75rem;background:#1E293B;color:#fff;font-weight:900;font-size:1.5rem;user-select:none;-webkit-user-select:none}
+.sbg:active{transform:scale(.97)}
+.sbp{flex:1.6 1 0;background:#334155}
+.sbn{flex:none;min-width:4rem;display:flex;align-items:center;justify-content:center;font-size:2.75rem;line-height:1}
+@media(hover:hover){.sbg:hover{background:#ccff00;color:#0B0F19}}
 *{scrollbar-width:thin;scrollbar-color:#334155 transparent}
 ::-webkit-scrollbar{width:8px;height:8px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -116,6 +124,36 @@ button,select,input{touch-action:manipulation}
 
 /* Score buttons stay lime after a tap on touch screens without this */
 @media(hover:none){.sb:hover{background:#1E293B;color:#fff}}
+
+/* ===== Light theme: html[data-theme=light] ===== */
+html[data-theme=light]{color-scheme:light}
+[data-theme=light] body{background:#F4F6FA;color:#0f172a}
+[data-theme=light] .bg-dark-800{background-color:#fff}
+[data-theme=light] .bg-dark-900{background-color:#EEF2F7}
+[data-theme=light] .bg-dark-700,[data-theme=light] .bg-dark-700/90{background-color:#E2E8F0}
+[data-theme=light] .hover:bg-dark-900:hover{background-color:#CBD5E1}
+[data-theme=light] .border-dark-700{border-color:#CBD5E1}
+[data-theme=light] .divide-dark-700>:not([hidden])~:not([hidden]){border-color:#CBD5E1}
+[data-theme=light] .text-white,[data-theme=light] .text-gray-100,[data-theme=light] .hover:text-white:hover{color:#0f172a}
+[data-theme=light] .text-gray-200{color:#1e293b}
+[data-theme=light] .text-gray-300{color:#334155}
+[data-theme=light] .text-gray-400{color:#475569}
+[data-theme=light] .text-pickle-400,[data-theme=light] .text-pickle-500,[data-theme=light] .hover:text-pickle-500:hover{color:#4d7c0f}
+[data-theme=light] .text-green-300,[data-theme=light] .text-green-400{color:#15803d}
+[data-theme=light] .text-red-400,[data-theme=light] .hover:text-red-400:hover{color:#b91c1c}
+[data-theme=light] .text-blue-300,[data-theme=light] .text-blue-400{color:#1d4ed8}
+[data-theme=light] .text-orange-400{color:#c2410c}
+/* Coloured buttons and labels keep white text (must stay after the text-white rule) */
+[data-theme=light] .bg-blue-600,[data-theme=light] .bg-red-600,[data-theme=light] .bg-orange-700,[data-theme=light] .bg-red-500/90{color:#fff}
+[data-theme=light] #sgo{background:#fff}
+[data-theme=light] #swt{border-top-color:#CBD5E1}
+[data-theme=light] .sb,[data-theme=light] .sbg{background:#E2E8F0;color:#0f172a}
+[data-theme=light] .sbp{background:#0f172a;color:#fff}
+@media(hover:hover){[data-theme=light] .sb:hover,[data-theme=light] .sbg:hover{background:#ccff00;color:#0B0F19}}
+[data-theme=light] :focus-visible{outline-color:#1d4ed8}
+[data-theme=light] .focus:border-pickle-500:focus{border-color:#4d7c0f}
+[data-theme=light] *{scrollbar-color:#94a3b8 transparent}
+[data-theme=light] ::-webkit-scrollbar-thumb{background:#94a3b8}
 </style>
 <link rel="stylesheet" href="/tailwind.css">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -129,6 +167,7 @@ button,select,input{touch-action:manipulation}
 <meta name="twitter:card" content="summary_large_image">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="QueueZeroTwo">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
@@ -139,7 +178,7 @@ button,select,input{touch-action:manipulation}
 <div class="bg-pickle-500 text-dark-900 p-2 rounded-lg rotate-12"><i class="fa-solid fa-table-tennis-paddle-ball text-xl"></i></div>
 <div><h1 class="text-2xl font-bold text-white leading-none">Queue<span class="text-pickle-500">ZeroTwo</span></h1><p class="text-xs text-gray-400 font-medium">QUEUE, SCORES & LOG</p></div>
 </div>
-<div class="flex items-center gap-2"><button onclick="stand()" title="Standings" class="bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10"><i class="fa-solid fa-trophy"></i></button><button id="snb" onclick="snd()" title="Sound" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="hpb" onclick="hapt()" title="Haptics" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="tsb" onclick="tts()" title="Voice announcements" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="exp" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Export a backup of this device's QueueZeroTwo data"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Export</span></button><button id="impbtn" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Import a QueueZeroTwo backup"><i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Import</span></button><button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm" title="Open a read-only live view for players"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live View</span></button></div>
+<div class="flex items-center gap-2"><button onclick="stand()" title="Standings" class="bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10"><i class="fa-solid fa-trophy"></i></button><button id="snb" onclick="snd()" title="Sound" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="hpb" onclick="hapt()" title="Haptics" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="thb" onclick="theme()" title="Light or dark theme" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="tsb" onclick="tts()" title="Voice announcements" class="bg-dark-700 rounded-lg w-10 h-10"></button><button id="exp" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Export a backup of this device's QueueZeroTwo data"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Export</span></button><button id="impbtn" type="button" class="bg-dark-700 hover:bg-dark-900 border border-dark-700 text-gray-200 rounded-lg px-3 h-10 text-sm" title="Import a QueueZeroTwo backup"><i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Import</span></button><button onclick="live()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-3 h-10 text-sm" title="Open a read-only live view for players"><i class="fa-solid fa-tower-broadcast"></i> <span class="hidden sm:inline">Live View</span></button></div>
 <div class="text-sm text-gray-400 flex items-center gap-2 bg-dark-900 py-1 px-3 rounded-full border border-dark-700"><i class="fa-solid fa-wifi text-green-400" id="ci"></i><span id="ct" class="hidden sm:inline">Saved on this device</span></div>
 </div>
 </header>
@@ -425,10 +464,9 @@ const dec=h=>JSON.parse(decodeURIComponent(escape(atob(h))));
 function renderWaiting(){$('wc').textContent=S.waiting.length;$('we').style.display=S.waiting.length?'none':'block';
 $('wl').innerHTML=S.waiting.map((p,i)=>`<li class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-dark-700 bg-dark-900"><span class="truncate text-sm text-gray-300">${esc(p)} <span class="text-xs text-gray-400">${'★'.repeat(lvl(p))}</span></span><div class="flex items-center gap-1"><button onclick="checkIn(${i})" class="px-2.5 py-1.5 rounded-lg bg-pickle-500 text-dark-900 text-xs font-bold"><i class="fa-solid fa-user-check"></i> Check in</button><button onclick="rmWaiting(${i})" title="Remove" class="text-gray-400 hover:text-red-400 w-7 h-7"><i class="fa-solid fa-xmark"></i></button></div></li>`).join('')}
 function team(c,i){const w=win(c.score,S.target)==i;
-return `<div class="flex items-center justify-between gap-2 p-3 rounded-xl border ${w?'bg-pickle-500/15 border-pickle-500/50':'bg-dark-900 border-dark-700'}">
-<div class="min-w-0"><div class="text-[11px] text-gray-400 font-semibold">Team ${i+1}</div><div class="truncate text-gray-100">${nm(c.players,i)}</div></div>
-<div class="flex items-center gap-2"><button class="sb" aria-label="Minus point" onclick="sc(${c.id},${i},-1)">−</button><span class="font-sport text-3xl w-10 text-center ${w?'text-pickle-500':''}">${c.score[i]}</span><button class="sb" aria-label="Plus point" onclick="sc(${c.id},${i},1)">+</button></div></div>`}
-function renderCourts(){$('courts').innerHTML=S.courts.map(c=>c.isActive?
+return `<div class="p-3 rounded-xl border ${w?'bg-pickle-500/15 border-pickle-500/50':'bg-dark-900 border-dark-700'}">
+<div class="flex items-center justify-between gap-2 mb-2"><div class="min-w-0 truncate font-bold text-gray-100">${nm(c.players,i)}</div><div class="text-[11px] text-gray-400 font-semibold flex-none">Team ${i+1}</div></div>
+<div class="flex items-stretch gap-2"><button class="sbg" aria-label="Minus point, Team ${i+1}" onclick="sc(${c.id},${i},-1)">−1</button><span class="sbn font-sport ${w?'text-pickle-500':''}">${c.score[i]}</span><button class="sbg sbp" aria-label="Plus point, Team ${i+1}" onclick="sc(${c.id},${i},1)">+1</button></div></div>`}function renderCourts(){$('courts').innerHTML=S.courts.map(c=>c.isActive?
 `<div class="bg-dark-800 rounded-2xl border border-pickle-500/30 overflow-hidden flex flex-col relative min-h-[322px]"><div class="absolute top-0 inset-x-0 h-1 bg-pickle-500"></div>
 <div class="p-4 border-b border-dark-700 flex justify-between items-center"><h3 class="text-xl text-pickle-500">${esc(c.name)} <button onclick="ren(${c.id})" title="Rename" class="text-gray-400 hover:text-pickle-500 text-sm"><i class="fa-solid fa-pencil"></i></button></h3><span class="text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1"><i class="fa-solid fa-circle live text-[8px]"></i> LIVE <span class="tm" data-t="${c.t}">${fmt(c.t)}</span></span></div>
 <div class="p-4 space-y-2 flex-grow">${team(c,0)}${team(c,1)}<p class="text-[11px] text-gray-400 text-center">First to ${S.target}, win by 2</p></div>
@@ -454,6 +492,10 @@ function sndUi(){const b=$('snb');if(b)b.innerHTML='<i class="fa-solid '+(son()?
 function snd(){S.snd=!son();save();sndUi();beep(880,.12)}
 function hapUi(){const b=$('hpb');if(!b)return;b.hidden=!navigator.vibrate;if(navigator.vibrate)b.innerHTML='<i class="fa-solid fa-mobile-screen-button '+(S.hap===false?'text-gray-400':'text-green-400')+'"></i>'}
 function hapt(){if(!navigator.vibrate)return;S.hap=S.hap===false;save();hapUi();toast('Haptics '+(S.hap?'on':'off'),'info')}
+const isLight=()=>document.documentElement.dataset.theme==='light';
+function themeApply(l){document.documentElement.dataset.theme=l?'light':'dark';const m=document.querySelector('meta[name=theme-color]');if(m)m.content=l?'#F4F6FA':'#0B0F19'}
+function themeUi(){const b=$('thb');if(b)b.innerHTML='<i class="fa-solid '+(isLight()?'fa-sun':'fa-moon')+'"></i>'}
+function theme(){const l=!isLight();try{localStorage.setItem('qzt_theme',l?'light':'dark')}catch(e){}themeApply(l);themeUi();a11y();toast((l?'Light':'Dark')+' theme','info')}
 
 /* Voice announcements (browser speech, no extra service) */
 const ttsOk=!!(window.speechSynthesis&&window.SpeechSynthesisUtterance),tm=(p,i)=>p.slice(i*2,i*2+2).join(' and ');
@@ -605,7 +647,7 @@ $('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><h2 c
 <p class="text-xs text-gray-400 mt-4">${lv?(s.code?'Updating live.':'Updating live on this device.'):s.code?'Final score.':'Score as of '+hm(s.ts)+'. Ask for a new link for the latest score.'}</p><a href="${location.pathname}" class="inline-block mt-4 text-sm text-pickle-500 underline">Open QueueZeroTwo</a>`}
 
 function a11y(){document.querySelectorAll('button[title]:not([aria-label])').forEach(b=>b.setAttribute('aria-label',b.title));document.querySelectorAll('i.fa-solid').forEach(i=>i.setAttribute('aria-hidden','true'))}
-function render(){sndUi();hapUi();ttsUi();if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();nav(NV);a11y()}
+function render(){sndUi();hapUi();ttsUi();themeUi();if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();nav(NV);a11y()}
 
 /* Controls */
 $('tg').onchange=e=>{S.target=+e.target.value;save();render()};
@@ -614,6 +656,7 @@ $('cl').onclick=()=>ask('Clear match log?','All logged matches will be removed.'
 
 /* Init + live sync (other tabs on this device update instantly) */
 load();
+themeApply(isLight());
 if(location.hash.startsWith('#m=')){const h=location.hash.slice(3);try{V=h.length<=10?{m:h,code:1,n:'Match',p:[],s:[0,0],tg:11,ts:Date.now()}:dec(h);$('app').classList.add('hidden');$('viewer').classList.remove('hidden');$('nav').classList.add('hidden')}catch(e){}}
 if(false){const ap=q=>{V={...V,n:q.court,p:q.players,s:q.score,tg:q.target,fin:q.status!='live',ts:Date.parse(q.updated_at)};render()};
 sb.from('live_matches').select('*').eq('code',V.m).maybeSingle().then(q=>q.data&&ap(q.data));

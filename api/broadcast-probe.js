@@ -56,17 +56,18 @@ function subscribeBroadcast(sessionCode) {
         clearTimeout(timeout);
         resolve({
           ws,
-          waitForUpdate() {
+          waitForScore(target) {
             return new Promise((res,rej) => {
               const t=setTimeout(() => rej(new Error('Broadcast update timeout')),10000);
               const onMessage = e => {
                 let m;
                 try { m = JSON.parse(typeof e.data === 'string' ? e.data : e.data.toString()) } catch { return }
-                if (m.event !== 'broadcast') return;
-                if (m.payload?.event !== 'session_update') return;
+                if (m.event !== 'broadcast' || m.payload?.event !== 'session_update') return;
+                const p = m.payload.payload;
+                if (JSON.stringify(p?.data?.courts?.[0]?.s) !== JSON.stringify(target)) return;
                 clearTimeout(t);
                 ws.removeEventListener('message', onMessage);
-                res(m.payload.payload);
+                res(p);
               };
               ws.addEventListener('message', onMessage);
             })
@@ -102,7 +103,7 @@ export default async function handler(req, res) {
     viewer = await subscribeBroadcast(SESSION);
     result.checks.viewerSubscribed=true;
 
-    const updatePromise = viewer.waitForUpdate();
+    const updatePromise = viewer.waitForScore([1,0]);
     const rotated = await rpc('rotate_pickle_host_key',{p_code:SESSION,p_old_key:OLD,p_new_key:NEW});
     if (!rotated.ok) throw new Error('Rotation failed: '+JSON.stringify(rotated));
     result.checks.rotation=true;

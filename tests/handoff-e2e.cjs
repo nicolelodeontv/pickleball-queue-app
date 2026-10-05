@@ -5,6 +5,7 @@ const BASE = 'https://queuezerotwo.vercel.app/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {
+  setTimeout(() => { console.error('E2E_GLOBAL_TIMEOUT'); process.exit(2); }, 90000).unref();
   const browser = await chromium.launch({headless: true});
   const A = await browser.newContext({viewport:{width:390,height:844}, deviceScaleFactor:1, isMobile:true, hasTouch:true});
   const B = await browser.newContext({viewport:{width:390,height:844}, deviceScaleFactor:1, isMobile:true, hasTouch:true});
@@ -30,7 +31,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     p.on('pageerror', e => console.log('PAGE_ERROR', label, e.message));
   }
 
-  await a.goto(BASE, {waitUntil:'domcontentloaded'});
+  console.log('STEP A_OPEN');
+  await a.goto(BASE, {waitUntil:'commit', timeout:15000});
+  await a.locator('#pn').waitFor({timeout:15000});
+  console.log('STEP A_OPEN_OK');
+  console.log('STEP A_ADD');
   await a.locator('#pn').fill('Handoff-A, Handoff-B, Handoff-C, Handoff-D');
   await a.locator('#f button').click();
   await a.locator('#ql li').nth(3).waitFor();
@@ -49,6 +54,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await a.locator('#courts .sbg[aria-label="Plus point, Team 1"]').first().waitFor();
   ok('A sent four players to court');
 
+  console.log('STEP A_LIVE');
   await a.getByRole('button', {name:'Live View'}).click();
   await a.getByRole('dialog').waitFor();
   await a.getByRole('button', {name:'Move host to another device'}).click();
@@ -64,15 +70,22 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const handoffHash = '#h=' + session.sid + '.' + session.sh;
   ok('A displayed handoff code', {sid:session.sid});
 
-  await v.goto(BASE + '#s=' + session.sid, {waitUntil:'domcontentloaded'});
+  console.log('STEP V_OPEN');
+  await v.goto(BASE + '#s=' + session.sid, {waitUntil:'commit', timeout:15000});
+  await v.locator('#viewer').waitFor({timeout:15000});
+  console.log('STEP V_OPEN_OK');
   await v.getByText('LIVE · CONNECTED').waitFor({timeout:15000});
   const initialViewerScore = await v.locator('#viewer .font-sport').first().innerText();
   if (initialViewerScore !== '0') fail('Viewer did not start at 0', {initialViewerScore});
   ok('Viewer connected at 0');
 
-  await b.goto(BASE, {waitUntil:'domcontentloaded'});
+  console.log('STEP B_OPEN');
+  await b.goto(BASE, {waitUntil:'commit', timeout:15000});
+  await b.locator('#pn').waitFor({timeout:15000});
+  console.log('STEP B_OPEN_OK');
   await b.locator('#impbtn').click();
   await b.locator('#imp').setInputFiles(backup);
+  console.log('STEP B_CONFIRM');
   await b.getByRole('button', {name:'Confirm'}).click();
   await b.locator('#ql li').nth(3).waitFor();
   const imported = await b.evaluate(() => {
@@ -83,7 +96,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   if (imported.queue.length !== 4) fail('Import did not restore stack', imported);
   ok('B imported backup before takeover');
 
-  await b.goto(BASE + handoffHash, {waitUntil:'domcontentloaded'});
+  console.log('STEP B_TAKEOVER');
+  await b.goto(BASE + handoffHash, {waitUntil:'commit', timeout:15000});
   await sleep(500);
   if (b.url().includes('#h=')) fail('B address bar still contains handoff fragment', {url:b.url()});
   await b.getByRole('button', {name:'Confirm'}).click();
@@ -92,6 +106,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   const beforeOldHostScore = await v.locator('#viewer .font-sport').first().innerText();
   await a.getByRole('dialog').getByRole('button', {name:'Done'}).click().catch(()=>{});
+  console.log('STEP A_OLD_SCORE');
   await a.locator('#courts .sbg[aria-label="Plus point, Team 1"]').first().click();
   await a.getByText('Live View host moved to another device.').waitFor({timeout:10000});
   await sleep(1500);
@@ -99,12 +114,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   if (afterOldHostScore !== beforeOldHostScore) fail('Viewer moved after old host score change', {beforeOldHostScore,afterOldHostScore});
   ok('Old host was rejected and viewer did not move');
 
+  console.log('STEP B_NEW_SCORE');
   await b.locator('#courts .sbg[aria-label="Plus point, Team 1"]').first().click();
   await v.locator('#viewer .font-sport').first().waitFor({state:'visible'});
   await expectScore(v, '1');
   ok('New host score reached viewer', {score:'1'});
 
-  await b.goto(BASE + handoffHash, {waitUntil:'domcontentloaded'});
+  console.log('STEP REPLAY');
+  await b.goto(BASE + handoffHash, {waitUntil:'commit', timeout:15000});
   await sleep(500);
   if (b.url().includes('#h=')) fail('Replay fragment remained in address bar', {url:b.url()});
   await b.getByRole('button', {name:'Confirm'}).click();

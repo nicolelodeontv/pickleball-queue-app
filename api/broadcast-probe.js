@@ -102,6 +102,7 @@ export default async function handler(req, res) {
     viewer = await subscribeBroadcast(SESSION);
     result.checks.viewerSubscribed=true;
 
+    const updatePromise = viewer.waitForUpdate();
     const rotated = await rpc('rotate_pickle_host_key',{p_code:SESSION,p_old_key:OLD,p_new_key:NEW});
     if (!rotated.ok) throw new Error('Rotation failed: '+JSON.stringify(rotated));
     result.checks.rotation=true;
@@ -112,7 +113,7 @@ export default async function handler(req, res) {
     if (!published.ok) throw new Error('New-host publish failed: '+JSON.stringify(published));
     result.checks.newHostPublish=true;
 
-    const payload = await viewer.waitForUpdate();
+    const payload = await updatePromise;
     result.broadcastScore = payload?.data?.courts?.[0]?.s || null;
     if (JSON.stringify(result.broadcastScore) !== JSON.stringify([1,0])) {
       throw new Error('Broadcast delivered unexpected score: '+JSON.stringify(result.broadcastScore));

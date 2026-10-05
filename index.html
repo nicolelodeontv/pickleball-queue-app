@@ -713,7 +713,9 @@ sb.from('live_matches').select('*').eq('code',V.m).maybeSingle().then(q=>q.data&
 sb.channel('m'+V.m).on('postgres_changes',{event:'*',schema:'public',table:'live_matches',filter:'code=eq.'+V.m},q=>q.new&&ap(q.new)).subscribe()}if(location.hash.startsWith('#s=')){SV={code:location.hash.slice(3),d:null,ts:Date.now(),status:'CONNECTING'};$('app').classList.add('hidden');$('viewer').classList.remove('hidden','max-w-xl');$('nav').classList.add('hidden');$('viewer').classList.add('max-w-3xl');
 if(sb){const sv=viewerClient(SV.code),ap=q=>{SV.d=q.data;SV.ts=Date.parse(q.updated_at);render()};
 sv.from('live_sessions').select('code,data,updated_at,expires_at').eq('code',SV.code).maybeSingle().then(q=>{if(q.data)ap(q.data);else{SV.missing=true;render()}});
-sv.channel('s'+SV.code).on('postgres_changes',{event:'*',schema:'public',table:'live_sessions',filter:'code=eq.'+SV.code},q=>q.new&&ap(q.new)).subscribe(status=>{SV.status=status||'CONNECTING';render()})}}
+const ch=sv.channel('session:'+SV.code);
+ch.on('broadcast',{event:'session_update'},q=>{const p=q.payload||{};if(p.data)ap(p)});
+ch.subscribe((status)=>{SV.status=status||'CONNECTING';render()})}}
 
 render();
 if(V||SV)$('faq').remove();

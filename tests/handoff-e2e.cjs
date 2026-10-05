@@ -53,6 +53,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   ok('A exported backup', {path: backup});
 
   await a.locator('#go').click();
+  await a.locator('#nvp').click();
   await a.locator('#courts .sbg[aria-label="Plus point, Team 1"]').first().waitFor();
   ok('A sent four players to court');
 
@@ -105,6 +106,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   if (b.url().includes('#h=')) fail('B address bar still contains handoff fragment', {url:b.url()});
   await b.getByRole('button', {name:'Confirm'}).click();
   await b.getByText('This device is now the host').waitFor({timeout:10000});
+  await b.locator('#nvp').click();
+  await b.locator('#courts .sbg[aria-label="Plus point, Team 1"]').first().waitFor();
   ok('B took over and fragment disappeared', {url:b.url()});
 
   const beforeOldHostScore = await v.locator('#viewer .font-sport').first().innerText();

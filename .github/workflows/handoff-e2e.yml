@@ -2,6 +2,8 @@ name: Temporary host handoff E2E
 on:
   push:
     branches: [handoff-e2e-20261006]
+  pull_request:
+    branches: [main]
 jobs:
   handoff:
     runs-on: ubuntu-latest

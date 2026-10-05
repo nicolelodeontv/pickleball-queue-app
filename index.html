@@ -154,6 +154,11 @@ html[data-theme=light]{color-scheme:light}
 [data-theme=light] .focus:border-pickle-500:focus{border-color:#4d7c0f}
 [data-theme=light] *{scrollbar-color:#94a3b8 transparent}
 [data-theme=light] ::-webkit-scrollbar-thumb{background:#94a3b8}
+/* header-fix-v1: header buttons wrap on phones so Live View stays reachable */
+@media(max-width:639px){
+  header.sticky{position:static}
+  header .container>div:nth-child(2){flex-wrap:wrap;width:100%}
+}
 /* light-fix-v1: same rules as above, written without backslash escapes */
 [data-theme=light] .bg-dark-700,[data-theme=light] [class~="bg-dark-700/90"]{background-color:#E2E8F0}
 [data-theme=light] [class~="hover:bg-dark-900"]:hover{background-color:#CBD5E1}

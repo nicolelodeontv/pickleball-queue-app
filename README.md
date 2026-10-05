@@ -22,3 +22,7 @@ The public session code is the access token for the Live View, so do not put pri
 For a separate deployment, run supabase.sql in your Supabase SQL Editor, then set SB_URL and SB_KEY in index.html to the project's URL and browser-safe publishable key.
 
 The local session remains the source of truth. Cloud data is only published when the organizer uses Live View.
+
+### Host handoff
+
+After the original Supabase setup is installed, apply `supabase/host_handoff.sql` to add the host-key rotation RPC used by Live View handoff. Do not re-run `supabase.sql` against an existing production database; that setup script contains the original public Live View policies and can reopen them.

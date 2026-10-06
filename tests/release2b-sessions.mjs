@@ -23,9 +23,7 @@ async function setupFour(page) {
   await page.goto(APP, {waitUntil: 'networkidle'});
   await page.locator('#pn').fill('Alpha,Beta,Gamma,Delta');
   await page.locator('#f').press('Enter');
-  await assert.doesNotReject(async () =>
-    page.locator('#wc').filter({hasText: '4'}).waitFor({state: 'visible', timeout: 5000})
-  );
+  await page.waitForFunction(() => document.getElementById('wc')?.textContent === '4', null, {timeout: 5000});
   await page.getByRole('button', {name: 'Check in all'}).click();
   await assert.equal(await page.locator('#wc').innerText(), '0');
   await assert.equal(await page.locator('#qc').innerText(), '4');

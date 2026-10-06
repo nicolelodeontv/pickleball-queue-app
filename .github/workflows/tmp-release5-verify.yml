@@ -25,7 +25,7 @@ jobs:
           w = Path("sw.js").read_text(encoding="utf-8")
           assert h.count("function initMenu()") == 1
           assert 'button[title="Players"]' in h
-          assert 'id="mnb"' in h
+          assert "id='mnb'" in h
           assert h.count('onclick="live()"') == 1
           assert "const V = 'queuezerotwo-v9';" in w
           PY
@@ -38,7 +38,7 @@ jobs:
           assert h.count("function initMenu()") == 1
           assert 'button[title="Players"]' in h
           assert 'id="mnb"' in h
-          assert 'id="qmenu"' in h
+          assert "id='qmenu'" in h
           assert h.count('onclick="live()"') == 1
           start = h.find("<script>\nconst K=")
           end = h.find("</script>", start)

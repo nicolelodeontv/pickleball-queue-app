@@ -1,0 +1,45 @@
+name: Release 2 Playwright
+# Release 2b regression v11
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release2b:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:css
+      - name: Check inline app JavaScript
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          h = Path("index.html").read_text(encoding="utf-8")
+          start = h.find("<script>\nconst K=")
+          end = h.find("</script>", start)
+          if start < 0 or end < 0:
+            raise SystemExit("main inline script not found")
+          Path("/tmp/queuezerotwo-inline.js").write_text(h[start+8:end], encoding="utf-8")
+          PY
+          node --check /tmp/queuezerotwo-inline.js
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - name: Start static server
+        run: nohup python3 -m http.server 4173 >/tmp/queuezerotwo-http.log 2>&1 &
+      - name: Run Release 2 Playwright smoke
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/release2b-sessions.mjs

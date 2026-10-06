@@ -26,6 +26,8 @@ begin
   return coalesce(new, old);
 end
 $function$;
+language plpgsql;
+
 
 revoke execute on function public.live_sessions_broadcast() from public;
 revoke execute on function public.live_sessions_broadcast() from anon;

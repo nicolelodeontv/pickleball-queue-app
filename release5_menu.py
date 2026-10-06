@@ -15,14 +15,14 @@ const mb=document.createElement('button');mb.id='mnb';mb.type='button';mb.title=
 mb.className='bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10';mb.innerHTML='<i class="fa-solid fa-bars" aria-hidden="true"></i>';
 const m=document.createElement('div');m.id='qmenu';m.hidden=true;m.className='bg-dark-800 border border-dark-700 rounded-xl shadow-2xl';
 const short={exp:'Export backup',impbtn:'Import backup'};
-['button[onclick="stand()"]','button[onclick="hist()"]','#snb','#hpb','#thb','#tsb','button[onclick="openFaq()"][title]','#exp','#impbtn'].forEach(q=>{const b=bar.querySelector(q);if(b){if(short[b.id])b.title=short[b.id];m.append(b)}});
+['button[title="Players"]','button[onclick="stand()"]','button[onclick="hist()"]','#snb','#hpb','#thb','#tsb','button[onclick="openFaq()"][title]','#exp','#impbtn'].forEach(q=>{const b=bar.querySelector(q);if(b){if(short[b.id])b.title=short[b.id];m.append(b)}});
 const close=()=>{m.hidden=true;m.style.transform='';mb.setAttribute('aria-expanded','false')};
 mb.onclick=e=>{e.stopPropagation();if(!m.hidden)return close();m.hidden=false;mb.setAttribute('aria-expanded','true');const r=m.getBoundingClientRect();if(r.left<8)m.style.transform='translateX('+(8-r.left)+'px)';else if(r.right>innerWidth-8)m.style.transform='translateX('+(innerWidth-8-r.right)+'px)'};
 m.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&!['snb','hpb','thb','tsb'].includes(b.id))close()});
 document.addEventListener('click',e=>{if(!m.hidden&&!w.contains(e.target))close()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!m.hidden){close();mb.focus()}});
 w.append(mb,m);bar.append(w)}
-initMenu();
+setTimeout(initMenu,0);
 
 /* Release 4: How it works popup */"""
 h = rep(h, "/* Release 4: How it works popup */", NEW)

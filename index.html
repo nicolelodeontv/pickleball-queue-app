@@ -671,7 +671,7 @@ $('viewer').innerHTML=`<div class="flex justify-between items-center mb-4"><h2 c
 function a11y(){document.querySelectorAll('button[title]:not([aria-label])').forEach(b=>b.setAttribute('aria-label',b.title));document.querySelectorAll('i.fa-solid').forEach(i=>i.setAttribute('aria-hidden','true'))}
 function render(){sndUi();hapUi();ttsUi();themeUi();if(SV)return renderSession();if(V)return renderViewer();$('tg').value=S.target;$('wbs').value=S.wb===1?1:2;$('ncs').value=S.courts.length;renderWaiting();renderQueue();renderNext();renderCourts();renderLB();renderLog();nav(NV);a11y();wake()}
 
-* Release 5: header menu (Live View stays visible, everything else lives in the menu) */
+/* Release 5: header menu (Live View stays visible, everything else lives in the menu) */
 function initMenu(){const live=document.querySelector('button[onclick="live()"]'),bar=live&&live.parentElement;if(!bar||$('mnb'))return;
 const st=document.createElement('style');st.textContent='#mnw{position:relative}#qmenu{position:absolute;right:0;top:100%;margin-top:.5rem;width:16rem;max-width:calc(100vw - 1.5rem);max-height:75vh;overflow-y:auto;z-index:50;padding:.5rem}#qmenu[hidden]{display:none}#qmenu button{display:flex;align-items:center;gap:.75rem;width:100%;height:auto;min-height:44px;padding:.5rem .75rem;text-align:left;font-size:.875rem;color:inherit;background:transparent;border:0;border-radius:.5rem}#qmenu button:hover{background:rgba(148,163,184,.18)}#qmenu button[hidden]{display:none}#qmenu button::after{content:attr(title)}#qmenu button span{display:none}#qmenu button i{width:1.25rem;text-align:center}';document.head.append(st);
 const w=document.createElement('div');w.id='mnw';

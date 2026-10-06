@@ -20,33 +20,14 @@ async function freshContext(browser, device) {
 }
 
 async function setupFour(page) {
-  const errors=[];
-  page.on('pageerror', e=>errors.push('pageerror: '+e.message));
-  page.on('console', m=>{if(m.type()==='error')errors.push('console: '+m.text())});
   await page.goto(APP, {waitUntil: 'networkidle'});
-  const stackTab = page.locator('#nav button').filter({hasText: 'Stack'}).first();
-  if (await stackTab.count()) await stackTab.click();
-  console.log('SETUP_DIAG', await page.evaluate(() => ({
-    wc: document.getElementById('wc')?.textContent,
-    pn: !!document.getElementById('pn'),
-    form: typeof document.getElementById('f')?.onsubmit,
-    supabase: !!window.supabase
-  })));
+  await page.evaluate(() => document.getElementById('nvs')?.click());
   await page.locator('#pn').fill('Alpha,Beta,Gamma,Delta');
   await page.locator('#f button').click();
-  await page.waitForFunction(() => document.getElementById('wc')?.textContent === '4', null, {timeout: 5000}).catch(async e=>{
-    console.log('SETUP_ERRORS', errors);
-    console.log('SETUP_AFTER_CLICK', await page.evaluate(() => ({
-      wc: document.getElementById('wc')?.textContent,
-      waiting: document.getElementById('wl')?.innerText,
-      form: typeof document.getElementById('f')?.onsubmit,
-      href: location.href
-    })));
-    throw e;
-  });
+  await page.waitForFunction(() => document.getElementById('wc')?.textContent === '4', null, {timeout: 5000});
   await page.getByRole('button', {name: 'Check in all'}).click();
-  await assert.equal(await page.locator('#wc').innerText(), '0');
-  await assert.equal(await page.locator('#qc').innerText(), '4');
+  assert.equal(await page.locator('#wc').innerText(), '0');
+  assert.equal(await page.locator('#qc').innerText(), '4');
 }
 
 async function main() {

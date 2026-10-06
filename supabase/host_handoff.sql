@@ -41,6 +41,8 @@ begin
   return true;
 end
 $function$;
+language plpgsql;
+
 
 grant execute on function public.rotate_pickle_host_key(text, text, text)
   to anon, authenticated;
@@ -76,6 +78,7 @@ begin
   return coalesce(new, old);
 end
 $function$;
+language plpgsql;
 
 revoke execute on function public.live_sessions_broadcast() from public;
 revoke execute on function public.live_sessions_broadcast() from anon;

@@ -71,7 +71,7 @@ begin
     ),
     'session_update',
     'session:' || v_code,
-    false
+    true
   );
   return coalesce(new, old);
 end
@@ -86,3 +86,13 @@ create trigger live_sessions_broadcast_trigger
 after insert or update or delete on public.live_sessions
 for each row
 execute function public.live_sessions_broadcast();
+
+-- Live View viewers receive private broadcast events but have no insert policy,
+-- so a browser holding a session link can listen but cannot forge score updates.
+drop policy if exists "live view receive session broadcasts" on realtime.messages;
+create policy "live view receive session broadcasts"
+on realtime.messages for select to anon, authenticated
+using (
+  realtime.messages.extension = 'broadcast'
+  and (select realtime.topic()) like 'session:%'
+);

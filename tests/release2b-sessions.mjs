@@ -180,6 +180,37 @@ async function main() {
     await imported.getByText('Sat 6pm', {exact:true}).waitFor({state:'visible', timeout:5000});
     await imported.getByRole('button', {name: 'Close'}).click();
 
+    // Release 3 regression: Undo a finished match, then finish it again. All-time Players must count one game.
+    await dp.evaluate(() => localStorage.clear());
+    await dp.reload({waitUntil: 'networkidle'});
+    await dp.locator('#pn').fill('Alpha,Beta,Gamma,Delta');
+    await dp.locator('#f button').click();
+    await dp.getByRole('button', {name: 'Check in all'}).click();
+    await dp.locator('#go').click();
+    for (let i = 0; i < 11; i++) {
+      await dp.locator('button[aria-label="Plus point, Team 1"]').first().click();
+    }
+    await dp.getByRole('button', {name: 'FINISH & LOG'}).click();
+    await dp.locator('#msg').getByText('Match logged.').waitFor({state:'visible', timeout:5000});
+    await dp.locator('#msg').getByRole('button', {name:'Undo'}).click();
+    await dp.waitForFunction(() => S.log.length === 0 && S.courts.some(c => c.isActive), null, {timeout:5000});
+    await dp.locator('button[aria-label="Plus point, Team 1"]').first().waitFor({state:'visible', timeout:5000});
+    for (let i = 0; i < 11; i++) {
+      await dp.locator('button[aria-label="Plus point, Team 1"]').first().click();
+    }
+    await dp.getByRole('button', {name: 'FINISH & LOG'}).click();
+    await dp.locator('#msg').getByText('Match logged.').waitFor({state:'visible', timeout:5000});
+    await dp.locator('button[title="Players"]').click();
+    const players = dp.locator('[role="dialog"]').last();
+    await players.locator('button.pr[data-k="alpha"]').waitFor({state:'visible', timeout:5000});
+    await players.locator('button.pr[data-k="alpha"]').click();
+    const profile = dp.locator('[role="dialog"]').last();
+    const gamesCard = profile.getByText('Games', {exact:true}).locator('..');
+    assert.match(await gamesCard.innerText(), /^1\s*Games$/);
+    await profile.getByRole('button', {name:'Close'}).click();
+    await dp.evaluate(() => localStorage.clear());
+    await dp.reload({waitUntil:'networkidle'});
+
     // Context 3: mobile scoring regression using the current production selectors.
     await setupFour(pp);
     await pp.evaluate(() => document.getElementById('nvs')?.click());

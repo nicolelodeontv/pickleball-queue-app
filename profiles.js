@@ -4,6 +4,10 @@ const PK='pickleStackPlayers',ky=n=>n.toLowerCase();
 let P={};
 try{P=JSON.parse(localStorage.getItem(PK))||{}}catch(e){P={}}
 const sv=()=>{try{localStorage.setItem(PK,JSON.stringify(P))}catch(e){}};
+window.pRestore=s=>{if(!s)return;try{const o=JSON.parse(s);P=o.p||{};S.pseen=o.ps||{};sv()}catch(e){}};
+const num=(v,m)=>Math.min(m,Math.max(0,Math.floor(Number(v))||0));
+const ptc=o=>{const r={};if(o&&typeof o==='object')Object.keys(o).slice(0,300).forEach(k=>{const x=o[k];if(x&&k!=='__proto__')r[String(k).slice(0,40)]={n:String(x.n||'').slice(0,40),g:num(x.g,1e5),w:num(x.w,1e5)}});return r};
+const cln=x=>({n:String(x.n).slice(0,40),w:num(x.w,1e5),l:num(x.l,1e5),pf:num(x.pf,1e7),pa:num(x.pa,1e7),s:num(x.s,1e5),last:num(x.last,9e15),form:(Array.isArray(x.form)?x.form:[]).slice(0,10).map(f=>f=='W'?'W':'L'),pt:ptc(x.pt),lv:num(x.lv,6)});
 const row=n=>P[ky(n)]||(P[ky(n)]={n,w:0,l:0,pf:0,pa:0,s:0,last:0,form:[],pt:{},lv:0});
 const dt=t=>t?new Date(t).toLocaleDateString([],{month:'short',day:'numeric'}):'never';
 const pct=r=>r.w+r.l?Math.round(100*r.w/(r.w+r.l)):0;
@@ -11,11 +15,12 @@ const pct=r=>r.w+r.l?Math.round(100*r.w/(r.w+r.l)):0;
 /* Record each finished, scored match */
 const _fin=fin;
 fin=function(id){
+  window.__pundo=null;
   const c=S.courts.find(x=>x.id==id);
   if(c&&c.isActive){
     const w=win(c.score,S.target);
     if(w>=0){
-      S.pseen=S.pseen||{};
+      window.__pundo=JSON.stringify({p:P,ps:S.pseen||{}});S.pseen=S.pseen||{};
       c.players.forEach((n,i)=>{
         const t=i<2?0:1,r=row(n),won=w==t,m=c.players[t*2+(1-i%2)];
         won?r.w++:r.l++;r.pf+=c.score[t];r.pa+=c.score[1-t];r.last=Date.now();
@@ -70,11 +75,11 @@ function open(){
   box.querySelector('[data-x]').onclick=()=>d.remove();
   box.querySelector('.ex').onclick=()=>{
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({v:1,players:P})],{type:'application/json'}));
-    a.download='picklestack-players.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Backup saved','success')};
+    a.download='queuezerotwo-players.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Backup saved','success')};
   const fl=box.querySelector('.fl');box.querySelector('.im').onclick=()=>fl.click();
   fl.onchange=()=>{const f=fl.files[0];if(!f)return;const rd=new FileReader();
     rd.onload=()=>{try{const o=JSON.parse(rd.result).players;let n=0;
-      Object.keys(o).forEach(k=>{const x=o[k];if(!x||!x.n)return;const c=P[k];if(!c||x.w+x.l>c.w+c.l){P[k]=Object.assign({form:[],pt:{},lv:0,s:0,last:0,pf:0,pa:0,w:0,l:0},x);n++}});
+      Object.keys(o).slice(0,2000).forEach(k=>{const x=o[k];if(!x||!x.n)return;const y=cln(x),kk=ky(y.n),c=P[kk];if(kk!=='__proto__'&&(!c||y.w+y.l>c.w+c.l)){P[kk]=y;n++}});
       sv();draw();toast('Restored '+n+' players','success')}catch(e){toast('That file could not be read.','error')}};
     rd.readAsText(f)};
 }

@@ -1,0 +1,56 @@
+name: Release 5 verification
+on:
+  push:
+    branches: [release5-menu]
+    paths:
+      - release5_menu.py
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: python3 release5_menu.py --dry-run
+      - run: python3 release5_menu.py
+      - name: Check patch output
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          h = Path("index.html").read_text(encoding="utf-8")
+          assert h.count("function initMenu()") == 1
+          assert 'button[title="Players"]' in h
+          assert 'id="mnb"' in h
+          assert 'id="qmenu"' in h
+          assert 'onclick="live()"' in h
+          start = h.find("<script>\nconst K=")
+          end = h.find("</script>", start)
+          if start < 0 or end < 0:
+            raise SystemExit("main inline script not found")
+          Path("/tmp/queuezerotwo-inline.js").write_text(h[start+8:end], encoding="utf-8")
+          PY
+          node --check /tmp/queuezerotwo-inline.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:css
+      - name: Run Release 2 Playwright smoke
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          nohup python3 -m http.server 4173 >/tmp/queuezerotwo-http.log 2>&1 &
+          APP_URL=http://127.0.0.1:4173/ node tests/release2b-sessions.mjs
+      - name: Commit applied build
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html sw.js tailwind.css
+          git diff --cached --quiet || git commit -m "Release 5: apply header Menu"
+          git push origin HEAD:release5-menu

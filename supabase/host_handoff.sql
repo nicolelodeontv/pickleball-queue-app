@@ -41,7 +41,6 @@ begin
   return true;
 end
 $function$;
-language plpgsql;
 
 
 grant execute on function public.rotate_pickle_host_key(text, text, text)
@@ -55,6 +54,7 @@ grant execute on function public.rotate_pickle_host_key(text, text, text)
 -- model without exposing host_key in the broadcast payload.
 create or replace function public.live_sessions_broadcast()
 returns trigger
+language plpgsql
 security definer
 set search_path to ''
 as $function$
@@ -78,7 +78,6 @@ begin
   return coalesce(new, old);
 end
 $function$;
-language plpgsql;
 
 revoke execute on function public.live_sessions_broadcast() from public;
 revoke execute on function public.live_sessions_broadcast() from anon;

@@ -21,12 +21,15 @@ async function freshContext(browser, device) {
 
 async function setupFour(page) {
   await page.goto(APP, {waitUntil: 'networkidle'});
-  await page.evaluate(() => document.getElementById('nvs')?.click());
+  await page.evaluate(() => {
+    if (innerWidth < 1024) document.getElementById('nvs')?.click();
+  });
   await page.locator('#pn').fill('Alpha,Beta,Gamma,Delta');
   await page.locator('#f button').click();
   await page.waitForFunction(() => document.getElementById('wc')?.textContent === '4', null, {timeout: 5000});
   await page.getByRole('button', {name: 'Check in all'}).click();
-  assert.equal(await page.locator('#wc').innerText(), '0');
+  await page.waitForFunction(() => document.getElementById('wc')?.textContent === '0', null, {timeout: 5000});
+  await page.evaluate(() => document.getElementById('nvp')?.click());
   assert.equal(await page.locator('#qc').innerText(), '4');
 }
 

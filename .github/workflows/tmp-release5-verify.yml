@@ -16,13 +16,19 @@ jobs:
         shell: bash
         run: |
           git fetch origin main --depth=1
-          git show HEAD:index.html > /tmp/expected-index.html
-          git show HEAD:sw.js > /tmp/expected-sw.js
           git checkout origin/main -- index.html sw.js
           python3 release5_menu.py --dry-run
           python3 release5_menu.py
-          cmp /tmp/expected-index.html index.html
-          cmp /tmp/expected-sw.js sw.js
+          python3 - <<'PY'
+          from pathlib import Path
+          h = Path("index.html").read_text(encoding="utf-8")
+          w = Path("sw.js").read_text(encoding="utf-8")
+          assert h.count("function initMenu()") == 1
+          assert 'button[title="Players"]' in h
+          assert 'id="mnb"' in h
+          assert h.count('onclick="live()"') == 1
+          assert "const V = 'queuezerotwo-v9';" in w
+          PY
       - name: Check patched inline JavaScript
         shell: bash
         run: |

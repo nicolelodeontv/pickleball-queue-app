@@ -3,6 +3,7 @@
 
 create or replace function public.live_sessions_broadcast()
 returns trigger
+language plpgsql
 security definer
 set search_path to ''
 as $function$
@@ -26,7 +27,6 @@ begin
   return coalesce(new, old);
 end
 $function$;
-language plpgsql;
 
 
 revoke execute on function public.live_sessions_broadcast() from public;

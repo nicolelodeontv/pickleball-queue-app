@@ -43,8 +43,84 @@ async function main() {
   const ip = await iphone.newPage();
   const pp = await pixel.newPage();
   const backupPath = path.join(os.tmpdir(), 'queuezerotwo-release2b-backup.json');
+  const persistencePath = path.join(os.tmpdir(), 'queuezerotwo-release1-persistence.json');
+  const hostilePath = path.join(os.tmpdir(), 'queuezerotwo-hostile-backup.json');
 
   try {
+    // Release 1 regression: Win by + court count survive Export/Import and New session.
+    await dp.goto(APP, {waitUntil: 'networkidle'});
+    await dp.locator('#tg').selectOption('15');
+    await dp.locator('#wbs').selectOption('1');
+    await dp.locator('#ncs').selectOption('6');
+    await dp.waitForFunction(() => S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
+    const [persistenceDownload] = await Promise.all([
+      dp.waitForEvent('download'),
+      dp.locator('#exp').click(),
+    ]);
+    await persistenceDownload.saveAs(persistencePath);
+    const persistedBackup = JSON.parse(fs.readFileSync(persistencePath, 'utf8'));
+    assert.equal(persistedBackup.state.target, 15);
+    assert.equal(persistedBackup.state.wb, 1);
+    assert.equal(persistedBackup.state.courts.length, 6);
+
+    await dp.locator('#rs').click();
+    await dp.locator('[role="dialog"]').getByRole('button', {name: 'Confirm'}).click();
+    await dp.locator('.nw').click();
+    await dp.locator('[role="dialog"]').getByRole('button', {name: 'Confirm'}).click();
+    await dp.waitForFunction(() => S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
+    assert.equal(await dp.locator('#tg').inputValue(), '15');
+    assert.equal(await dp.locator('#wbs').inputValue(), '1');
+    assert.equal(await dp.locator('#ncs').inputValue(), '6');
+
+    // Context 2: restore the Release 1 settings backup on a clean device.
+    await ip.goto(APP, {waitUntil: 'networkidle'});
+    await ip.evaluate(() => localStorage.clear());
+    await ip.reload({waitUntil: 'networkidle'});
+    await ip.locator('#imp').setInputFiles(persistencePath);
+    await ip.getByRole('button', {name: 'Confirm'}).click();
+    await ip.waitForFunction(() => S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
+    assert.equal(await ip.locator('#tg').inputValue(), '15');
+    assert.equal(await ip.locator('#wbs').inputValue(), '1');
+    assert.equal(await ip.locator('#ncs').inputValue(), '6');
+    await ip.evaluate(() => localStorage.clear());
+    await ip.reload({waitUntil: 'networkidle'});
+
+    // Context 3: hostile backup must remain inert and render as text.
+    const hostile='<img src=x onerror=alert(1)>';
+    fs.writeFileSync(hostilePath, JSON.stringify({
+      app:'QueueZeroTwo',
+      version:1,
+      exportedAt:new Date().toISOString(),
+      state:{
+        courts:[
+          {id:1,name:hostile,isActive:false,players:[],score:[0,0],mid:'',t:0},
+          {id:2,name:'Court 2',isActive:false,players:[],score:[0,0],mid:'',t:0},
+          {id:3,name:'Court 3',isActive:false,players:[],score:[0,0],mid:'',t:0},
+          {id:4,name:'Court 4',isActive:false,players:[],score:[0,0],mid:'',t:0}
+        ],
+        log:[{mid:'hostile1',c:hostile,p:['Alice','Bob','Carol','Dave'],s:[11,9],w:0,t:Date.now(),d:600000,tg:11}]
+      }
+    }), 'utf8');
+    let alerts=0;
+    pp.on('dialog', async d => { alerts++; await d.dismiss(); });
+    await pp.goto(APP, {waitUntil: 'networkidle'});
+    await pp.evaluate(() => localStorage.clear());
+    await pp.reload({waitUntil: 'networkidle'});
+    await pp.locator('#imp').setInputFiles(hostilePath);
+    await pp.getByRole('button', {name: 'Confirm'}).click();
+    await pp.waitForFunction(() => S.log.length === 1 && S.courts[0].name.includes('<img'), null, {timeout: 5000});
+    assert.equal(alerts, 0);
+    assert.equal(await pp.locator('#log img').count(), 0);
+    assert.equal(await pp.locator('#courts img').count(), 0);
+    assert.match(await pp.locator('#log').innerText(), /<img src=x onerror=/);
+    await pp.evaluate(() => localStorage.clear());
+    await pp.reload({waitUntil: 'networkidle'});
+
+    // Restore the normal 11-point fixture before the named-session flow.
+    await dp.locator('#tg').selectOption('11');
+    await dp.locator('#wbs').selectOption('2');
+    await dp.waitForFunction(() => S.target === 11 && S.wb === 2, null, {timeout: 5000});
+
     // Context 1: full named-session/history flow.
     await setupFour(dp);
     await dp.locator('#go').click();
@@ -123,7 +199,9 @@ async function main() {
       mobileScoring: true,
     }, null, 2));
   } finally {
-    try { fs.unlinkSync(backupPath); } catch {}
+    for (const p of [backupPath, persistencePath, hostilePath]) {
+      try { fs.unlinkSync(p); } catch {}
+    }
     await browser.close();
   }
 }

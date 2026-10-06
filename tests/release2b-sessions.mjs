@@ -203,7 +203,8 @@ async function main() {
     }
     await dp.getByRole('button', {name: 'FINISH & LOG'}).click();
     await dp.locator('#msg').getByText('Match logged.').waitFor({state:'visible', timeout:5000});
-    await dp.locator('button[title="Players"]').click();
+    await dp.locator('#mnb').click();
+    await dp.locator('#qmenu button[title="Players"]').click();
     const players = dp.locator('[role="dialog"]').last();
     await players.locator('button.pr[data-k="alpha"]').waitFor({state:'visible', timeout:5000});
     await players.locator('button.pr[data-k="alpha"]').click();

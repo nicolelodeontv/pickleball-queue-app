@@ -24,6 +24,8 @@ async function setupFour(page) {
   page.on('pageerror', e=>errors.push('pageerror: '+e.message));
   page.on('console', m=>{if(m.type()==='error')errors.push('console: '+m.text())});
   await page.goto(APP, {waitUntil: 'networkidle'});
+  const stackTab = page.locator('#nav button').filter({hasText: 'Stack'}).first();
+  if (await stackTab.count()) await stackTab.click();
   console.log('SETUP_DIAG', await page.evaluate(() => ({
     wc: document.getElementById('wc')?.textContent,
     pn: !!document.getElementById('pn'),

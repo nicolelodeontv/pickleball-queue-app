@@ -55,7 +55,7 @@ async function main() {
     await dp.waitForFunction(() => S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
     const [persistenceDownload] = await Promise.all([
       dp.waitForEvent('download'),
-      dp.locator('#exp').click(),
+      (await dp.locator('#mnb').click(), dp.locator('#qmenu #exp').click()),
     ]);
     await persistenceDownload.saveAs(persistencePath);
     const persistedBackup = JSON.parse(fs.readFileSync(persistencePath, 'utf8'));
@@ -144,7 +144,8 @@ async function main() {
     await dp.locator('.nw').click();
     await dp.getByRole('button', {name: 'Confirm'}).click();
 
-    await dp.locator('button[title="Past sessions"]').click();
+    await dp.locator('#mnb').click();
+    await dp.locator('#qmenu button[title="Past sessions"]').click();
     const history = dp.locator('[role="dialog"]');
     await history.getByText('Sat 6pm', {exact:true}).waitFor({state:'visible', timeout:5000});
     assert.match(await history.innerText(), /1 games/);
@@ -154,7 +155,7 @@ async function main() {
     // Export must contain the archived history.
     const [download] = await Promise.all([
       dp.waitForEvent('download'),
-      dp.locator('#exp').click(),
+      (await dp.locator('#mnb').click(), dp.locator('#qmenu #exp').click()),
     ]);
     await download.saveAs(backupPath);
     const backup = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
@@ -164,7 +165,8 @@ async function main() {
     assert.equal(backup.state.hist[0].top.length <= 10, true);
 
     // Delete the saved session, then verify the list is empty.
-    await dp.locator('button[title="Past sessions"]').click();
+    await dp.locator('#mnb').click();
+    await dp.locator('#qmenu button[title="Past sessions"]').click();
     await dp.getByRole('button', {name: 'Delete this session'}).click();
     await dp.getByRole('button', {name: 'Confirm'}).click();
     const emptyHistory = dp.locator('[role="dialog"]');
@@ -175,7 +177,8 @@ async function main() {
     await ip.goto(APP, {waitUntil:'networkidle'});
     await ip.locator('#imp').setInputFiles(backupPath);
     await ip.getByRole('button', {name: 'Confirm'}).click();
-    await ip.locator('button[title="Past sessions"]').click();
+    await ip.locator('#mnb').click();
+    await ip.locator('#qmenu button[title="Past sessions"]').click();
     const imported = ip.locator('[role="dialog"]');
     await imported.getByText('Sat 6pm', {exact:true}).waitFor({state:'visible', timeout:5000});
     await imported.getByRole('button', {name: 'Close'}).click();
@@ -200,7 +203,8 @@ async function main() {
     }
     await dp.getByRole('button', {name: 'FINISH & LOG'}).click();
     await dp.locator('#msg').getByText('Match logged.').waitFor({state:'visible', timeout:5000});
-    await dp.locator('button[title="Players"]').click();
+    await dp.locator('#mnb').click();
+    await dp.locator('#qmenu button[title="Players"]').click();
     const players = dp.locator('[role="dialog"]').last();
     await players.locator('button.pr[data-k="alpha"]').waitFor({state:'visible', timeout:5000});
     await players.locator('button.pr[data-k="alpha"]').click();
@@ -211,24 +215,35 @@ async function main() {
     await dp.evaluate(() => localStorage.clear());
     await dp.reload({waitUntil:'networkidle'});
 
-    // Release 4 browser regression: the new ? button and How it works dialog must fit at iPhone width.
+    // Release 4/5 browser regression: the menu-based header must fit at iPhone width.
     await ip.goto(APP, {waitUntil:'networkidle'});
     await ip.evaluate(() => localStorage.clear());
     await ip.reload({waitUntil:'networkidle'});
-    const faqButton = ip.locator('header button[title="How it works"]');
-    await faqButton.waitFor({state:'visible', timeout:5000});
-    const headerGroupFits = await ip.locator('header .container>div:nth-child(2)').evaluate(el => el.scrollWidth <= el.clientWidth);
+    const headerBar = ip.locator('header .container>div:nth-child(2)');
+    const headerGroupFits = await headerBar.evaluate(el => el.scrollWidth <= el.clientWidth);
     assert.equal(headerGroupFits, true);
-    const faqBox = await faqButton.boundingBox();
-    const exportBox = await ip.locator('#exp').boundingBox();
-    assert.ok(faqBox && exportBox && faqBox.x < exportBox.x);
-    await faqButton.click();
+    assert.equal(await headerBar.locator('> #mnw').count(), 1);
+    assert.equal(await headerBar.locator('> button[onclick="live()"]').count(), 1);
+
+    await ip.locator('#mnb').click();
+    const menu = ip.locator('#qmenu');
+    await menu.waitFor({state:'visible', timeout:5000});
+    await menu.locator('button[title="Players"]').waitFor({state:'visible', timeout:5000});
+    const faqButton = menu.locator('button[title="How it works"]');
+    await faqButton.waitFor({state:'visible', timeout:5000});
+    await menu.locator('button[title="Standings"]').click();
+    await ip.getByRole('heading', {name:'Live Standings'}).waitFor({state:'visible', timeout:5000});
+    await ip.getByRole('button', {name:'Back to game'}).click();
+
+    await ip.locator('#mnb').click();
+    await menu.locator('button[title="How it works"]').click();
     const faqDialog = ip.locator('#faq');
     await faqDialog.waitFor({state:'visible', timeout:5000});
     assert.equal(await faqDialog.evaluate(d => d.open), true);
     await ip.keyboard.press('Escape');
     await faqDialog.waitFor({state:'hidden', timeout:5000});
-    await faqButton.click();
+    await ip.locator('#mnb').click();
+    await menu.locator('button[title="How it works"]').click();
     await faqDialog.waitFor({state:'visible', timeout:5000});
     await faqDialog.getByRole('button', {name:'Close'}).click();
     await faqDialog.waitFor({state:'hidden', timeout:5000});

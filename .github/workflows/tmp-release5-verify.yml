@@ -16,14 +16,13 @@ jobs:
         shell: bash
         run: |
           git fetch origin main --depth=1
+          git show HEAD:index.html > /tmp/expected-index.html
+          git show HEAD:sw.js > /tmp/expected-sw.js
           git checkout origin/main -- index.html sw.js
           python3 release5_menu.py --dry-run
           python3 release5_menu.py
-          git diff --exit-code --quiet -- index.html sw.js || {
-            echo "Applied patch differs from committed Release 5 output."
-            git diff -- index.html sw.js
-            exit 1
-          }
+          cmp /tmp/expected-index.html index.html
+          cmp /tmp/expected-sw.js sw.js
       - name: Check patched inline JavaScript
         shell: bash
         run: |

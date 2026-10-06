@@ -116,6 +116,11 @@ async function main() {
     await pp.evaluate(() => localStorage.clear());
     await pp.reload({waitUntil: 'networkidle'});
 
+    // Restore the normal 11-point fixture before the named-session flow.
+    await dp.locator('#tg').selectOption('11');
+    await dp.locator('#wbs').selectOption('2');
+    await dp.waitForFunction(() => S.target === 11 && S.wb === 2, null, {timeout: 5000});
+
     // Context 1: full named-session/history flow.
     await setupFour(dp);
     await dp.locator('#go').click();

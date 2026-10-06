@@ -1,5 +1,5 @@
 name: Release 2 Playwright
-# Release 2b regression v7
+# Release 2b regression v8
 
 on:
   pull_request:

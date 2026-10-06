@@ -211,6 +211,28 @@ async function main() {
     await dp.evaluate(() => localStorage.clear());
     await dp.reload({waitUntil:'networkidle'});
 
+    // Release 4 browser regression: the new ? button and How it works dialog must fit at iPhone width.
+    await ip.goto(APP, {waitUntil:'networkidle'});
+    await ip.evaluate(() => localStorage.clear());
+    await ip.reload({waitUntil:'networkidle'});
+    const faqButton = ip.locator('header button[title="How it works"]');
+    await faqButton.waitFor({state:'visible', timeout:5000});
+    const headerGroupFits = await ip.locator('header .container>div:nth-child(2)').evaluate(el => el.scrollWidth <= el.clientWidth);
+    assert.equal(headerGroupFits, true);
+    const faqBox = await faqButton.boundingBox();
+    const exportBox = await ip.locator('#exp').boundingBox();
+    assert.ok(faqBox && exportBox && faqBox.x < exportBox.x);
+    await faqButton.click();
+    const faqDialog = ip.locator('#faq');
+    await faqDialog.waitFor({state:'visible', timeout:5000});
+    assert.equal(await faqDialog.evaluate(d => d.open), true);
+    await ip.keyboard.press('Escape');
+    await faqDialog.waitFor({state:'hidden', timeout:5000});
+    await faqButton.click();
+    await faqDialog.waitFor({state:'visible', timeout:5000});
+    await faqDialog.getByRole('button', {name:'Close'}).click();
+    await faqDialog.waitFor({state:'hidden', timeout:5000});
+
     // Context 3: mobile scoring regression using the current production selectors.
     await setupFour(pp);
     await pp.evaluate(() => document.getElementById('nvs')?.click());

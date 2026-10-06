@@ -1,4 +1,4 @@
-# QueueZeroTwo release 5: collapse the header icons into one Menu button. Run from repo root: python3 release5_menu.py [--dry-run]
+# QueueZeroTwo release 5: collapse the header icons into one Menu button. Run from repo root: python3 release5_menu.py [--dry-run].
 from pathlib import Path
 import re, sys
 err = []

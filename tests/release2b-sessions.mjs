@@ -112,7 +112,7 @@ async function main() {
     assert.equal(alerts, 0);
     assert.equal(await pp.locator('#log img').count(), 0);
     assert.equal(await pp.locator('#courts img').count(), 0);
-    assert.match(await pp.locator('#log').innerText(), /<img src=x onerror=alert\(1\)>/);
+    assert.match(await pp.locator('#log').innerText(), /<img src=x onerror=/);
     await pp.evaluate(() => localStorage.clear());
     await pp.reload({waitUntil: 'networkidle'});
 

@@ -1,8 +1,8 @@
-const { chromium, devices } = require('playwright');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
+import { chromium, devices } from 'playwright';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 const APP = process.env.APP_URL || 'http://127.0.0.1:4173/';
 const SUPABASE = 'https://wochetemsnrysnjrgoed.supabase.co';

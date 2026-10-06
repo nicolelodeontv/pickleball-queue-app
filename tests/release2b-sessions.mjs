@@ -106,7 +106,9 @@ async function main() {
 
     // Context 3: mobile scoring regression using the current production selectors.
     await setupFour(pp);
+    await pp.evaluate(() => document.getElementById('nvs')?.click());
     await pp.locator('#go').click();
+    await pp.evaluate(() => document.getElementById('nvp')?.click());
     await pp.locator('button[aria-label="Plus point, Team 1"]').first().click();
     await assert.equal(await pp.locator('.sbn').first().innerText(), '1');
 

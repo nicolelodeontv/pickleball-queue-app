@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://queuezerotwo.vercel.app/sitemap.xml

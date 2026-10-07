@@ -236,8 +236,7 @@ async function main() {
     const menu = ip.locator('#qmenu');
     await menu.waitFor({state:'visible', timeout:5000});
     const menuBox = await menu.boundingBox();
-    console.log('Release 6 mobile menu box', JSON.stringify({menuBox,innerWidth:await ip.evaluate(() => innerWidth)}));
-    assert.ok(menuBox && menuBox.left >= 0 && menuBox.right <= (await ip.evaluate(() => innerWidth)));
+    assert.ok(menuBox && menuBox.x >= 0 && menuBox.x + menuBox.width <= (await ip.evaluate(() => innerWidth)));
     assert.equal(await menu.locator('button').count(), 10);
     await menu.locator('button[title="Players"]').waitFor({state:'visible', timeout:5000});
     await menu.locator('button[title="How it works"]').waitFor({state:'visible', timeout:5000});
@@ -287,13 +286,13 @@ async function main() {
     await dp.reload({waitUntil:'networkidle'});
     const rail1280 = await dmenu.boundingBox();
     const stack1280 = await dp.locator('#sstk').boundingBox();
-    assert.ok(rail1280 && stack1280 && stack1280.x >= rail1280.right + 4);
+    assert.ok(rail1280 && stack1280 && stack1280.x >= rail1280.x + rail1280.width + 4);
 
     await dp.setViewportSize({width:1800,height:900});
     await dp.reload({waitUntil:'networkidle'});
     const railWide = await dmenu.boundingBox();
     const stackWide = await dp.locator('#sstk').boundingBox();
-    assert.ok(railWide && stackWide && stackWide.x >= railWide.right + 4);
+    assert.ok(railWide && stackWide && stackWide.x >= railWide.x + railWide.width + 4);
 
     await dp.locator('#thb').click();
     assert.equal(await dp.locator('html[data-theme="light"]').count(), 1);

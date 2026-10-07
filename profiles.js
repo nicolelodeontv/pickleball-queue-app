@@ -87,5 +87,5 @@ const b=document.createElement('button');
 b.title='Players';b.setAttribute('aria-label','Players');
 b.className='bg-dark-700 hover:bg-pickle-500 hover:text-dark-900 rounded-lg w-10 h-10';
 b.innerHTML='<i class="fa-solid fa-address-book"></i>';b.onclick=open;
-const anchor=document.getElementById('snb');if(anchor)anchor.before(b);
+const anchor=document.querySelector('button[onclick="hist()"]');if(anchor)anchor.before(b);
 })();

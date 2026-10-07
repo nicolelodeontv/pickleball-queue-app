@@ -160,7 +160,7 @@ async function main() {
     // Export must contain the archived history.
     const [download] = await Promise.all([
       dp.waitForEvent('download'),
-      (await dp.locator('#mnb').click(), dp.locator('#qmenu #exp').click()),
+      (await openMenu(dp), dp.locator('#qmenu #exp').click()),
     ]);
     await download.saveAs(backupPath);
     const backup = JSON.parse(fs.readFileSync(backupPath, 'utf8'));

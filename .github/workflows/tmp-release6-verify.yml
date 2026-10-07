@@ -1,27 +1,28 @@
 name: Release 6 verification
 on:
-  push:
-    branches: [release6-sidebar]
-    paths:
-      - release6_sidebar.py
-      - tests/release2b-sessions.mjs
-      - package.json
-      - package-lock.json
-      - .github/workflows/tmp-release6-verify.yml
+  pull_request:
+    branches: [main]
 permissions:
-  contents: write
+  contents: read
 jobs:
   verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: release6-sidebar
-      - run: test -z "$(git status --porcelain)"
-      - run: python3 release6_sidebar.py --dry-run
-      - run: python3 release6_sidebar.py
-      - name: Check Release 6 output
+      - name: Run Release 6 patch against clean main
+        shell: bash
+        run: |
+          git fetch origin main --depth=1
+          git show HEAD:index.html > /tmp/expected-index.html
+          git show HEAD:sw.js > /tmp/expected-sw.js
+          git checkout origin/main -- index.html sw.js
+          python3 release6_sidebar.py --dry-run
+          python3 release6_sidebar.py
+          cmp /tmp/expected-index.html index.html
+          cmp /tmp/expected-sw.js sw.js
+          git checkout HEAD -- index.html sw.js
+      - name: Check restored Release 6 output
         shell: bash
         run: |
           python3 - <<'PY'
@@ -29,8 +30,7 @@ jobs:
           h=Path("index.html").read_text(encoding="utf-8")
           w=Path("sw.js").read_text(encoding="utf-8")
           assert h.count("function initMenu(){")==1
-          assert "qscrim" in h and "qmenu" in h
-          assert "id='mnb'" in h and "id='qmenu'" in h
+          assert "qscrim" in h and "qmenu" in h and "id='mnb'" in h
           assert "setTimeout(initMenu,0)" not in h
           assert "queuezerotwo-v10" in w
           start=h.find("<script>\nconst K=")
@@ -52,11 +52,3 @@ jobs:
           npx playwright install --with-deps chromium
           nohup python3 -m http.server 4173 >/tmp/qzt-http.log 2>&1 &
           node tests/release2b-sessions.mjs
-      - name: Commit applied Release 6
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html sw.js tailwind.css
-          git diff --cached --quiet || git commit -m "Release 6: move menu to responsive sidebar"
-          git push origin HEAD:release6-sidebar

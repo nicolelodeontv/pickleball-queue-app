@@ -236,6 +236,7 @@ async function main() {
     const menu = ip.locator('#qmenu');
     await menu.waitFor({state:'visible', timeout:5000});
     const menuBox = await menu.boundingBox();
+    console.log('Release 6 mobile menu box', JSON.stringify({menuBox,innerWidth:await ip.evaluate(() => innerWidth)}));
     assert.ok(menuBox && menuBox.left >= 0 && menuBox.right <= (await ip.evaluate(() => innerWidth)));
     assert.equal(await menu.locator('button').count(), 10);
     await menu.locator('button[title="Players"]').waitFor({state:'visible', timeout:5000});

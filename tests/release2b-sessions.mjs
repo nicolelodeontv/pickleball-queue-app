@@ -274,19 +274,49 @@ async function main() {
 
     await dp.goto(APP, {waitUntil:'networkidle'});
     await dp.evaluate(() => localStorage.clear());
+    await dp.setViewportSize({width:1280,height:800});
     await dp.reload({waitUntil:'networkidle'});
     const dmenu = dp.locator('#qmenu');
     await dmenu.waitFor({state:'visible', timeout:5000});
-    assert.equal(await dp.locator('#mnb').isVisible(), false);
+    assert.equal(await dp.locator('#mnb').isVisible(), true);
     assert.equal(await dp.locator('#mnw').count(), 0);
     assert.equal(await dp.locator('header button[onclick="live()"]').count(), 1);
-    assert.equal(await dmenu.locator('button').count(), 10);
+    assert.equal(await dmenu.locator('button').count(), 11);
     for (const b of await dmenu.locator('button').all()) {
       assert.ok(await b.getAttribute('title'));
     }
 
-    await dp.setViewportSize({width:1280,height:800});
+    // Release 7: labelled wide state and icon-only collapsed state persist on desktop.
+    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
+    const wideWidth1280 = await dmenu.evaluate(el => el.getBoundingClientRect().width);
+    assert.ok(wideWidth1280 >= 220);
+    assert.equal(await dp.locator('#qmenu #exp').getAttribute('title'), 'Export backup');
+    assert.equal(await dp.locator('#qmenu #impbtn').getAttribute('title'), 'Import backup');
+
+    await dp.locator('#mnb').click();
+    await dp.waitForFunction(() => {
+      const el = document.getElementById('qmenu');
+      return el && !el.classList.contains('wide') && el.getBoundingClientRect().width < 100;
+    }, null, {timeout:1000});
+    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), false);
+    assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), false);
+    const slimWidth1280 = await dmenu.evaluate(el => el.getBoundingClientRect().width);
+    assert.ok(slimWidth1280 < 100);
+
+    await dp.locator('#mnb').click();
+    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
+    assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), true);
     await dp.reload({waitUntil:'networkidle'});
+    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
+
+    // Both themes keep the wide 1280px panel usable.
+    await dp.locator('#thb').click();
+    assert.equal(await dp.locator('html[data-theme="light"]').count(), 1);
+    const lightWide1280 = await dmenu.evaluate(el => el.classList.contains('wide'));
+    assert.equal(lightWide1280, true);
+    await dp.locator('#thb').click();
+    assert.equal(await dp.locator('html[data-theme="light"]').count(), 0);
+
     const rail1280 = await dmenu.boundingBox();
     const stack1280 = await dp.locator('#sstk').boundingBox();
     assert.ok(rail1280 && stack1280 && stack1280.x >= rail1280.x + rail1280.width + 4);
@@ -296,6 +326,20 @@ async function main() {
     const railWide = await dmenu.boundingBox();
     const stackWide = await dp.locator('#sstk').boundingBox();
     assert.ok(railWide && stackWide && stackWide.x >= railWide.x + railWide.width + 4);
+    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
+
+    await dp.locator('#mnb').click();
+    await dp.waitForFunction(() => {
+      const el = document.getElementById('qmenu');
+      return el && !el.classList.contains('wide') && el.getBoundingClientRect().width < 100;
+    }, null, {timeout:1000});
+    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), false);
+    assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), false);
+    const slimWidthWide = await dmenu.evaluate(el => el.getBoundingClientRect().width);
+    assert.ok(slimWidthWide < 100);
+
+    await dp.locator('#mnb').click();
+    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
 
     await dp.locator('#thb').click();
     assert.equal(await dp.locator('html[data-theme="light"]').count(), 1);

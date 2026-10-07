@@ -266,7 +266,10 @@ async function main() {
     await ip.keyboard.press('Escape');
     assert.equal(await menu.isVisible(), false);
     await openMenu(ip);
-    await ip.locator('#qscrim').click();
+    const scrimBox = await ip.locator('#qscrim').boundingBox();
+    const drawerBox = await menu.boundingBox();
+    assert.ok(scrimBox && drawerBox);
+    await ip.mouse.click(Math.min(scrimBox.x + scrimBox.width - 6, drawerBox.x + drawerBox.width + 20), 80);
     assert.equal(await menu.isVisible(), false);
 
     await dp.goto(APP, {waitUntil:'networkidle'});

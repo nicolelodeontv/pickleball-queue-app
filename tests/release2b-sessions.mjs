@@ -360,6 +360,39 @@ async function main() {
     await dp.locator('#thb').click();
     assert.equal(await dp.locator('html[data-theme="light"]').count(), 0);
 
+    // Release 10: 1024px starts as a slim rail even when wide mode was saved at 1800px.
+    await dp.setViewportSize({width:1024,height:800});
+    await dp.reload({waitUntil:'networkidle'});
+    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), false);
+    const rail1024 = await dmenu.boundingBox();
+    const stack1024 = await dp.locator('#sstk').boundingBox();
+    await dp.locator('#pn').waitFor({state:'visible', timeout:5000});
+    assert.ok(rail1024 && stack1024 && stack1024.x >= rail1024.x + rail1024.width + 4);
+    assert.ok(await dp.locator('#pn').isVisible());
+
+    // Hamburger expands a temporary labelled overlay at 1024px without moving the page.
+    await dp.locator('#mnb').click();
+    await dp.waitForFunction(() => {
+      const el = document.getElementById('qmenu');
+      return el && el.classList.contains('wide') && el.getBoundingClientRect().width >= 220;
+    }, null, {timeout:1000});
+    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
+    const wide1024 = await dmenu.boundingBox();
+    assert.ok(wide1024 && wide1024.width >= 220);
+    assert.ok(await dp.locator('#pn').isVisible());
+
+    // Choosing a remaining item folds the temporary panel back.
+    await dp.locator('#qmenu button[title="Standings"]').click();
+    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), false);
+    await dp.getByRole('heading', {name:'Live Standings'}).waitFor({state:'visible', timeout:5000});
+    await dp.getByRole('button', {name:'Back to game'}).click();
+
+    // Outside click also folds the temporary panel.
+    await dp.locator('#mnb').click();
+    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
+    await dp.mouse.click(900, 120);
+    await dp.waitForFunction(() => !document.getElementById('qmenu')?.classList.contains('wide'), null, {timeout:1000});
+
     // Context 3: mobile scoring regression using the current production selectors.
     await setupFour(pp);
     await pp.evaluate(() => document.getElementById('nvs')?.click());

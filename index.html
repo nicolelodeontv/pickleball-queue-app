@@ -682,13 +682,14 @@ const short={exp:'Export backup',impbtn:'Import backup'};
 ['button[title="Players"]','button[onclick="stand()"]','button[onclick="hist()"]','#exp','#impbtn'].forEach(q=>{const b=bar.querySelector(q);if(b){if(short[b.id])b.title=short[b.id];m.append(b)}});
 const mq=matchMedia('(min-width:1024px)'),logo=bar.previousElementSibling||bar,K='qz2menu',isOpen=()=>m.classList.contains('open');
 let wide=null;try{wide=localStorage.getItem(K)}catch(e){}
-wide=wide===null?innerWidth>=1280:wide==='1';
+wide=innerWidth>=1280&&(wide===null||wide==='1');
 const paint=()=>{m.classList.toggle('wide',wide);document.body.classList.toggle('qw',wide);mb.setAttribute('aria-expanded',String(mq.matches?wide:isOpen()))};
 const place=()=>{mq.matches?m.prepend(mb):logo.prepend(mb);paint()};
 const open=()=>{m.classList.add('open');sc.hidden=false;paint()};
 const close=()=>{m.classList.remove('open');sc.hidden=true;paint()};
-mb.onclick=()=>{if(mq.matches){wide=!wide;try{localStorage.setItem(K,wide?'1':'0')}catch(e){}paint()}else isOpen()?close():open()};
+mb.onclick=()=>{if(mq.matches){wide=!wide;if(innerWidth>=1280){try{localStorage.setItem(K,wide?'1':'0')}catch(e){}}paint()}else isOpen()?close():open()};
 sc.onclick=close;
+document.addEventListener('click',e=>{if(!mq.matches||!wide||innerWidth>=1280)return;const b=e.target.closest('#qmenu button');if(!b||b.id!=='mnb'){wide=false;paint()}});
 m.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&!mq.matches&&!['snb','hpb','thb','tsb'].includes(b.id))close()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&isOpen()){close();mb.focus()}});
 mq.addEventListener('change',()=>{close();place()});

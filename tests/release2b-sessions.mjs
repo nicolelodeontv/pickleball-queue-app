@@ -294,6 +294,10 @@ async function main() {
     assert.equal(await dp.locator('#qmenu #impbtn').getAttribute('title'), 'Import backup');
 
     await dp.locator('#mnb').click();
+    await dp.waitForFunction(() => {
+      const el = document.getElementById('qmenu');
+      return el && !el.classList.contains('wide') && el.getBoundingClientRect().width < 100;
+    }, null, {timeout:1000});
     assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), false);
     assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), false);
     const slimWidth1280 = await dmenu.evaluate(el => el.getBoundingClientRect().width);
@@ -325,6 +329,10 @@ async function main() {
     assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
 
     await dp.locator('#mnb').click();
+    await dp.waitForFunction(() => {
+      const el = document.getElementById('qmenu');
+      return el && !el.classList.contains('wide') && el.getBoundingClientRect().width < 100;
+    }, null, {timeout:1000});
     assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), false);
     assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), false);
     const slimWidthWide = await dmenu.evaluate(el => el.getBoundingClientRect().width);

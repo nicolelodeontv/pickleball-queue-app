@@ -341,20 +341,6 @@ async function main() {
     await ip.mouse.click(Math.min(scrimBox.x + scrimBox.width - 6, drawerBox.x + drawerBox.width + 20), 80);
     assert.equal(await menu.isVisible(), false);
 
-    await dp.goto(APP, {waitUntil:'networkidle'});
-    await dp.evaluate(() => localStorage.clear());
-    await dp.setViewportSize({width:1280,height:800});
-    await dp.reload({waitUntil:'networkidle'});
-    const dmenu = dp.locator('#qmenu');
-    await dmenu.waitFor({state:'visible', timeout:5000});
-    assert.equal(await dp.locator('#mnb').isVisible(), true);
-    assert.equal(await dp.locator('#mnw').count(), 0);
-    assert.equal(await dp.locator('header button[onclick="live()"]').count(), 1);
-    assert.equal(await dmenu.locator('button').count(), 6);
-    for (const b of await dmenu.locator('button').all()) {
-      assert.ok(await b.getAttribute('title'));
-    }
-
     // Release 11: menu starts hidden and opens on demand at every breakpoint.
     await dp.goto(APP, {waitUntil:'networkidle'});
     await dp.evaluate(() => localStorage.clear());
@@ -362,6 +348,8 @@ async function main() {
     await dp.reload({waitUntil:'networkidle'});
     const dmenu = dp.locator('#qmenu');
     assert.equal(await dmenu.isVisible(), false);
+    assert.equal(await dp.locator('#mnw').count(), 0);
+    assert.equal(await dp.locator('header button[onclick="live()"]').count(), 1);
     assert.equal(await dp.locator('#mnb').isVisible(), true);
     assert.equal(await dp.locator('#mnb').getAttribute('aria-label'), 'Open menu');
     assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), false);

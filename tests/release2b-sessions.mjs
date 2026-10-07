@@ -10,8 +10,7 @@ const SUPABASE = 'https://wochetemsnrysnjrgoed.supabase.co';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function openMenu(page) {
-  const mn = page.locator('#mnb');
-  if (await mn.isVisible()) await mn.click();
+  if (!(await page.locator('#qmenu').isVisible())) await page.locator('#mnb').click();
 }
 
 async function freshContext(browser, device) {
@@ -342,113 +341,86 @@ async function main() {
     await ip.mouse.click(Math.min(scrimBox.x + scrimBox.width - 6, drawerBox.x + drawerBox.width + 20), 80);
     assert.equal(await menu.isVisible(), false);
 
+    // Release 11: menu starts hidden and opens on demand at every breakpoint.
     await dp.goto(APP, {waitUntil:'networkidle'});
     await dp.evaluate(() => localStorage.clear());
     await dp.setViewportSize({width:1280,height:800});
     await dp.reload({waitUntil:'networkidle'});
     const dmenu = dp.locator('#qmenu');
-    await dmenu.waitFor({state:'visible', timeout:5000});
-    assert.equal(await dp.locator('#mnb').isVisible(), true);
+    assert.equal(await dmenu.isVisible(), false);
     assert.equal(await dp.locator('#mnw').count(), 0);
     assert.equal(await dp.locator('header button[onclick="live()"]').count(), 1);
-    assert.equal(await dmenu.locator('button').count(), 6);
-    for (const b of await dmenu.locator('button').all()) {
-      assert.ok(await b.getAttribute('title'));
+    assert.equal(await dp.locator('#mnb').isVisible(), true);
+    assert.equal(await dp.locator('#mnb').getAttribute('aria-label'), 'Open menu');
+    assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), false);
+
+    await dp.locator('#mnb').click();
+    await dmenu.waitFor({state:'visible', timeout:5000});
+    assert.ok((await dmenu.boundingBox())?.width >= 220);
+    assert.equal(await dp.locator('#mnb').getAttribute('aria-label'), 'Close menu');
+    assert.equal(await dp.locator('#mnb').getAttribute('aria-expanded'), 'true');
+    assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), true);
+    const open1280 = await dmenu.boundingBox();
+    const stackOpen1280 = await dp.locator('#sstk').boundingBox();
+    assert.ok(open1280 && stackOpen1280 && stackOpen1280.x >= open1280.x + open1280.width + 4);
+    assert.equal(await dmenu.locator('button').count(), 5);
+    for (const title of ['Players','Standings','Past sessions','Export backup','Import backup']) {
+      await dmenu.locator('button[title="'+title+'"]').waitFor({state:'visible', timeout:5000});
     }
 
-    // Release 7: labelled wide state and icon-only collapsed state persist on desktop.
-    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
-    const wideWidth1280 = await dmenu.evaluate(el => el.getBoundingClientRect().width);
-    assert.ok(wideWidth1280 >= 220);
-    assert.equal(await dp.locator('#qmenu #exp').getAttribute('title'), 'Export backup');
-    assert.equal(await dp.locator('#qmenu #impbtn').getAttribute('title'), 'Import backup');
-
-    await dp.locator('#mnb').click();
-    await dp.waitForFunction(() => {
-      const el = document.getElementById('qmenu');
-      return el && !el.classList.contains('wide') && el.getBoundingClientRect().width < 100;
-    }, null, {timeout:1000});
-    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), false);
+    // At 1280px+ choosing an item leaves the docked menu open.
+    await dmenu.locator('button[title="Standings"]').click();
+    await dp.getByRole('heading', {name:'Live Standings'}).waitFor({state:'visible', timeout:5000});
+    await dp.getByRole('button', {name:'Back to game'}).click();
+    assert.equal(await dmenu.isVisible(), true);
+    assert.equal(await dp.locator('#mnb').getAttribute('aria-label'), 'Close menu');
+    await dp.keyboard.press('Escape');
+    assert.equal(await dmenu.isVisible(), false);
+    assert.equal(await dp.locator('#mnb').getAttribute('aria-label'), 'Open menu');
     assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), false);
-    const slimWidth1280 = await dmenu.evaluate(el => el.getBoundingClientRect().width);
-    assert.ok(slimWidth1280 < 100);
 
+    // A reload always returns the menu to closed.
     await dp.locator('#mnb').click();
-    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
-    assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), true);
+    assert.equal(await dmenu.isVisible(), true);
     await dp.reload({waitUntil:'networkidle'});
-    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
+    assert.equal(await dmenu.isVisible(), false);
+    assert.equal(await dp.locator('#mnb').getAttribute('aria-label'), 'Open menu');
 
-    // Both themes keep the wide 1280px panel usable.
-    await dp.locator('#thb').click();
-    assert.equal(await dp.locator('html[data-theme="light"]').count(), 1);
-    const lightWide1280 = await dmenu.evaluate(el => el.classList.contains('wide'));
-    assert.equal(lightWide1280, true);
-    await dp.locator('#thb').click();
-    assert.equal(await dp.locator('html[data-theme="light"]').count(), 0);
-
-    const rail1280 = await dmenu.boundingBox();
-    const stack1280 = await dp.locator('#sstk').boundingBox();
-    assert.ok(rail1280 && stack1280 && stack1280.x >= rail1280.x + rail1280.width + 4);
-
+    // The wide desktop dock works at 1800px too.
     await dp.setViewportSize({width:1800,height:900});
     await dp.reload({waitUntil:'networkidle'});
-    const railWide = await dmenu.boundingBox();
-    const stackWide = await dp.locator('#sstk').boundingBox();
-    assert.ok(railWide && stackWide && stackWide.x >= railWide.x + railWide.width + 4);
-    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
-
+    assert.equal(await dmenu.isVisible(), false);
     await dp.locator('#mnb').click();
-    await dp.waitForFunction(() => {
-      const el = document.getElementById('qmenu');
-      return el && !el.classList.contains('wide') && el.getBoundingClientRect().width < 100;
-    }, null, {timeout:1000});
-    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), false);
-    assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), false);
-    const slimWidthWide = await dmenu.evaluate(el => el.getBoundingClientRect().width);
-    assert.ok(slimWidthWide < 100);
-
-    await dp.locator('#mnb').click();
-    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
-
-    await dp.locator('#thb').click();
-    assert.equal(await dp.locator('html[data-theme="light"]').count(), 1);
     assert.equal(await dmenu.isVisible(), true);
-    await dp.locator('#thb').click();
-    assert.equal(await dp.locator('html[data-theme="light"]').count(), 0);
+    const dockWide = await dmenu.boundingBox();
+    const stackWide = await dp.locator('#sstk').boundingBox();
+    assert.ok(dockWide && stackWide && stackWide.x >= dockWide.x + dockWide.width + 4);
+    assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), true);
+    await dp.keyboard.press('Escape');
+    assert.equal(await dmenu.isVisible(), false);
 
-    // Release 10: 1024px starts as a slim rail even when wide mode was saved at 1800px.
+    // The 1024px tablet layout uses a temporary overlay, not a rail.
     await dp.setViewportSize({width:1024,height:800});
     await dp.reload({waitUntil:'networkidle'});
-    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), false);
-    const rail1024 = await dmenu.boundingBox();
-    const stack1024 = await dp.locator('#sstk').boundingBox();
-    await dp.locator('#pn').waitFor({state:'visible', timeout:5000});
-    assert.ok(rail1024 && stack1024 && stack1024.x >= rail1024.x + rail1024.width + 4);
-    assert.ok(await dp.locator('#pn').isVisible());
-
-    // Hamburger expands a temporary labelled overlay at 1024px without moving the page.
+    assert.equal(await dmenu.isVisible(), false);
+    assert.equal(await dp.locator('#mnb').isVisible(), true);
+    const stackClosed1024 = await dp.locator('#sstk').boundingBox();
     await dp.locator('#mnb').click();
-    await dp.waitForFunction(() => {
-      const el = document.getElementById('qmenu');
-      return el && el.classList.contains('wide') && el.getBoundingClientRect().width >= 220;
-    }, null, {timeout:1000});
-    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
-    const wide1024 = await dmenu.boundingBox();
-    assert.ok(wide1024 && wide1024.width >= 220);
-    assert.ok(await dp.locator('#pn').isVisible());
+    await dmenu.waitFor({state:'visible', timeout:5000});
+    assert.ok((await dmenu.boundingBox())?.width >= 220);
+    assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), false);
+    const stackOpen1024 = await dp.locator('#sstk').boundingBox();
+    assert.ok(stackClosed1024 && stackOpen1024 && Math.abs(stackOpen1024.x - stackClosed1024.x) < 2);
 
-    // Choosing a remaining item folds the temporary panel back.
-    await dp.locator('#qmenu button[title="Standings"]').click();
-    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), false);
+    await dmenu.locator('button[title="Standings"]').click();
+    assert.equal(await dmenu.isVisible(), false);
     await dp.getByRole('heading', {name:'Live Standings'}).waitFor({state:'visible', timeout:5000});
     await dp.getByRole('button', {name:'Back to game'}).click();
 
-    // Outside click also folds the temporary panel.
     await dp.locator('#mnb').click();
-    assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
+    assert.equal(await dmenu.isVisible(), true);
     await dp.mouse.click(900, 120);
-    await dp.waitForFunction(() => !document.getElementById('qmenu')?.classList.contains('wide'), null, {timeout:1000});
+    await dmenu.waitFor({state:'hidden', timeout:1000});
 
     // Context 3: mobile scoring regression using the current production selectors.
     await setupFour(pp);

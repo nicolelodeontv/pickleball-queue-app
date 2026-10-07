@@ -691,7 +691,7 @@ const sc=document.createElement('div');sc.id='qscrim';sc.hidden=true;
 const short={exp:'Export backup',impbtn:'Import backup'};
 ['button[title="Players"]','button[onclick="stand()"]','button[onclick="hist()"]','#exp','#impbtn'].forEach(q=>{const b=bar.querySelector(q);if(b){if(short[b.id])b.title=short[b.id];m.append(b)}});
 const mq=matchMedia('(min-width:1024px)'),isOpen=()=>m.classList.contains('open');
-const paint=()=>{const o=isOpen();document.body.classList.toggle('qw',o&&mq.matches);mb.setAttribute('aria-expanded',String(o));mb.setAttribute('aria-label',o?'Close menu':'Open menu');sc.hidden=!(o&&!mq.matches)};
+const paint=()=>{const o=isOpen();document.body.classList.toggle('qw',o&&innerWidth>=1280);mb.setAttribute('aria-expanded',String(o));mb.setAttribute('aria-label',o?'Close menu':'Open menu');sc.hidden=!(o&&!mq.matches)};
 const open=()=>{m.classList.add('open');paint()},close=()=>{m.classList.remove('open');paint()};
 mb.onclick=()=>isOpen()?close():open();sc.onclick=close;
 m.addEventListener('click',e=>{if(e.target.closest('button')&&(!mq.matches||innerWidth<1280))close()});

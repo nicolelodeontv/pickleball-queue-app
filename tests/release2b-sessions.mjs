@@ -60,7 +60,7 @@ async function main() {
     await dp.waitForFunction(() => S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
     const [persistenceDownload] = await Promise.all([
       dp.waitForEvent('download'),
-      (await dp.locator('#mnb').click(), dp.locator('#qmenu #exp').click()),
+      (await openMenu(dp), dp.locator('#qmenu #exp').click()),
     ]);
     await persistenceDownload.saveAs(persistencePath);
     const persistedBackup = JSON.parse(fs.readFileSync(persistencePath, 'utf8'));

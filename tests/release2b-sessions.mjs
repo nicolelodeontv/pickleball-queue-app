@@ -363,7 +363,7 @@ async function main() {
     const open1280 = await dmenu.boundingBox();
     const stackOpen1280 = await dp.locator('#sstk').boundingBox();
     assert.ok(open1280 && stackOpen1280 && stackOpen1280.x >= open1280.x + open1280.width + 4);
-    assert.equal(await dmenu.locator('button').count(), 6);
+    assert.equal(await dmenu.locator('button').count(), 5);
     for (const title of ['Players','Standings','Past sessions','Export backup','Import backup']) {
       await dmenu.locator('button[title="'+title+'"]').waitFor({state:'visible', timeout:5000});
     }

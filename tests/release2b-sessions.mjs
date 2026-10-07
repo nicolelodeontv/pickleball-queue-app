@@ -126,6 +126,63 @@ async function main() {
     await dp.locator('#wbs').selectOption('2');
     await dp.waitForFunction(() => S.target === 11 && S.wb === 2, null, {timeout: 5000});
 
+    // Release 11: Equal Sit-outs uses fewest games, then longest wait, then queue order.
+    await dp.evaluate(() => {
+      S = mk();
+      S.eq = true;
+      S.queue = ['Alpha','Beta','Gamma','Delta','Epsilon'];
+      S.gp = {alpha:2,beta:2,gamma:2,delta:2,epsilon:2};
+      const now = Date.now();
+      S.wt = {
+        alpha: now - 1000,
+        beta: now - 4000,
+        gamma: now - 3000,
+        delta: now - 2000,
+        epsilon: now - 5000,
+      };
+      render();
+    });
+    assert.deepEqual(
+      await dp.evaluate(() => pick4().map(i => S.queue[i])),
+      ['Beta','Gamma','Delta','Epsilon'],
+    );
+
+    await dp.evaluate(() => {
+      const same = Date.now() - 10000;
+      S.wt = {alpha:same,beta:same,gamma:same,delta:same,epsilon:same};
+      render();
+    });
+    assert.deepEqual(
+      await dp.evaluate(() => pick4().map(i => S.queue[i])),
+      ['Alpha','Beta','Gamma','Delta'],
+    );
+
+    // Wait timestamps are created when players check in, cleared when they go to court,
+    // and restarted when they return to the waiting stack.
+    await dp.evaluate(() => {
+      S = mk();
+      S.waiting = ['One','Two','Three','Four'];
+      render();
+    });
+    await dp.getByRole('button', {name:'Check in all'}).click();
+    assert.equal(await dp.evaluate(() => Object.keys(S.wt).length), 4);
+    await dp.locator('#go').click();
+    await dp.waitForFunction(
+      () => S.courts.some(c => c.isActive) && S.queue.length === 0 && Object.keys(S.wt).length === 0,
+      null,
+      {timeout:5000},
+    );
+    await dp.getByRole('button', {name:'FINISH & LOG'}).click();
+    await dp.waitForFunction(
+      () => !S.courts.some(c => c.isActive) && S.queue.length === 4 && Object.keys(S.wt).length === 4,
+      null,
+      {timeout:5000},
+    );
+
+    // Return to a clean device state before the existing session regressions.
+    await dp.evaluate(() => localStorage.clear());
+    await dp.reload({waitUntil:'networkidle'});
+
     // Context 1: full named-session/history flow.
     await setupFour(dp);
     await dp.locator('#go').click();
@@ -410,6 +467,8 @@ async function main() {
       deleteWorks: true,
       importRestoresHistory: true,
       mobileScoring: true,
+      equalSitoutWaitTieBreak: true,
+      waitTimestampLifecycle: true,
     }, null, 2));
   } finally {
     for (const p of [backupPath, persistencePath, hostilePath]) {

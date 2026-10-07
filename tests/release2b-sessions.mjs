@@ -281,7 +281,7 @@ async function main() {
     assert.equal(await dp.locator('#mnb').isVisible(), true);
     assert.equal(await dp.locator('#mnw').count(), 0);
     assert.equal(await dp.locator('header button[onclick="live()"]').count(), 1);
-    assert.equal(await dmenu.locator('button').count(), 10);
+    assert.equal(await dmenu.locator('button').count(), 11);
     for (const b of await dmenu.locator('button').all()) {
       assert.ok(await b.getAttribute('title'));
     }

@@ -372,6 +372,10 @@ async function main() {
 
     // Hamburger expands a temporary labelled overlay at 1024px without moving the page.
     await dp.locator('#mnb').click();
+    await dp.waitForFunction(() => {
+      const el = document.getElementById('qmenu');
+      return el && el.classList.contains('wide') && el.getBoundingClientRect().width >= 220;
+    }, null, {timeout:1000});
     assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
     const wide1024 = await dmenu.boundingBox();
     assert.ok(wide1024 && wide1024.width >= 220);

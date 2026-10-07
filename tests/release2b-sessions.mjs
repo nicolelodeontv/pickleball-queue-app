@@ -9,6 +9,11 @@ const SUPABASE = 'https://wochetemsnrysnjrgoed.supabase.co';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+async function openMenu(page) {
+  const mn = page.locator('#mnb');
+  if (await mn.isVisible()) await mn.click();
+}
+
 async function freshContext(browser, device) {
   const context = await browser.newContext({
     ...device,
@@ -55,7 +60,7 @@ async function main() {
     await dp.waitForFunction(() => S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
     const [persistenceDownload] = await Promise.all([
       dp.waitForEvent('download'),
-      (await dp.locator('#mnb').click(), dp.locator('#qmenu #exp').click()),
+      (await openMenu(dp), dp.locator('#qmenu #exp').click()),
     ]);
     await persistenceDownload.saveAs(persistencePath);
     const persistedBackup = JSON.parse(fs.readFileSync(persistencePath, 'utf8'));
@@ -144,7 +149,7 @@ async function main() {
     await dp.locator('.nw').click();
     await dp.getByRole('button', {name: 'Confirm'}).click();
 
-    await dp.locator('#mnb').click();
+    await openMenu(dp);
     await dp.locator('#qmenu button[title="Past sessions"]').click();
     const history = dp.locator('[role="dialog"]');
     await history.getByText('Sat 6pm', {exact:true}).waitFor({state:'visible', timeout:5000});
@@ -155,7 +160,7 @@ async function main() {
     // Export must contain the archived history.
     const [download] = await Promise.all([
       dp.waitForEvent('download'),
-      (await dp.locator('#mnb').click(), dp.locator('#qmenu #exp').click()),
+      (await openMenu(dp), dp.locator('#qmenu #exp').click()),
     ]);
     await download.saveAs(backupPath);
     const backup = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
@@ -165,7 +170,7 @@ async function main() {
     assert.equal(backup.state.hist[0].top.length <= 10, true);
 
     // Delete the saved session, then verify the list is empty.
-    await dp.locator('#mnb').click();
+    await openMenu(dp);
     await dp.locator('#qmenu button[title="Past sessions"]').click();
     await dp.getByRole('button', {name: 'Delete this session'}).click();
     await dp.getByRole('button', {name: 'Confirm'}).click();
@@ -177,7 +182,7 @@ async function main() {
     await ip.goto(APP, {waitUntil:'networkidle'});
     await ip.locator('#imp').setInputFiles(backupPath);
     await ip.getByRole('button', {name: 'Confirm'}).click();
-    await ip.locator('#mnb').click();
+    await openMenu(ip);
     await ip.locator('#qmenu button[title="Past sessions"]').click();
     const imported = ip.locator('[role="dialog"]');
     await imported.getByText('Sat 6pm', {exact:true}).waitFor({state:'visible', timeout:5000});
@@ -203,7 +208,7 @@ async function main() {
     }
     await dp.getByRole('button', {name: 'FINISH & LOG'}).click();
     await dp.locator('#msg').getByText('Match logged.').waitFor({state:'visible', timeout:5000});
-    await dp.locator('#mnb').click();
+    await openMenu(dp);
     await dp.locator('#qmenu button[title="Players"]').click();
     const players = dp.locator('[role="dialog"]').last();
     await players.locator('button.pr[data-k="alpha"]').waitFor({state:'visible', timeout:5000});
@@ -215,38 +220,88 @@ async function main() {
     await dp.evaluate(() => localStorage.clear());
     await dp.reload({waitUntil:'networkidle'});
 
-    // Release 4/5 browser regression: the menu-based header must fit at iPhone width.
+    // Release 4/5/6 responsive sidebar regression.
     await ip.goto(APP, {waitUntil:'networkidle'});
     await ip.evaluate(() => localStorage.clear());
     await ip.reload({waitUntil:'networkidle'});
     const headerBar = ip.locator('header .container>div:nth-child(2)');
     const headerGroupFits = await headerBar.evaluate(el => el.scrollWidth <= el.clientWidth);
     assert.equal(headerGroupFits, true);
-    assert.equal(await headerBar.locator('> #mnw').count(), 1);
+    assert.equal(await ip.locator('#mnw').count(), 0);
+    assert.equal(await ip.locator('#mnb').count(), 1);
+    assert.equal(await ip.locator('#mnb').isVisible(), true);
     assert.equal(await headerBar.locator('> button[onclick="live()"]').count(), 1);
 
-    await ip.locator('#mnb').click();
+    await openMenu(ip);
     const menu = ip.locator('#qmenu');
     await menu.waitFor({state:'visible', timeout:5000});
+    const menuBox = await menu.boundingBox();
+    assert.ok(menuBox && menuBox.x >= 0 && menuBox.x + menuBox.width <= (await ip.evaluate(() => innerWidth)));
+    assert.equal(await menu.locator('button').count(), 10);
     await menu.locator('button[title="Players"]').waitFor({state:'visible', timeout:5000});
-    const faqButton = menu.locator('button[title="How it works"]');
-    await faqButton.waitFor({state:'visible', timeout:5000});
+    await menu.locator('button[title="How it works"]').waitFor({state:'visible', timeout:5000});
+
+    await menu.locator('#snb').click();
+    assert.equal(await menu.isVisible(), true);
+    await menu.locator('#thb').click();
+    assert.equal(await menu.isVisible(), true);
+    assert.equal(await ip.locator('html[data-theme="light"]').count(), 1);
+    await menu.locator('#thb').click();
+    assert.equal(await ip.locator('html[data-theme="light"]').count(), 0);
+
     await menu.locator('button[title="Standings"]').click();
     await ip.getByRole('heading', {name:'Live Standings'}).waitFor({state:'visible', timeout:5000});
     await ip.getByRole('button', {name:'Back to game'}).click();
 
-    await ip.locator('#mnb').click();
+    await openMenu(ip);
     await menu.locator('button[title="How it works"]').click();
     const faqDialog = ip.locator('#faq');
     await faqDialog.waitFor({state:'visible', timeout:5000});
     assert.equal(await faqDialog.evaluate(d => d.open), true);
     await ip.keyboard.press('Escape');
     await faqDialog.waitFor({state:'hidden', timeout:5000});
-    await ip.locator('#mnb').click();
-    await menu.locator('button[title="How it works"]').click();
-    await faqDialog.waitFor({state:'visible', timeout:5000});
-    await faqDialog.getByRole('button', {name:'Close'}).click();
-    await faqDialog.waitFor({state:'hidden', timeout:5000});
+
+    await openMenu(ip);
+    assert.equal(await menu.isVisible(), true);
+    await ip.keyboard.press('Escape');
+    assert.equal(await menu.isVisible(), false);
+    await openMenu(ip);
+    const scrimBox = await ip.locator('#qscrim').boundingBox();
+    const drawerBox = await menu.boundingBox();
+    assert.ok(scrimBox && drawerBox);
+    await ip.mouse.click(Math.min(scrimBox.x + scrimBox.width - 6, drawerBox.x + drawerBox.width + 20), 80);
+    assert.equal(await menu.isVisible(), false);
+
+    await dp.goto(APP, {waitUntil:'networkidle'});
+    await dp.evaluate(() => localStorage.clear());
+    await dp.reload({waitUntil:'networkidle'});
+    const dmenu = dp.locator('#qmenu');
+    await dmenu.waitFor({state:'visible', timeout:5000});
+    assert.equal(await dp.locator('#mnb').isVisible(), false);
+    assert.equal(await dp.locator('#mnw').count(), 0);
+    assert.equal(await dp.locator('header button[onclick="live()"]').count(), 1);
+    assert.equal(await dmenu.locator('button').count(), 10);
+    for (const b of await dmenu.locator('button').all()) {
+      assert.ok(await b.getAttribute('title'));
+    }
+
+    await dp.setViewportSize({width:1280,height:800});
+    await dp.reload({waitUntil:'networkidle'});
+    const rail1280 = await dmenu.boundingBox();
+    const stack1280 = await dp.locator('#sstk').boundingBox();
+    assert.ok(rail1280 && stack1280 && stack1280.x >= rail1280.x + rail1280.width + 4);
+
+    await dp.setViewportSize({width:1800,height:900});
+    await dp.reload({waitUntil:'networkidle'});
+    const railWide = await dmenu.boundingBox();
+    const stackWide = await dp.locator('#sstk').boundingBox();
+    assert.ok(railWide && stackWide && stackWide.x >= railWide.x + railWide.width + 4);
+
+    await dp.locator('#thb').click();
+    assert.equal(await dp.locator('html[data-theme="light"]').count(), 1);
+    assert.equal(await dmenu.isVisible(), true);
+    await dp.locator('#thb').click();
+    assert.equal(await dp.locator('html[data-theme="light"]').count(), 0);
 
     // Context 3: mobile scoring regression using the current production selectors.
     await setupFour(pp);
@@ -278,3 +333,4 @@ main().catch(err => {
   console.error(err.stack || err);
   process.exit(1);
 });
+

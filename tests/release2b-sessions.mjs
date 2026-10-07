@@ -390,7 +390,7 @@ async function main() {
     // Outside click also folds the temporary panel.
     await dp.locator('#mnb').click();
     assert.equal(await dmenu.evaluate(el => el.classList.contains('wide')), true);
-    await dp.locator('#pn').click();
+    await dp.mouse.click(900, 120);
     await dp.waitForFunction(() => !document.getElementById('qmenu')?.classList.contains('wide'), null, {timeout:1000});
 
     // Context 3: mobile scoring regression using the current production selectors.

@@ -39,19 +39,22 @@ if 'footer' not in html: die('index.html has no <footer>; the mascot mounts abov
 
 sws = sw.read_text(encoding='utf-8')
 new_sw, notes = sws, []
-m = re.search(r"(queuezerotwo-v)(\d+)", sws)
+m = re.search(r"(queuezerotwo-v)(\\d+)", sws)
 if not m: die('cache name queuezerotwo-vN not found in sw.js')
-if 'mascot.js' not in sws:
+missing = [u for u in FILES if not re.search(r"['\\\"]" + re.escape(u) + r"['\\\"]", sws)]
+if missing:
     new_sw = new_sw.replace(m.group(0), m.group(1) + str(int(m.group(2)) + 1), 1)
-    pm = list(re.finditer(r"(['\"])/profiles\.js\1", new_sw))
-    if len(pm) == 1:
-        q = pm[0].group(1)
-        add = ',' + ','.join(f'{q}{u}{q}' for u in FILES)
-        new_sw = new_sw[:pm[0].end()] + add + new_sw[pm[0].end():]
-        notes.append('precache list updated')
+    sm = list(re.finditer(r"const SHELL\\s*=\\s*\\[(.*?)\\]", new_sw, re.S))
+    if len(sm) == 1:
+        body = sm[0].group(1)
+        add = ''.join(",'" + u + "'" for u in missing)
+        new_sw = new_sw[:sm[0].start(1)] + body + add + new_sw[sm[0].start(1)+len(body):]
+        notes.append('precache list updated: ' + ', '.join(missing))
     else:
-        notes.append("WARNING: could not find '/profiles.js' once in sw.js. Add these to the precache list by hand: " + ', '.join(FILES))
+        notes.append('WARNING: could not locate the SHELL list. Add these to the precache list by hand: ' + ', '.join(missing))
     notes.append(f'cache version v{m.group(2)} -> v{int(m.group(2)) + 1}')
+else:
+    notes.append('precache and cache version already up to date')
 
 print('index.html:', 'edit' if new_html != html else 'unchanged')
 print('sw.js:', '; '.join(notes) if notes else 'unchanged')
@@ -60,8 +63,13 @@ if DRY:
 
 (idx).write_text(new_html, encoding='utf-8')
 sw.write_text(new_sw, encoding='utf-8')
-shutil.copy2(HERE / 'mascot.js', ROOT / 'mascot.js')
+
+def copy_if_needed(src, dst):
+    if src.resolve() != dst.resolve():
+        shutil.copy2(src, dst)
+
+copy_if_needed(HERE / 'mascot.js', ROOT / 'mascot.js')
 (ROOT / 'mascots').mkdir(exist_ok=True)
 for n in ('penguin-directions.webp', 'penguin-reactions.webp'):
-    shutil.copy2(HERE / 'mascots' / n, ROOT / 'mascots' / n)
+    copy_if_needed(HERE / 'mascots' / n, ROOT / 'mascots' / n)
 print('Done. Check git diff, run the suite, commit and push.')

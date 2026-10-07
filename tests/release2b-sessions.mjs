@@ -220,46 +220,59 @@ async function main() {
     await dp.evaluate(() => localStorage.clear());
     await dp.reload({waitUntil:'networkidle'});
 
-    // Release 4/5/6 responsive sidebar regression.
+    // Release 4/5/6/8 responsive header + sidebar regression.
     await ip.goto(APP, {waitUntil:'networkidle'});
     await ip.evaluate(() => localStorage.clear());
     await ip.reload({waitUntil:'networkidle'});
+    const header = ip.locator('header .container');
     const headerBar = ip.locator('header .container>div:nth-child(2)');
-    const headerGroupFits = await headerBar.evaluate(el => el.scrollWidth <= el.clientWidth);
-    assert.equal(headerGroupFits, true);
+    assert.equal(await header.evaluate(el => el.scrollWidth <= el.clientWidth), true);
+    assert.equal(await headerBar.evaluate(el => el.scrollWidth <= el.clientWidth), true);
     assert.equal(await ip.locator('#mnw').count(), 0);
     assert.equal(await ip.locator('#mnb').count(), 1);
     assert.equal(await ip.locator('#mnb').isVisible(), true);
     assert.equal(await headerBar.locator('> button[onclick="live()"]').count(), 1);
+    for (const id of ['snb','hpb','thb','tsb']) {
+      assert.equal(await headerBar.locator('#'+id).count(), 1);
+    }
+    const faqHeader = headerBar.locator('> button[onclick="openFaq()"][title="How it works"]');
+    assert.equal(await faqHeader.count(), 1);
+    assert.equal(await headerBar.locator('> button[onclick="hist()"]').count(), 0);
+    assert.equal(await headerBar.locator('> button[onclick="stand()"]').count(), 0);
+    assert.equal(await headerBar.locator('#exp').count(), 0);
+    assert.equal(await headerBar.locator('#impbtn').count(), 0);
 
-    await openMenu(ip);
-    const menu = ip.locator('#qmenu');
-    await menu.waitFor({state:'visible', timeout:5000});
-    const menuBox = await menu.boundingBox();
-    assert.ok(menuBox && menuBox.x >= 0 && menuBox.x + menuBox.width <= (await ip.evaluate(() => innerWidth)));
-    assert.equal(await menu.locator('button').count(), 10);
-    await menu.locator('button[title="Players"]').waitFor({state:'visible', timeout:5000});
-    await menu.locator('button[title="How it works"]').waitFor({state:'visible', timeout:5000});
-
-    await menu.locator('#snb').click();
-    assert.equal(await menu.isVisible(), true);
-    await menu.locator('#thb').click();
-    assert.equal(await menu.isVisible(), true);
+    // The moved utility controls work directly from the header.
+    await headerBar.locator('#snb').click();
+    if (await headerBar.locator('#hpb').isVisible()) await headerBar.locator('#hpb').click();
+    await headerBar.locator('#tsb').click();
+    await headerBar.locator('#thb').click();
     assert.equal(await ip.locator('html[data-theme="light"]').count(), 1);
-    await menu.locator('#thb').click();
+    await headerBar.locator('#thb').click();
     assert.equal(await ip.locator('html[data-theme="light"]').count(), 0);
-
-    await menu.locator('button[title="Standings"]').click();
-    await ip.getByRole('heading', {name:'Live Standings'}).waitFor({state:'visible', timeout:5000});
-    await ip.getByRole('button', {name:'Back to game'}).click();
-
-    await openMenu(ip);
-    await menu.locator('button[title="How it works"]').click();
+    await faqHeader.click();
     const faqDialog = ip.locator('#faq');
     await faqDialog.waitFor({state:'visible', timeout:5000});
     assert.equal(await faqDialog.evaluate(d => d.open), true);
     await ip.keyboard.press('Escape');
     await faqDialog.waitFor({state:'hidden', timeout:5000});
+
+    // Only the remaining five items live in the phone drawer.
+    await openMenu(ip);
+    const menu = ip.locator('#qmenu');
+    await menu.waitFor({state:'visible', timeout:5000});
+    const menuBox = await menu.boundingBox();
+    assert.ok(menuBox && menuBox.x >= 0 && menuBox.x + menuBox.width <= (await ip.evaluate(() => innerWidth)));
+    assert.equal(await menu.locator('button').count(), 5);
+    for (const title of ['Players','Standings','Past sessions','Export backup','Import backup']) {
+      await menu.locator('button[title="'+title+'"]').waitFor({state:'visible', timeout:5000});
+    }
+    assert.equal(await menu.locator('#snb,#hpb,#thb,#tsb').count(), 0);
+    assert.equal(await menu.locator('button[title="How it works"]').count(), 0);
+
+    await menu.locator('button[title="Standings"]').click();
+    await ip.getByRole('heading', {name:'Live Standings'}).waitFor({state:'visible', timeout:5000});
+    await ip.getByRole('button', {name:'Back to game'}).click();
 
     await openMenu(ip);
     assert.equal(await menu.isVisible(), true);
@@ -281,7 +294,7 @@ async function main() {
     assert.equal(await dp.locator('#mnb').isVisible(), true);
     assert.equal(await dp.locator('#mnw').count(), 0);
     assert.equal(await dp.locator('header button[onclick="live()"]').count(), 1);
-    assert.equal(await dmenu.locator('button').count(), 11);
+    assert.equal(await dmenu.locator('button').count(), 6);
     for (const b of await dmenu.locator('button').all()) {
       assert.ok(await b.getAttribute('title'));
     }

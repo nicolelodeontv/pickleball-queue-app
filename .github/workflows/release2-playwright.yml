@@ -44,12 +44,10 @@ jobs:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/release2b-sessions.mjs
 
-
   cleanup-retired-branches:
-    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[branch-cleanup-final-5]')
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[branch-cleanup-final-6]')
     permissions:
       contents: write
-      issues: write
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -68,88 +66,42 @@ jobs:
           )
 
           mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
-
           test "${#actual[@]}" -eq 4
-          printf '%s\n' "${actual[@]}" | grep -Fx -- "$cleanup_branch" >/dev/null
-
+          printf '%s
+' "${actual[@]}" | grep -Fx -- "$cleanup_branch" >/dev/null
           for b in "${held[@]}"; do
-            printf '%s\n' "${actual[@]}" | grep -Fx -- "$b" >/dev/null
+            printf '%s
+' "${actual[@]}" | grep -Fx -- "$b" >/dev/null
           done
-
-          expected="$(printf '%s\n' "${held[@]}" "$cleanup_branch" | sort)"
-          actual_text="$(printf '%s\n' "${actual[@]}")"
+          expected="$(printf '%s
+' "${held[@]}" "$cleanup_branch" | sort)"
+          actual_text="$(printf '%s
+' "${actual[@]}")"
           test "$actual_text" = "$expected"
-
           echo "Exact 4-head cleanup preflight passed."
 
       - name: Delete temporary trigger branch
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           cleanup_branch="tmp/branch-cleanup-trigger-20261008"
-          echo "Deleting $cleanup_branch via GitHub ref API"
-          set +e
-          code="$(curl -sS -o /tmp/qz-ref-delete.json -w '%{http_code}' \
-            -X DELETE \
+          echo "Deleting $cleanup_branch via GitHub API"
+          gh api --method DELETE \
             -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/git/refs/heads/$cleanup_branch")"
-          curl_status=$?
-          set -e
-          {
-            echo "curl_status=$curl_status"
-            echo "http_code=$code"
-            echo "repository=$GITHUB_REPOSITORY"
-            echo "ref=refs/heads/$cleanup_branch"
-            echo "response:"
-            cat /tmp/qz-ref-delete.json
-          } > /tmp/qz-ref-delete-report.txt
-          cat /tmp/qz-ref-delete-report.txt
-          if [ "$curl_status" -ne 0 ] || [ "$code" != "204" ]; then
-            exit 1
-          fi
-          echo "Ref deletion returned HTTP 204."
-
-      - name: Report ref deletion result
-        if: always()
-        uses: actions/github-script@v7
-        env:
-          REPORT_PATH: /tmp/qz-ref-delete-report.txt
-        with:
-          script: |
-            const fs = require("fs");
-            const path = process.env.REPORT_PATH;
-            const report = fs.existsSync(path)
-              ? fs.readFileSync(path, "utf8")
-              : "No ref-delete report was produced.";
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: 41,
-              body: "Final branch cleanup diagnostic:\n\n```text\n" + report.slice(0, 6000) + "\n```"
-            });
-      - name: Upload ref deletion diagnostic
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: branch-cleanup-diagnostic
-          path: /tmp/qz-ref-delete-report.txt
-          if-no-files-found: ignore
+            "/repos/$GITHUB_REPOSITORY/git/refs/heads/$cleanup_branch"
 
       - name: Verify final survivors
         shell: bash
         run: |
           set -euo pipefail
           mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
-          expected=$'db-baseline-20261008
-main
-vercel/install-vercel-web-analytics-i-dibup6'
-          actual_text="$(printf '%s\n' "${actual[@]}")"
+          expected=$'db-baseline-20261008\nmain\nvercel/install-vercel-web-analytics-i-dibup6'
+          actual_text="$(printf '%s
+' "${actual[@]}")"
           test "$actual_text" = "$expected"
           echo "Cleanup complete. Final remote head set is exactly:"
-          printf '%s\n' "${actual[@]}"
-
-# Final cleanup diagnostic retrigger marker.
-
-# Final ref-delete diagnostic retrigger.
+          printf '%s
+' "${actual[@]}"

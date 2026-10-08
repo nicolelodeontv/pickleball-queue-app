@@ -36,7 +36,7 @@ async function freshContext(browser, device) {
 async function syncContext(browser, device, publishes) {
   const context = await browser.newContext({
     ...device,
-    serviceWorkers: 'block',
+    serviceWorkers: 'allow',
     locale: 'en-US',
   });
   await context.route(SUPABASE + '/**', route => {
@@ -87,6 +87,10 @@ async function main() {
   try {
     // Release 1: failed whole-state publishes queue locally and drain FIFO after reconnect.
     await setupFour(sp);
+    await sp.evaluate(async () => {
+      if ('serviceWorker' in navigator) await navigator.serviceWorker.ready;
+    });
+    await sp.waitForFunction(() => !!navigator.serviceWorker?.controller, null, {timeout: 5000});
     await sp.evaluate(() => document.getElementById('nvs')?.click());
     await sleep(700);
     syncPublishes.length = 0;

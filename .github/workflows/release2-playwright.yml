@@ -64,6 +64,8 @@ jobs:
           Path("/tmp/queuezerotwo-inline.js").write_text(h[start+8:end], encoding="utf-8")
           PY
           node --check /tmp/queuezerotwo-inline.js
+      - name: Check Release 2 Playwright test syntax
+        run: node --check tests/release2b-sessions.mjs
       - run: npm install --no-save playwright@1.55.0
       - run: npx playwright install --with-deps chromium
       - name: Start static server

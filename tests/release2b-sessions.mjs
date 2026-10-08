@@ -323,6 +323,63 @@ async function main() {
     assert.equal(freshPublish.staleQueue,false);
     assert.doesNotMatch(await sp.locator('#ct').innerText(), /No longer host/);
 
+    // Regression: an old in-flight publish failure must not poison or stall a fresh session.
+    await sp.locator('[role="dialog"] [data-x]').click();
+    await sp.evaluate(() => {
+      S = mk();
+      S.ended = true;
+      S.name = 'Old in-flight session';
+      S.sid = 'OLDINFLIGHT';
+      S.sh = 'd'.repeat(64);
+      S.ho = false;
+      S.hoff = Date.now();
+      window.__oldPublishStarted = false;
+      window.__resolveOldPublish = null;
+      window.__freshWrites = [];
+      sb.rpc = (name,args) => {
+        if (name === 'publish_pickle_session' && args.p_code === 'OLDINFLIGHT') {
+          window.__oldPublishStarted = true;
+          return new Promise(resolve => {
+            window.__resolveOldPublish = () => resolve({data:null,error:new Error('Server unavailable.')});
+          });
+        }
+        if (name === 'publish_pickle_session') window.__freshWrites.push(args.p_code);
+        return Promise.resolve({data:true,error:null});
+      };
+      PQ = [{seq:150,sid:S.sid,sh:S.sh,kind:'state',attempts:2,lastError:'',payload:sdata()}];
+      PQS = 150;
+      savePublishQueue();
+      void flushPublishQueue();
+      showRes();
+    });
+    await sp.waitForFunction(() => window.__oldPublishStarted === true);
+    await sp.locator('[role="dialog"] .nw').click();
+    await sp.getByRole('button',{name:'Confirm'}).click();
+    await sp.waitForFunction(() => !S.ended && S.ho !== true);
+    const freshIdentity = await sp.evaluate(() => {
+      clearTimeout(st);
+      ensureLiveIdentity();
+      const identity = {sid:S.sid,sh:S.sh};
+      queuePublishPayload(sdata(),S.sid,S.sh);
+      return identity;
+    });
+    assert.notEqual(freshIdentity.sid,'OLDINFLIGHT');
+    await sp.evaluate(() => window.__resolveOldPublish());
+    await sp.waitForFunction(() => PQ.length === 0, null, {timeout:5000});
+    const staleCompletion = await sp.evaluate(() => ({
+      host:S.ho,
+      marker:document.getElementById('ct').textContent,
+      oldStillQueued:PQ.some(x=>x.sid==='OLDINFLIGHT'),
+      freshWrites:window.__freshWrites.slice(),
+      sid:S.sid,
+      sh:S.sh
+    }));
+    assert.equal(staleCompletion.host,false);
+    assert.doesNotMatch(staleCompletion.marker,/Sync stuck|No longer host/);
+    assert.equal(staleCompletion.oldStillQueued,false);
+    assert.ok(staleCompletion.freshWrites.includes(staleCompletion.sid));
+    assert.equal(staleCompletion.marker,'Saved on this device');
+
     // Release 1 edge case: repeated non-network failures are visibly marked as stuck,
     // while still retaining the queue for a later recovery.
     await sp.evaluate(() => {
@@ -404,7 +461,10 @@ async function main() {
     await ip.evaluate(() => localStorage.clear());
     await ip.reload({waitUntil: 'networkidle'});
     await ip.locator('#imp').setInputFiles(endBackupPath);
-    await ip.getByRole('button', {name: 'Confirm'}).click();
+    const restoreDialog = ip.locator('[role="dialog"]');
+    assert.match(await restoreDialog.innerText(), /discards any unsent Live View updates/i);
+    assert.match(await restoreDialog.innerText(), /Export a backup first/i);
+    await restoreDialog.getByRole('button', {name: 'Confirm'}).click();
     await ip.waitForFunction(() => !S.ended && S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
     assert.equal(await ip.locator('#tg').inputValue(), '15');
     assert.equal(await ip.locator('#wbs').inputValue(), '1');

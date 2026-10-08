@@ -33,11 +33,14 @@ Live View uses Supabase. The organizer publishes session state through the app's
 - Session codes are 10 characters and expire after 7 days. The host key is stored hashed in the database and is never included in viewer state.
 - Host handoff puts the replacement host key in the QR URL fragment (`#h=...`), which browsers do not send to the server. The new device rotates the key so the old one stops working.
 - Anyone with a Live View link can see the session's player names and scores. Do not put private information in player names.
-- The SQL files in `supabase/` are split into historical base setup and current incremental security/handoff SQL:
+- The SQL files in `supabase/` are split between a deliberately unsafe legacy setup and the checked-in secure Live View migration chain:
   - `supabase/LEGACY-DO-NOT-RUN-setup.sql` is the original base table setup. Use it only when creating a new throwaway/test database. **Never run it against the existing production database**, because it recreates public insert/update policies.
-  - `supabase/host_handoff.sql` contains the host-key rotation RPC and the current private Broadcast trigger/policy setup. Apply it after the base schema exists.
-  - `supabase/migrations/20261006141300_private_live_view_broadcast.sql` contains the incremental private Broadcast function/policy migration for environments using migration-based deployment.
-- The repo does not contain a safe replacement for the historical base schema, so an existing production database must not be rebuilt by blindly replaying every SQL file in order.
+  - `supabase/migrations/20261004000000_baseline_secure_live_view.sql` is the schema-only secure baseline for `live_sessions`, its exact-code SELECT policy, and `publish_pickle_session`. It contains no production rows or test session codes.
+  - `supabase/migrations/20261005000000_host_handoff.sql` contains the host-key rotation RPC.
+  - `supabase/migrations/20261006141300_private_live_view_broadcast.sql` creates the database Broadcast trigger and the private Realtime receive policy.
+  - The migration order is **baseline → host handoff → Broadcast**.
+- The production project also retains a locked-down legacy `live_matches` table and older dashboard-applied migration history. The active app no longer uses that path, so it is intentionally excluded from the secure Live View baseline.
+- Do not run the checked-in baseline chain against the existing production database. Its schema is already present there. Before adopting the files as the authoritative CLI history, reconcile the existing remote migration history with `supabase migration repair` after verifying the live schema.
 
 For a separate deployment, set `SB_URL` and `SB_KEY` in `index.html` to the project's URL and browser-safe publishable key. Use a publishable/browser-safe key only.
 

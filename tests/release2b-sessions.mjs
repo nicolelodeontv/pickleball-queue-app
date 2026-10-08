@@ -282,6 +282,47 @@ async function main() {
     assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 0);
     assert.match(await sp.locator('#ct').innerText(), /No longer host/);
 
+    // Regression: after demotion, starting a fresh session clears the old marker and queued writes.
+    await sp.evaluate(() => {
+      S.ended = true;
+      S.name = 'Demoted host fresh session';
+      S.rid = '';
+      S.rr = false;
+      S.lr = false;
+      PQ = [{seq:101,sid:'STALESESSION',sh:'c'.repeat(64),kind:'state',attempts:0,lastError:'',payload:sdata()}];
+      PQS = 101;
+      savePublishQueue();
+      window.__freshSessionPublish = null;
+      sb.rpc = async (name,args) => {
+        if (name === 'publish_pickle_session') {
+          window.__freshSessionPublish = {name,args};
+          return {data:true,error:null};
+        }
+        return {data:'R2RES1234',error:null};
+      };
+      showRes();
+    });
+    await sp.locator('[role="dialog"] .nw').click();
+    await sp.getByRole('button',{name:'Confirm'}).click();
+    await sp.waitForFunction(() => !S.ended && S.ho !== true);
+    assert.doesNotMatch(await sp.locator('#ct').innerText(), /No longer host/);
+    await sp.locator('button[onclick="live()"]').click();
+    await sp.waitForFunction(() => !!window.__freshSessionPublish);
+    const freshPublish = await sp.evaluate(() => ({
+      ...window.__freshSessionPublish,
+      sid:S.sid,
+      sh:S.sh,
+      staleQueue:JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items
+        .some(x=>x.sid==='STALESESSION'||x.sh==='c'.repeat(64))
+    }));
+    assert.equal(freshPublish.name,'publish_pickle_session');
+    assert.equal(freshPublish.args.p_code,freshPublish.sid);
+    assert.equal(freshPublish.args.p_host_key,freshPublish.sh);
+    assert.notEqual(freshPublish.args.p_code,'STALESESSION');
+    assert.notEqual(freshPublish.args.p_host_key,'c'.repeat(64));
+    assert.equal(freshPublish.staleQueue,false);
+    assert.doesNotMatch(await sp.locator('#ct').innerText(), /No longer host/);
+
     // Release 1 edge case: repeated non-network failures are visibly marked as stuck,
     // while still retaining the queue for a later recovery.
     await sp.evaluate(() => {

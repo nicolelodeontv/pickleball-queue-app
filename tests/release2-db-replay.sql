@@ -261,17 +261,48 @@ $$;
 
 insert into public.pickle_results(live_code,code,data,created_at,expires_at)
 values
-  ('CLEANUP001','CLNEXPIRE01','{"v":1}'::jsonb,now(),now()-interval '1 day'),
-  ('CLEANUP002','CLNKEEP0001','{"v":1}'::jsonb,now(),now()+interval '29 days');
+  ('CLEANUP001','CLNEXPIRE1','{"v":1}'::jsonb,now(),now()-interval '1 day'),
+  ('CLEANUP002','CLNKEEP001','{"v":1}'::jsonb,now(),now()+interval '29 days');
 
-delete from public.pickle_results where expires_at <= now();
+-- Keep the RLS-expiry fixture visible to cleanup; only the explicit expired test row
+-- should be removed by the scheduled job's configured command.
+update public.pickle_results
+   set expires_at=now()+interval '1 day'
+ where code='R2RES00001';
+
+do $
+declare
+  v_command text;
+  v_rows integer;
+begin
+  select command into v_command
+    from cron.job
+   where jobname='queuezerotwo-results-expiry-cleanup'
+     and active;
+
+  if v_command is null then
+    raise exception 'results cleanup cron job is missing or inactive';
+  end if;
+
+  if regexp_replace(lower(v_command), '[[:space:]]', '', 'g')
+       <> 'deletefrompublic.pickle_resultswhereexpires_at<=now()' then
+    raise exception 'unexpected results cleanup command: %', v_command;
+  end if;
+
+  execute v_command;
+  get diagnostics v_rows = row_count;
+  if v_rows <> 1 then
+    raise exception 'scheduled cleanup command removed % rows; expected 1', v_rows;
+  end if;
+end
+$;
 
 do $
 begin
-  if exists(select 1 from public.pickle_results where code='CLNEXPIRE01') then
-    raise exception 'expired result row was not deleted';
+  if exists(select 1 from public.pickle_results where code='CLNEXPIRE1') then
+    raise exception 'expired result row was not deleted by the cleanup job command';
   end if;
-  if not exists(select 1 from public.pickle_results where code='CLNKEEP0001') then
+  if not exists(select 1 from public.pickle_results where code='CLNKEEP001') then
     raise exception 'unexpired result row was deleted';
   end if;
 end

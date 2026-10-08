@@ -101,6 +101,10 @@ async function main() {
     await sp.locator('button[aria-label="Plus point, Team 1"]').first().click();
     await sleep(700);
     assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 2);
+    await sp.reload({waitUntil:'networkidle'});
+    assert.equal(await sp.evaluate(() => navigator.onLine), false);
+    assert.match(await sp.locator('#ct').innerText(), /Offline · will sync/);
+    assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 2);
     await sync.setOffline(false);
     await sp.waitForFunction(
       () => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length === 0,
@@ -113,6 +117,37 @@ async function main() {
       return c?.s?.[0];
     });
     assert.deepEqual(queuedScores, [1, 2]);
+
+    // Release 1 edge case: an old host key is rejected once the handoff has completed,
+    // so the old device drops its queued writes instead of retrying them forever.
+    await sp.evaluate(() => {
+      const oldSid='OLDHANDOFF',oldSh='a'.repeat(64);
+      S.sid=oldSid;S.sh=oldSh;S.ho=false;S.hoff=Date.now();
+      PQ=[{seq:99,sid:oldSid,sh:oldSh,kind:'state',attempts:1,lastError:'',payload:sdata()}];
+      PQS=99;savePublishQueue();clearTimeout(PQRetry);PQRetry=null;
+      sb.rpc=async()=>({error:new Error('Invalid host key.')});
+      syncMarker();
+    });
+    await sp.evaluate(() => flushPublishQueue());
+    assert.equal(await sp.evaluate(() => S.ho), true);
+    assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 0);
+    assert.match(await sp.locator('#msg').innerText(), /Live View host moved to another device/);
+
+    // Release 1 edge case: repeated non-network failures are visibly marked as stuck,
+    // while still retaining the queue for a later recovery.
+    await sp.evaluate(() => {
+      const sid='STUCKSYNC',sh='b'.repeat(64);
+      S.ho=false;S.sid=sid;S.sh=sh;S.hoff=0;
+      PQ=[{seq:100,sid,sh,kind:'state',attempts:2,lastError:'',payload:sdata()}];
+      PQS=100;savePublishQueue();clearTimeout(PQRetry);PQRetry=null;
+      sb.rpc=async()=>({error:new Error('Server unavailable.')});
+      syncMarker();
+    });
+    await sp.evaluate(() => flushPublishQueue());
+    assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items[0].attempts), 3);
+    assert.equal(await sp.evaluate(() => PQ.length), 1);
+    assert.match(await sp.locator('#ct').innerText(), /Sync stuck/);
+    await sp.evaluate(() => {clearTimeout(PQRetry);PQRetry=null});
 
     // Release 1 regression: End session immediately downloads an import-compatible JSON backup.
     await dp.goto(APP, {waitUntil: 'networkidle'});
@@ -154,6 +189,7 @@ async function main() {
     await ip.getByRole('button', {name: 'Confirm'}).click();
     await ip.waitForFunction(() => !S.ended && S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
     assert.equal(await ip.locator('#tg').inputValue(), '15');
+    assert.equal(await ip.locator('[role="dialog"] .bk').isVisible(), true);
     assert.equal(await ip.locator('#wbs').inputValue(), '1');
     assert.equal(await ip.locator('#ncs').inputValue(), '6');
     await ip.evaluate(() => localStorage.clear());

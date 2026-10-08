@@ -135,8 +135,8 @@ async function ready(page) {
   await waitUntil(() => page.locator('#pn').isVisible(), 'app form ready', 30000);
 }
 
-async function setupEight(page) {
-  await ready(page);
+async function setupEight(page, navigate = true) {
+  if (navigate) await ready(page);
   await page.locator('#nvs').click();
   await page.locator('#pn').fill('Alpha One,Beta Two,Gamma Three,Delta Four,Echo Five,Fox Six,Golf Seven,Hotel Eight');
   await page.locator('#f button').click();
@@ -170,7 +170,7 @@ async function backupAndImportOnIPhone(page) {
     };
   });
 
-  await setupEight(page);
+  await setupEight(page, false);
   await page.locator('button[aria-label="Plus point, Team 1"]').first().click();
   await waitUntil(
     () => page.evaluate(() => S.courts.some(c => c.isActive && c.score[0] === 1)),
@@ -313,10 +313,13 @@ async function main() {
     await ready(phoneB.page);
     await phoneB.page.evaluate(() => {
       localStorage.clear();
+      history.replaceState(null, '', location.pathname + location.search);
+    });
+    await phoneB.page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+    await phoneB.page.evaluate(() => {
       window.__rpcBeforeHandoffImport = sb.rpc;
       sb.rpc = async () => ({ data: null, error: new Error('Suppress publish while staging import') });
     });
-    await phoneB.page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
     await phoneB.page.locator('#imp').setInputFiles({
       name: 'queuezerotwo-offline-host-backup.json',
       mimeType: 'application/json',

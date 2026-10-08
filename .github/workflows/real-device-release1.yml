@@ -1,11 +1,6 @@
 name: Optional real-device Release 1 checks
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/real-device-release1.yml'
-      - 'tests/browserstack-release1.mjs'
   workflow_dispatch:
 
 permissions:
@@ -22,6 +17,13 @@ jobs:
           node-version: '22'
       - name: Check test syntax
         run: node --check tests/browserstack-release1.mjs
+      - name: Refuse production-backed device testing
+        shell: bash
+        run: |
+          if grep -Fq "https://wochetemsnrysnjrgoed.supabase.co" index.html; then
+            echo "::error title=Unsafe target::This checkout points at the production Supabase project. The device test creates live sessions and does not yet guarantee cleanup after every failure. Do not add BrowserStack secrets or run it until an isolated test project and failure-safe cleanup are configured."
+            exit 1
+          fi
       - name: Check BrowserStack credentials
         id: credentials
         shell: bash

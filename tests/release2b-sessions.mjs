@@ -13,6 +13,16 @@ async function openMenu(page) {
   if (!(await page.locator('#qmenu').isVisible())) await page.locator('#mnb').click();
 }
 
+async function assertMenuToggleTopmost(page) {
+  const box = await page.locator('#mnb').boundingBox();
+  assert.ok(box);
+  const hit = await page.evaluate(({x,y}) => document.elementFromPoint(x,y)?.closest('#mnb')?.id || null, {
+    x: box.x + box.width / 2,
+    y: box.y + box.height / 2,
+  });
+  assert.equal(hit, 'mnb');
+}
+
 async function freshContext(browser, device) {
   const context = await browser.newContext({
     ...device,
@@ -317,6 +327,10 @@ async function main() {
     await openMenu(ip);
     const menu = ip.locator('#qmenu');
     await menu.waitFor({state:'visible', timeout:5000});
+    await assertMenuToggleTopmost(ip);
+    await ip.locator('#mnb').click();
+    assert.equal(await menu.isVisible(), false);
+    await openMenu(ip);
     const menuBox = await menu.boundingBox();
     assert.ok(menuBox && menuBox.x >= 0 && menuBox.x + menuBox.width <= (await ip.evaluate(() => innerWidth)));
     assert.equal(await menu.locator('button').count(), 5);
@@ -356,6 +370,7 @@ async function main() {
 
     await dp.locator('#mnb').click();
     await dmenu.waitFor({state:'visible', timeout:5000});
+    await assertMenuToggleTopmost(dp);
     assert.ok((await dmenu.boundingBox())?.width >= 220);
     assert.equal(await dp.locator('#mnb').getAttribute('aria-label'), 'Close menu');
     assert.equal(await dp.locator('#mnb').getAttribute('aria-expanded'), 'true');
@@ -392,6 +407,7 @@ async function main() {
     assert.equal(await dmenu.isVisible(), false);
     await dp.locator('#mnb').click();
     assert.equal(await dmenu.isVisible(), true);
+    await assertMenuToggleTopmost(dp);
     const dockWide = await dmenu.boundingBox();
     const stackWide = await dp.locator('#sstk').boundingBox();
     assert.ok(dockWide && stackWide && stackWide.x >= dockWide.x + dockWide.width + 4);
@@ -407,6 +423,7 @@ async function main() {
     const stackClosed1024 = await dp.locator('#sstk').boundingBox();
     await dp.locator('#mnb').click();
     await dmenu.waitFor({state:'visible', timeout:5000});
+    await assertMenuToggleTopmost(dp);
     assert.ok((await dmenu.boundingBox())?.width >= 220);
     assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), false);
     const stackOpen1024 = await dp.locator('#sstk').boundingBox();
@@ -421,6 +438,16 @@ async function main() {
     assert.equal(await dmenu.isVisible(), true);
     await dp.mouse.click(900, 120);
     await dmenu.waitFor({state:'hidden', timeout:1000});
+
+    // The 1279px tablet layout is still an overlay, not the docked rail.
+    await dp.setViewportSize({width:1279,height:800});
+    await dp.reload({waitUntil:'networkidle'});
+    assert.equal(await dmenu.isVisible(), false);
+    await dp.locator('#mnb').click();
+    await dmenu.waitFor({state:'visible', timeout:5000});
+    await assertMenuToggleTopmost(dp);
+    assert.equal(await dp.evaluate(() => document.body.classList.contains('qw')), false);
+    await dp.keyboard.press('Escape');
 
     // Context 3: mobile scoring regression using the current production selectors.
     await setupFour(pp);

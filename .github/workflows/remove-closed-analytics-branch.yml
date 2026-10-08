@@ -1,0 +1,87 @@
+name: Remove closed Analytics branch
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, closed]
+
+permissions:
+  contents: write
+
+jobs:
+  remove-analytics:
+    if: github.event.action == 'opened' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'tmp/analytics-branch-finalizer-20261008'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify four-head preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          analytics="vercel/install-vercel-web-analytics-i-dibup6"
+          temp="tmp/analytics-branch-finalizer-20261008"
+          held=("main" "db-baseline-20261008")
+          mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+          test "${#actual[@]}" -eq 4
+          for b in "${held[@]}" "$analytics" "$temp"; do
+            printf '%s\n' "${actual[@]}" | grep -Fx -- "$b" >/dev/null
+          done
+          expected="$(printf '%s\n' "${held[@]}" "$analytics" "$temp" | sort)"
+          test "$(printf '%s\n' "${actual[@]}")" = "$expected"
+          echo "Exact four-head Analytics cleanup preflight passed."
+      - name: Delete Analytics branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.git.deleteRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/vercel/install-vercel-web-analytics-i-dibup6"
+            });
+            core.info("Deleted closed Analytics branch.");
+      - name: Verify three-head state
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+          expected=$'db-baseline-20261008\nmain\ntmp/analytics-branch-finalizer-20261008'
+          test "$(printf '%s\n' "${actual[@]}")" = "$expected"
+
+  remove-finalizer:
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'tmp/analytics-branch-finalizer-20261008'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify three-head preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          temp="tmp/analytics-branch-finalizer-20261008"
+          held=("main" "db-baseline-20261008")
+          mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+          test "${#actual[@]}" -eq 3
+          for b in "${held[@]}" "$temp"; do
+            printf '%s\n' "${actual[@]}" | grep -Fx -- "$b" >/dev/null
+          done
+          expected="$(printf '%s\n' "${held[@]}" "$temp" | sort)"
+          test "$(printf '%s\n' "${actual[@]}")" = "$expected"
+          echo "Exact three-head finalizer preflight passed."
+      - name: Delete finalizer branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.git.deleteRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/tmp/analytics-branch-finalizer-20261008"
+            });
+            core.info("Deleted Analytics finalizer branch.");
+      - name: Verify final two branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+          expected=$'db-baseline-20261008\nmain'
+          test "$(printf '%s\n' "${actual[@]}")" = "$expected"
+          echo "Final remote head set is exactly:"
+          printf '%s\n' "${actual[@]}"

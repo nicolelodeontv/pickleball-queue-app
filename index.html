@@ -373,7 +373,7 @@ async function flushPublishQueue(){
         }
         break
       }
-      PQ.shift();savePublishQueue();syncMarker();
+      const qi=PQ.findIndex(x=>x.seq===item.seq&&x.sid===item.sid&&x.sh===item.sh);if(qi>=0)PQ.splice(qi,1);savePublishQueue();syncMarker();
       if(item.kind==='results'&&item.rid&&S.ended&&S.sid===item.sid&&S.sh===item.sh){
         S.rid=String(q.data||item.rid).slice(0,10);S.rr=!!S.rid;S.lr=false;persistStateOnly();showRes()
       }

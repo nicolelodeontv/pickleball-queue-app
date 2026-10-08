@@ -1,6 +1,3 @@
--- QueueZeroTwo Release 2 follow-up:
--- local replay support plus live-session idempotency for immutable results.
-
 create extension if not exists pg_cron with schema pg_catalog;
 
 alter table public.pickle_results

@@ -3,13 +3,16 @@ name: One-time branch cleanup
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened]
 
 permissions:
   contents: write
 
 jobs:
   cleanup:
-    if: contains(github.event.head_commit.message, '[branch-cleanup]')
+    if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'tmp/branch-cleanup-trigger-20261008') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[branch-cleanup]'))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -73,19 +76,22 @@ jobs:
 
           mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
 
-          test "${#actual[@]}" -eq 45
+          test "${#actual[@]}" -eq 46
           test "${#targets[@]}" -eq 42
           test "${#held[@]}" -eq 3
 
-          for b in "${targets[@]}" "${held[@]}"; do
+          cleanup_branch="tmp/branch-cleanup-trigger-20261008"
+          printf '%s\n' "${actual[@]}" | grep -Fx -- "$cleanup_branch" >/dev/null
+
+          for b in "${targets[@]}" "${held[@]}" "$cleanup_branch"; do
             printf '%s\n' "${actual[@]}" | grep -Fx -- "$b" >/dev/null
           done
 
-          expected="$(printf '%s\n' "${targets[@]}" "${held[@]}" | sort)"
+          expected="$(printf '%s\n' "${targets[@]}" "${held[@]}" "$cleanup_branch" | sort)"
           actual_text="$(printf '%s\n' "${actual[@]}")"
           test "$actual_text" = "$expected"
 
-          echo "Exact 45-head preflight passed."
+          echo "Exact 46-head preflight passed."
 
       - name: Delete retired branches
         shell: bash
@@ -139,6 +145,10 @@ jobs:
             echo "Deleting $b"
             git push origin --delete "$b"
           done
+
+          cleanup_branch="tmp/branch-cleanup-trigger-20261008"
+          echo "Deleting $cleanup_branch"
+          git push origin --delete "$cleanup_branch"
 
       - name: Verify survivors
         shell: bash

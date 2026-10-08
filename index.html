@@ -284,6 +284,78 @@ const K='pickleStackState',$=id=>document.getElementById(id);
 const SB_URL='https://wochetemsnrysnjrgoed.supabase.co',SB_KEY='sb_publishable_vk1EKES125_AzGi9iPHxSw_XiliPhcA';
 const sb=SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY):null,lt={};
 const viewerClient=code=>SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY,{global:{headers:{'x-picklestack-session-code':code}}}):null;
+const PUBLISH_QUEUE_KEY='queuezerotwo-publish-queue-v1';
+let PQ=[],PQS=0,PQBusy=false,PQRetry=null;
+function loadPublishQueue(){
+  try{
+    const q=JSON.parse(localStorage.getItem(PUBLISH_QUEUE_KEY)||'null');
+    const items=Array.isArray(q&&q.items)?q.items:[];
+    PQ=items.filter(x=>x&&x.sid&&x.sh&&x.payload&&typeof x.payload==='object')
+      .slice(0,200).map(x=>({seq:Math.max(0,Number(x.seq)||0),sid:String(x.sid),sh:String(x.sh),kind:x.kind==='results'?'results':'state',payload:x.payload}));
+    PQS=Math.max(0,...PQ.map(x=>x.seq));
+    savePublishQueue();
+  }catch(e){PQ=[];PQS=0}
+}
+function savePublishQueue(){try{localStorage.setItem(PUBLISH_QUEUE_KEY,JSON.stringify({v:1,seq:PQS,items:PQ}))}catch(e){}}
+function persistStateOnly(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+function syncMarker(){
+  const on=navigator.onLine,pending=PQ.length>0;
+  $('ci').className='fa-solid fa-wifi '+(on?(pending?'text-orange-400':'text-green-400'):'text-red-500');
+  $('ct').textContent=on?(pending?'Sync pending':'Saved on this device'):(pending?'Offline · will sync':'Offline');
+}
+function dropPublishQueue(sid,sh){
+  PQ=PQ.filter(x=>x.sid!==sid||x.sh!==sh);
+  savePublishQueue();syncMarker();
+}
+function queuePublishPayload(payload,sid,sh,kind='state'){
+  if(!sb||!sid||!sh)return false;
+  PQ.push({seq:++PQS,sid,sh,kind,payload:JSON.parse(JSON.stringify(payload))});
+  savePublishQueue();syncMarker();flushPublishQueue();
+  return true
+}
+async function publishQueuedItem(item){
+  let q=await sb.rpc('publish_pickle_session',{p_code:item.sid,p_host_key:item.sh,p_payload:item.payload});
+  const msg=q.error&&q.error.message||'';
+  if(q.error&&/expired session/i.test(msg)&&item.sid===S.sid&&item.sh===S.sh&&!S.ho){
+    const oldSid=item.sid,oldSh=item.sh,nid=randLiveCode(),nkey=randHostKey();
+    S.sid=nid;S.sh=nkey;
+    PQ.forEach(x=>{if(x.sid===oldSid&&x.sh===oldSh){x.sid=nid;x.sh=nkey}});
+    persistStateOnly();savePublishQueue();
+    item.sid=nid;item.sh=nkey;
+    q=await sb.rpc('publish_pickle_session',{p_code:item.sid,p_host_key:item.sh,p_payload:item.payload});
+  }
+  if(q.error&&/Invalid host key/i.test(q.error.message||'')&&item.sid===S.sid&&item.sh===S.sh&&S.hoff&&Date.now()-S.hoff<864e5){
+    const oldSid=item.sid,oldSh=item.sh;
+    S.hoff=0;S.ho=true;S.sid='';S.sh='';
+    dropPublishQueue(oldSid,oldSh);persistStateOnly();
+  }
+  return q
+}
+async function flushPublishQueue(){
+  if(PQBusy||!sb||!PQ.length||!navigator.onLine)return;
+  PQBusy=true;
+  if(PQRetry){clearTimeout(PQRetry);PQRetry=null}
+  try{
+    while(PQ.length&&navigator.onLine){
+      const item=PQ[0],q=await publishQueuedItem(item);
+      if(q.error){
+        if(/Invalid host key|expired session/i.test(q.error.message||'')&&(item.sid!==S.sid||item.sh!==S.sh)){
+          dropPublishQueue(item.sid,item.sh);
+          continue
+        }
+        break
+      }
+      PQ.shift();savePublishQueue();syncMarker();
+      if(item.kind==='results'&&S.ended&&S.sid===item.sid&&S.sh===item.sh&&!S.rid){
+        S.rid=item.sid;persistStateOnly()
+      }
+    }
+  }finally{
+    PQBusy=false;
+    if(PQ.length&&navigator.onLine)PQRetry=setTimeout(()=>{PQRetry=null;flushPublishQueue()},10000);
+    syncMarker()
+  }
+}
 function push(){}
 const mk=()=>({queue:[],waiting:[],rest:{},log:[],target:11,lv:{},md:'bal',sd:0,gp:{},wt:{},ws:false,wl:2,eq:false,tts:false,hap:true,courts:[1,2,3,4].map(id=>({id,name:'Court '+id,isActive:false,players:[],score:[0,0],mid:'',t:0}))});
 let S=mk(),V=null,SV=null;
@@ -349,8 +421,10 @@ async function live(){
   if(S.ended)return showRes();S.ho=false;
   if(!sb)return toast('Live View needs Supabase.','error');
   ensureLiveIdentity();
+  await flushPublishQueue();
   const q=await publishSession(sdata());
   if(q.error)return toast('Publish failed: '+q.error.message,'error');
+  dropPublishQueue(S.sid,S.sh);
   save();const url=location.origin+location.pathname+'#s='+S.sid;
   const d=modal('<div class="p-6 text-center"><div class="flex items-center justify-center gap-2 mb-1"><h3 class="text-xl text-white">Live View</h3><span class="text-[10px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-full px-2 py-1">VIEW ONLY</span></div><p class="text-xs text-gray-400 mb-4">Players can scan the QR code or open the link to watch courts, Up Next, the stack and leaderboard in real time. Player names and scores are visible to anyone with the link, and the session expires after 7 days.</p><div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:200px;max-width:100%">'+qrSvg(url)+'</div><div class="mt-4 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-xs text-gray-300 break-all">'+esc(url)+'</div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"><button class="cp '+bS+'">Copy link</button><button class="sh '+bP+'">Share</button><button class="op '+bS+'">Open view</button></div><button class="ho mt-3 text-xs text-gray-400 underline">Move host to another device</button><br><button data-x class="mt-3 text-sm text-gray-400 hover:text-white">Close</button></div>');
   d.querySelector('.cp').onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
@@ -386,7 +460,19 @@ async function endS(){
   S.courts.forEach(c=>{if(c.isActive){push(c,'cancelled');clear(c)}});
   S.rid=Math.random().toString(36).slice(2,8);S.ended=true;
   const pay={...sdata(),e:1,n:S.log.length,g:S.log.slice(0,60).map(l=>({p:l.p,s:l.s,c:l.c,w:l.w}))};
-  if(sb){ensureLiveIdentity();const q=await publishSession(pay);if(q.error){S.rid='';console.warn(q.error.message)}else S.rid=S.sid}
+  downloadBackup('End-of-session backup downloaded.');
+  if(sb){
+    await flushPublishQueue();
+    ensureLiveIdentity();
+    const q=await publishSession(pay);
+    if(q.error){
+      S.rid='';
+      if(!S.ho&&S.sid&&S.sh)queuePublishPayload(pay,S.sid,S.sh,'results');
+    }else{
+      S.rid=S.sid;
+      dropPublishQueue(S.sid,S.sh);
+    }
+  }
   save();render();showRes()
 }
 function showRes(){
@@ -451,6 +537,12 @@ function expData(){
   delete o.sid;delete o.sh;delete o.rid;
   return JSON.stringify({app:'QueueZeroTwo',version:BACKUP_VERSION,exportedAt:new Date().toISOString(),state:o},null,2)
 }
+function downloadBackup(note){
+  const blob=new Blob([expData()],{type:'application/json'}),a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='queuezerotwo-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  if(note)toast(note,'success')
+}
 function cleanState(o){
   const s=o&&o.state&&typeof o.state==='object'?o.state:o;
   if(!s||!Array.isArray(s.courts))throw new Error('Not a valid QueueZeroTwo backup');
@@ -474,11 +566,7 @@ function cleanState(o){
   R.courts.forEach(c=>{if(!c.isActive||c.players.length!==4)Object.assign(c,{isActive:false,players:[],score:[0,0],mid:'',t:0})});
   return R
 }
-$('exp').onclick=()=>{
-  const blob=new Blob([expData()],{type:'application/json'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download='queuezerotwo-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Backup exported. Live View control key excluded.','success')
-};
+$('exp').onclick=()=>downloadBackup('Backup exported. Live View control key excluded.');
 $('impbtn').onclick=()=>$('imp').click();
 $('imp').onchange=async e=>{
   const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
@@ -664,7 +752,7 @@ const randHostKey=()=>{const a=new Uint8Array(32);crypto.getRandomValues(a);retu
 function ensureLiveIdentity(){if(!S.sid||!S.sh){S.sid=randLiveCode();S.sh=randHostKey()}}
 async function publishSession(payload){if(!sb)return {error:new Error('Supabase unavailable')};ensureLiveIdentity();let q=await sb.rpc('publish_pickle_session',{p_code:S.sid,p_host_key:S.sh,p_payload:payload});if(q.error&&S.hoff&&Date.now()-S.hoff<864e5&&/Invalid host key/i.test(q.error.message||'')){S.hoff=0;S.ho=true;S.sid='';S.sh='';toast('Live View host moved to another device.','info');return {error:new Error('handed off')}}
 if(q.error&&/Invalid host key|expired session/i.test(q.error.message||'')){S.sid=randLiveCode();S.sh=randHostKey();q=await sb.rpc('publish_pickle_session',{p_code:S.sid,p_host_key:S.sh,p_payload:payload})}return q}
-let st;function pushS(){if(!sb||S.ended||S.ho)return;ensureLiveIdentity();clearTimeout(st);st=setTimeout(async()=>{if(S.ended)return;const q=await publishSession(sdata());if(q.error)console.warn(q.error.message)},400)}
+let st;function pushS(){if(!sb||S.ended||S.ho)return;ensureLiveIdentity();clearTimeout(st);st=setTimeout(()=>queuePublishPayload(sdata(),S.sid,S.sh,'state'),400)}
 function renderSession(){const d=SV.d;if(!d){$('viewer').innerHTML='<div class="bg-dark-800 border border-dark-700 rounded-2xl p-8 text-center"><div class="text-blue-300 text-sm font-semibold mb-2">LIVE VIEW</div><p class="text-gray-400 text-sm">'+(SV.missing?'This Live View link is no longer active. The host may have ended the session or started a new one. Ask them for the current QR code.':'Connecting to the shared session…')+'</p><p class="text-xs text-gray-400 mt-2">'+(SV.missing?'Ask the organizer for a new Live View link.':'Your screen will update automatically once connected.')+'</p></div>';return}
 if(d.e)return renderResults(d);
 const courts=(d.courts||[]).map(c=>c.a?`<div class="bg-dark-800 border border-pickle-500/30 rounded-2xl p-4"><div class="flex justify-between mb-2"><h3 class="text-pickle-500 text-lg">${esc(c.n)}</h3><span class="text-xs text-red-400"><i class="fa-solid fa-circle live text-[8px]"></i> LIVE</span></div>${[0,1].map(i=>`<div class="flex justify-between items-center py-1"><span class="truncate">${nm(c.p,i)}</span><span class="font-sport text-3xl ${win(c.s,d.t)==i?'text-pickle-500':''}">${c.s[i]}</span></div>`).join('')}</div>`:`<div class="bg-dark-900 border border-dark-700 rounded-2xl p-4 text-center text-gray-400 opacity-70">${esc(c.n)} · open</div>`).join('');
@@ -748,6 +836,7 @@ $('rs').onclick=()=>ask('End session?','Active matches will be cancelled and the
 $('cl').onclick=()=>ask('Clear match log?','All logged matches will be removed.',()=>{buzz(60);S.log=[];save();render()});
 
 /* Init + live sync (other tabs on this device update instantly) */
+loadPublishQueue();
 load();
 themeApply(isLight());
 if(location.hash.startsWith('#m=')){const h=location.hash.slice(3);try{V=h.length<=10?{m:h,code:1,n:'Match',p:[],s:[0,0],tg:11,ts:Date.now()}:dec(h);$('app').classList.add('hidden');$('viewer').classList.remove('hidden');$('nav').classList.add('hidden')}catch(e){}}
@@ -768,8 +857,8 @@ addEventListener('storage',e=>{if(e.key==K){load();render()}});
 onhashchange=()=>location.reload();
 setInterval(()=>{if(!V)renderCourts()},30000);
 setInterval(()=>{if(!V&&!SV)document.querySelectorAll('.tm').forEach(e=>e.textContent=fmt(+e.dataset.t))},1000);
-const net=()=>{const on=navigator.onLine;$('ci').className='fa-solid fa-wifi '+(on?'text-green-400':'text-red-500');$('ct').textContent=on?'Saved on this device':'Offline'};
-addEventListener('online',net);addEventListener('offline',net);net();
+const net=()=>{syncMarker();if(navigator.onLine)flushPublishQueue()};
+addEventListener('online',net);addEventListener('offline',syncMarker);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')flushPublishQueue()});net();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>{
 const had=!!navigator.serviceWorker.controller;
 navigator.serviceWorker.register('/sw.js').then(reg=>{

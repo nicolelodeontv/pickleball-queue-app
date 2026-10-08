@@ -47,11 +47,11 @@ async function syncContext(browser, device, publishes, resultPublishes) {
       publishes.push(body);
       return route.fulfill({status:200, contentType:'application/json', body:'[null]'});
     }
-    if (u.pathname.endsWith('/rpc/publish_pickle_results')) {
+    if (u.pathname.endsWith('/rpc/publish_pickle_results_v2')) {
       let body = {};
       try { body = JSON.parse(route.request().postData() || '{}'); } catch {}
       resultPublishes.push(body);
-      return route.fulfill({status:200, contentType:'application/json', body:'true'});
+      return route.fulfill({status:200, contentType:'application/json', body:'"R2RES1234"'});
     }
     return route.abort();
   });
@@ -167,6 +167,21 @@ async function main() {
     assert.match(archivedText,/READ-ONLY/);
     assert.doesNotMatch(archivedText,/R2VIEWER01|PERSISTEDSID/);
 
+    const maliciousName='<img src=x onerror=alert(1)>';
+    await sp.evaluate((maliciousName) => {
+      RA={code:'R2RESULT02',d:{
+        v:1,name:'Hostile name test',
+        totals:{players:1,games:1,courts:1,playTo:11,winBy:2},
+        leaderboard:[{n:maliciousName,w:1,l:0,d:2}],
+        matches:[{c:'Court 1',p:[maliciousName,'Ana','Bob','Cara'],s:[11,9],w:0,tg:11,t:1,d:240000}]
+      };
+      SV=null;V=null;render();
+    },maliciousName);
+    const hostileResultText=await sp.locator('#viewer').innerText();
+    assert.match(hostileResultText,/Hostile name test/);
+    assert.match(hostileResultText,/&lt;img|<img src=x onerror=alert\(1\)>/);
+    assert.equal(await sp.locator('#viewer img').count(),0);
+
     await sp.evaluate(() => {
       S=mk();
       S.log=Array.from({length:100},(_,i)=>({p:[i%2?'Mike Reyes':'Mike Rivera','Player'+((i*3)%38+1),'Player'+((i*5)%38+1),'Player'+((i*7)%38+1)],s:[11,9],w:0,c:'Court '+(i%4+1),tg:11,t:i,d:240000}));
@@ -178,6 +193,11 @@ async function main() {
     assert.ok(snapSize.bytes<200000);
     assert.equal(snapSize.games,100);
     assert.equal(snapSize.hasMike,true);
+
+    // Results codes are 10 characters and use the full 32-character alphabet.
+    const codeSamples=await sp.evaluate(() => Array.from({length:200},() => randResultCode()));
+    assert.equal(codeSamples.every(x=>/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$/.test(x)),true);
+    assert.equal(codeSamples.some(x=>x[0]==='2'||x[0]==='9'||x[0]==='A'),true);
 
     // Release 1: failed whole-state publishes queue locally and drain FIFO after reconnect.
     await setupFour(sp);

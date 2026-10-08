@@ -693,7 +693,7 @@ const short={exp:'Export backup',impbtn:'Import backup'};
 ['button[title="Players"]','button[onclick="stand()"]','button[onclick="hist()"]','#exp','#impbtn'].forEach(q=>{const b=bar.querySelector(q);if(b){if(short[b.id])b.title=short[b.id];m.append(b)}});
 const mq=matchMedia('(min-width:1024px)'),isOpen=()=>m.classList.contains('open');
 const paint=()=>{const o=isOpen();document.body.classList.toggle('qw',o&&innerWidth>=1280);mb.setAttribute('aria-expanded',String(o));mb.setAttribute('aria-label',o?'Close menu':'Open menu');sc.hidden=!(o&&!mq.matches);if(o&&!mq.matches){mb.style.position='fixed';mb.style.left='1rem';mb.style.top='calc(env(safe-area-inset-top) + 1rem)';mb.style.zIndex='70'}else{mb.style.position='';mb.style.left='';mb.style.top='';mb.style.zIndex=''}};
-const open=()=>{m.classList.add('open');paint()},close=()=>{m.classList.remove('open');paint()};
+const open=()=>{m.classList.add('open');if(!mq.matches){document.body.appendChild(mb);mb.style.position='fixed';mb.style.left='1rem';mb.style.top='calc(env(safe-area-inset-top) + 1rem)';mb.style.zIndex='70'}paint()},close=()=>{m.classList.remove('open');if(!mq.matches){bar.prepend(mb);mb.style.position='';mb.style.left='';mb.style.top='';mb.style.zIndex=''}paint()};
 mb.onclick=()=>isOpen()?close():open();sc.onclick=close;
 m.addEventListener('click',e=>{if(e.target.closest('button')&&(!mq.matches||innerWidth<1280))close()});
 document.addEventListener('click',e=>{if(mq.matches&&innerWidth<1280&&isOpen()&&!m.contains(e.target)&&!mb.contains(e.target))close()});

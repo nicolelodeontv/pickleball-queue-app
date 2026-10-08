@@ -15,7 +15,6 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 function caps(options) {
   const result = {
     browser: options.browser,
-    os: options.os,
     osVersion: options.osVersion,
     deviceName: options.deviceName,
     realMobile: 'true',
@@ -232,14 +231,12 @@ async function main() {
   try {
     phoneA = await connectDevice({
       browser: 'safari',
-      os: 'iOS',
       osVersion: '17',
       deviceName: 'iPhone 15 Pro Max',
       name: 'QueueZeroTwo handoff host - real iPhone Safari',
     });
     phoneB = await connectDevice({
       browser: 'chrome',
-      os: 'Android',
       osVersion: '13',
       deviceName: 'Samsung Galaxy S22',
       name: 'QueueZeroTwo replacement host - real Android Chrome',

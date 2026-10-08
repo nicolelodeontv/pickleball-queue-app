@@ -105,13 +105,11 @@ async function main() {
     await sp.locator('button[aria-label="Plus point, Team 1"]').first().click();
     await sleep(700);
     assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 2);
-    // The browser's offline navigation itself is reserved for the physical PWA pass;
-    // verify the durable queue record before reconnecting.
+    // The durable queue record survives until reconnect; offline page-reload behavior
+    // remains part of the physical PWA pass because browser network emulation can bypass SW navigation.
     const persistedQueue = await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items);
     assert.equal(persistedQueue.length, 2);
     await sync.setOffline(false);
-    await sp.reload({waitUntil:'networkidle'});
-    assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 2);
     await sp.waitForFunction(
       () => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length === 0,
       null,

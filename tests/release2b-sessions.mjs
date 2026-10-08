@@ -135,7 +135,7 @@ async function main() {
     await sp.evaluate(() => flushPublishQueue());
     assert.equal(await sp.evaluate(() => S.ho), true);
     assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 0);
-    assert.match(await sp.locator('#msg').innerText(), /Live View host moved to another device/);
+    assert.match(await sp.locator('#ct').innerText(), /No longer host/);
 
     // Release 1 edge case: repeated non-network failures are visibly marked as stuck,
     // while still retaining the queue for a later recovery.

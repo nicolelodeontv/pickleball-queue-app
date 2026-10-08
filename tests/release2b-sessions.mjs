@@ -77,6 +77,7 @@ async function simulateV21ToV22(browser) {
   const page = await context.newPage();
   let swFetch = 0;
   const currentSw = fs.readFileSync(path.resolve('sw.js'), 'utf8');
+  assert.match(currentSw,/queuezerotwo-v23/);
   const simulatedV22 = currentSw.replace(/queuezerotwo-v23/g, 'queuezerotwo-v22');
   const oldV21 = `const V='queuezerotwo-v21';self.addEventListener('install',e=>e.waitUntil(caches.open(V).then(c=>c.put('/__queuezerotwo_v21_sentinel__',new Response('v21'))).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));`;
   await context.route('**/sw.js', async route => {
@@ -193,6 +194,21 @@ async function main() {
     assert.ok(snapSize.bytes<200000);
     assert.equal(snapSize.games,100);
     assert.equal(snapSize.hasMike,true);
+
+    // Cold-cache archived results page loads through the read-only results endpoint.
+    const coldContext=await browser.newContext({...devices['Desktop Chrome'],serviceWorkers:'allow',locale:'en-US'});
+    await coldContext.route(SUPABASE+'/**',route=>{
+      const u=new URL(route.request().url());
+      if(u.pathname.endsWith('/rest/v1/pickle_results')&&route.request().method()==='GET'){
+        return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify([{data:{v:1,name:'Cold cache results',totals:{players:1,games:1,courts:1},leaderboard:[{n:'Ana',w:1,l:0,d:2}],matches:[]},created_at:new Date().toISOString(),expires_at:new Date(Date.now()+30*86400000).toISOString()}])});
+      }
+      return route.abort();
+    });
+    const coldPage=await coldContext.newPage();
+    await coldPage.goto(APP+'#r=COLDRESULT1',{waitUntil:'networkidle'});
+    await coldPage.getByText('Cold cache results',{exact:true}).waitFor({state:'visible',timeout:5000});
+    await coldPage.getByText('READ-ONLY',{exact:true}).waitFor({state:'visible',timeout:5000});
+    await coldContext.close();
 
     // Results codes are crypto-random 10-character strings from the full 32-character alphabet.
     const codeCheck=await sp.evaluate(() => ({

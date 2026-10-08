@@ -87,6 +87,7 @@ async function main() {
   try {
     // Release 1: failed whole-state publishes queue locally and drain FIFO after reconnect.
     await setupFour(sp);
+    await sp.evaluate(() => document.getElementById('nvs')?.click());
     await sleep(700);
     syncPublishes.length = 0;
     await sync.setOffline(true);

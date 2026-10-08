@@ -151,3 +151,5 @@ vercel/install-vercel-web-analytics-i-dibup6'
           printf '%s\n' "${actual[@]}"
 
 # Final cleanup diagnostic retrigger marker.
+
+# Final ref-delete diagnostic retrigger.

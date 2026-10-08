@@ -259,6 +259,24 @@ begin
 end
 $$;
 
+insert into public.pickle_results(live_code,code,data,created_at,expires_at)
+values
+  ('CLEANUP001','CLNEXPIRE01','{"v":1}'::jsonb,now(),now()-interval '1 day'),
+  ('CLEANUP002','CLNKEEP0001','{"v":1}'::jsonb,now(),now()+interval '29 days');
+
+delete from public.pickle_results where expires_at <= now();
+
+do $
+begin
+  if exists(select 1 from public.pickle_results where code='CLNEXPIRE01') then
+    raise exception 'expired result row was not deleted';
+  end if;
+  if not exists(select 1 from public.pickle_results where code='CLNKEEP0001') then
+    raise exception 'unexpired result row was deleted';
+  end if;
+end
+$;
+
 select 'release2-db-replay-ok' as status;
 
 rollback;

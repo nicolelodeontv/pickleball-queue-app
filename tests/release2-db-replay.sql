@@ -76,15 +76,21 @@ begin
 
   if not exists (
     select 1 from information_schema.routine_privileges
-     where specific_schema='public' and routine_name='publish_pickle_results'
+     where specific_schema='public' and routine_name='publish_pickle_results_v2'
        and grantee='anon' and privilege_type='EXECUTE'
-  ) then raise exception 'anon EXECUTE grant missing'; end if;
+  ) then raise exception 'anon EXECUTE grant missing for v2'; end if;
 
   if exists (
     select 1 from information_schema.routine_privileges
      where specific_schema='public' and routine_name='publish_pickle_results'
+       and grantee='anon' and privilege_type='EXECUTE'
+  ) then raise exception 'legacy publish_pickle_results must not be callable by anon'; end if;
+
+  if exists (
+    select 1 from information_schema.routine_privileges
+     where specific_schema='public' and routine_name='publish_pickle_results_v2'
        and grantee='authenticated' and privilege_type='EXECUTE'
-  ) then raise exception 'authenticated EXECUTE grant must not exist'; end if;
+  ) then raise exception 'authenticated EXECUTE grant must not exist for v2'; end if;
 end
 $$;
 
@@ -100,17 +106,17 @@ select public.publish_pickle_session(
   '{"t":11,"courts":[],"nx":[],"q":["A","B","C","D"],"lb":[],"up":[{"n":"A","p":1}],"tm":{"a":240000}}'::jsonb
 );
 
-select public.publish_pickle_results(
+select public.publish_pickle_results_v2(
   'R2DB001',
   repeat('a',64),
   'R2RES00001',
   '{"v":1,"session":"KEEP","totals":{"players":4,"games":1},"leaderboard":[{"n":"A","w":1,"l":0,"d":2}],"matches":[{"c":"Court 1","p":["A","B","C","D"],"s":[11,9],"w":0}]}'::jsonb
 );
 
-select public.publish_pickle_results(
+select public.publish_pickle_results_v2(
   'R2DB001',
   repeat('a',64),
-  'R2RES00001',
+  'R2DIFFER01',
   '{"v":1,"session":"MUST NOT REPLACE","totals":{"players":0,"games":0},"leaderboard":[],"matches":[]}'::jsonb
 );
 

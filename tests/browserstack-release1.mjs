@@ -246,6 +246,16 @@ async function main() {
     const startNetwork = await networkProbe(phoneA.page);
     assert.equal(startNetwork.reachable, true, 'iPhone begins online');
     await setupEight(phoneA.page);
+    await phoneA.page.evaluate(() => {
+      window.__handoffBackupJson = [];
+      const create = URL.createObjectURL.bind(URL);
+      URL.createObjectURL = blob => {
+        if (blob instanceof Blob && blob.type === 'application/json') {
+          blob.text().then(text => window.__handoffBackupJson.push(text));
+        }
+        return create(blob);
+      };
+    });
 
     // Generate a real host identity and obtain the handoff code before going offline.
     await phoneA.page.locator('button[title="Open a read-only live view for players"]').click();
@@ -281,7 +291,14 @@ async function main() {
         JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1') || '{"items":[]}').items.length >= 1),
       'offline score is present in durable publish queue',
     );
-    const offlineBackup = JSON.parse(await phoneA.page.evaluate(() => expData()));
+    // Use the actual Export action while offline, then import those exact JSON bytes on phone B.
+    if (!(await phoneA.page.locator('#qmenu').isVisible())) await phoneA.page.locator('#mnb').click();
+    await phoneA.page.locator('#qmenu #exp').click();
+    await waitUntil(
+      () => phoneA.page.evaluate(() => window.__handoffBackupJson.length >= 1),
+      'offline Export action generated backup JSON',
+    );
+    const offlineBackup = JSON.parse(await phoneA.page.evaluate(() => window.__handoffBackupJson[0]));
     assert.equal(offlineBackup.app, 'QueueZeroTwo');
     assert.equal(offlineBackup.state.courts.find(c => c.isActive).score[0], 1);
     assert.equal(offlineBackup.state.queue.length, 4);

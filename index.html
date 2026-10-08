@@ -291,7 +291,7 @@ function loadPublishQueue(){
     const q=JSON.parse(localStorage.getItem(PUBLISH_QUEUE_KEY)||'null');
     const items=Array.isArray(q&&q.items)?q.items:[];
     PQ=items.filter(x=>x&&x.sid&&x.sh&&x.payload&&typeof x.payload==='object')
-      .slice(0,200).map(x=>({seq:Math.max(0,Number(x.seq)||0),sid:String(x.sid),sh:String(x.sh),kind:x.kind==='results'?'results':'state',payload:x.payload}));
+      .slice(0,200).map(x=>({seq:Math.max(0,Number(x.seq)||0),sid:String(x.sid),sh:String(x.sh),kind:x.kind==='results'?'results':'state',attempts:Math.max(0,Number(x.attempts)||0),lastError:String(x.lastError||'').slice(0,160),payload:x.payload}));
     PQS=Math.max(0,...PQ.map(x=>x.seq));
     savePublishQueue();
   }catch(e){PQ=[];PQS=0}
@@ -299,9 +299,9 @@ function loadPublishQueue(){
 function savePublishQueue(){try{localStorage.setItem(PUBLISH_QUEUE_KEY,JSON.stringify({v:1,seq:PQS,items:PQ}))}catch(e){}}
 function persistStateOnly(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
 function syncMarker(){
-  const on=navigator.onLine,pending=PQ.length>0;
-  $('ci').className='fa-solid fa-wifi '+(on?(pending?'text-orange-400':'text-green-400'):'text-red-500');
-  $('ct').textContent=on?(pending?'Sync pending':'Saved on this device'):(pending?'Offline · will sync':'Offline');
+  const on=navigator.onLine,pending=PQ.length>0,stuck=pending&&on&&PQ.some(x=>x.attempts>=3);
+  $('ci').className='fa-solid fa-wifi '+(on?(stuck?'text-red-500':pending?'text-orange-400':'text-green-400'):'text-red-500');
+  $('ct').textContent=on?(stuck?'Sync stuck':pending?'Sync pending':'Saved on this device'):(pending?'Offline · will sync':'Offline');
 }
 function dropPublishQueue(sid,sh){
   PQ=PQ.filter(x=>x.sid!==sid||x.sh!==sh);
@@ -309,7 +309,7 @@ function dropPublishQueue(sid,sh){
 }
 function queuePublishPayload(payload,sid,sh,kind='state'){
   if(!sb||!sid||!sh)return false;
-  PQ.push({seq:++PQS,sid,sh,kind,payload:JSON.parse(JSON.stringify(payload))});
+  PQ.push({seq:++PQS,sid,sh,kind,attempts:0,lastError:'',payload:JSON.parse(JSON.stringify(payload))});
   savePublishQueue();syncMarker();flushPublishQueue();
   return true
 }
@@ -337,8 +337,14 @@ async function flushPublishQueue(){
   if(PQRetry){clearTimeout(PQRetry);PQRetry=null}
   try{
     while(PQ.length&&navigator.onLine){
-      const item=PQ[0],q=await publishQueuedItem(item);
+      const item=PQ[0];
+      item.attempts=Math.max(0,Number(item.attempts)||0)+1;
+      item.lastError='';
+      savePublishQueue();syncMarker();
+      const q=await publishQueuedItem(item);
       if(q.error){
+        item.lastError=String(q.error.message||'Publish failed').slice(0,160);
+        savePublishQueue();syncMarker();
         if(/Invalid host key|expired session/i.test(q.error.message||'')&&(item.sid!==S.sid||item.sh!==S.sh)){
           dropPublishQueue(item.sid,item.sh);
           continue
@@ -352,7 +358,7 @@ async function flushPublishQueue(){
     }
   }finally{
     PQBusy=false;
-    if(PQ.length&&navigator.onLine)PQRetry=setTimeout(()=>{PQRetry=null;flushPublishQueue()},10000);
+    if(PQ.length&&navigator.onLine)PQRetry=setTimeout(()=>{PQRetry=null;flushPublishQueue()},PQ.some(x=>x.attempts>=3)?30000:10000);
     syncMarker()
   }
 }
@@ -480,8 +486,9 @@ function showRes(){
   const url=S.rid?location.origin+location.pathname+'#s='+S.rid:'',r=stats();
   const rows=r.length?r.map((x,i)=>'<div class="flex items-center gap-3 p-3 '+(i<3?'bg-pickle-500/10':'')+'"><span class="w-8 text-center font-sport text-lg '+(i<3?'text-pickle-500':'text-gray-400')+'">'+(i<3?['🥇','🥈','🥉'][i]:i+1)+'</span><div class="flex-1 min-w-0"><div class="truncate text-white">'+esc(x.n)+'</div><div class="text-xs text-gray-400">'+Math.round(100*x.w/(x.w+x.l))+'% win rate · '+(x.w+x.l)+' games · '+(x.d>0?'+':'')+x.d+'</div></div><div class="font-sport text-2xl text-green-400">'+x.w+'</div></div>').join(''):'<p class="p-6 text-center text-sm text-gray-400">No scored matches this session.</p>';
   const lk=url?'<div class="qrb bg-white p-3 rounded-xl mx-auto" style="width:180px;max-width:100%">'+qrSvg(url)+'</div><div class="mt-3 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-xs text-gray-300 break-all">'+esc(url)+'</div><button class="cp w-full mt-3 '+bS+'">Copy results link</button>':'<p class="text-sm text-gray-400">Results link unavailable. Supabase could not be reached.</p>';
-  const d=modal('<div class="p-5 border-b border-dark-700"><h3 class="text-2xl text-white">Session Results</h3><input id="sn" maxlength="40" value="'+esc(S.name||'')+'" placeholder="Name this session (e.g. Sat 6pm)" aria-label="Session name" class="mt-2 w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-sm text-white"><p class="text-xs text-gray-400">'+S.log.length+' games played · session ended</p></div><div class="divide-y divide-dark-700">'+rows+'</div><div class="p-5 border-t border-dark-700 text-center">'+lk+'</div><div class="p-4 border-t border-dark-700 grid grid-cols-2 gap-3"><button class="sh col-span-2 '+bP+'"><i class="fa-solid fa-image"></i> Share results image</button><button class="nw col-span-2 '+bD+'">New session</button></div>',true);
+  const d=modal('<div class="p-5 border-b border-dark-700"><h3 class="text-2xl text-white">Session Results</h3><p class="text-xs text-gray-400 mb-2">Your backup should download automatically. Tap Save backup if your browser blocks the automatic download.</p><input id="sn" maxlength="40" value="'+esc(S.name||'')+'" placeholder="Name this session (e.g. Sat 6pm)" aria-label="Session name" class="mt-2 w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-sm text-white"><p class="text-xs text-gray-400">'+S.log.length+' games played · session ended</p></div><div class="divide-y divide-dark-700">'+rows+'</div><div class="p-5 border-t border-dark-700 text-center">'+lk+'</div><div class="p-4 border-t border-dark-700 grid grid-cols-2 gap-3"><button class="bk col-span-2 '+bS+'"><i class="fa-solid fa-download"></i> Save backup</button><button class="sh col-span-2 '+bP+'"><i class="fa-solid fa-image"></i> Share results image</button><button class="nw col-span-2 '+bD+'">New session</button></div>',true);
   const cp=d.querySelector('.cp');if(cp)cp.onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
+  d.querySelector('.bk').onclick=()=>downloadBackup('Backup saved.');
   d.querySelector('.sh').onclick=shareImg;d.querySelector('#sn').oninput=e=>{S.name=e.target.value.trim().slice(0,40);save();RF=null;prepImg()};
   d.querySelector('.nw').onclick=()=>ask('Start new session?','This clears the stack, courts, leaderboard and log. Make sure you have shared the results.',()=>{d.__close();const nc=S.courts.length,k={snd:S.snd,hap:S.hap,tts:S.tts,md:S.md,ws:S.ws,wl:S.wl,eq:S.eq,target:S.target,wb:S.wb,hist:archive()};S=Object.assign(mk(),k);setCourts(nc);save();render();toast('New session started','success')})
 }

@@ -45,17 +45,16 @@ jobs:
         run: node tests/release2b-sessions.mjs
 
   cleanup-retired-branches:
-    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[branch-cleanup-final-7]')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
-      issues: write
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
 
-      - name: Verify exact remaining branch set
+      - name: Reconcile temporary branch
         shell: bash
         run: |
           set -euo pipefail
@@ -67,6 +66,16 @@ jobs:
           )
 
           mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+          expected_clean="$(printf '%s
+' "${held[@]}" | sort)"
+          actual_text="$(printf '%s
+' "${actual[@]}")"
+
+          if [ "$actual_text" = "$expected_clean" ]; then
+            echo "Remote branches are already clean; nothing to delete."
+            exit 0
+          fi
+
           test "${#actual[@]}" -eq 4
           printf '%s
 ' "${actual[@]}" | grep -Fx -- "$cleanup_branch" >/dev/null
@@ -74,14 +83,13 @@ jobs:
             printf '%s
 ' "${actual[@]}" | grep -Fx -- "$b" >/dev/null
           done
-          expected="$(printf '%s
+          expected_four="$(printf '%s
 ' "${held[@]}" "$cleanup_branch" | sort)"
-          actual_text="$(printf '%s
-' "${actual[@]}")"
-          test "$actual_text" = "$expected"
+          test "$actual_text" = "$expected_four"
           echo "Exact 4-head cleanup preflight passed."
 
-      - name: Delete temporary trigger branch via GitHub API
+      - name: Delete temporary trigger branch
+        if: ${{ success() }}
         uses: actions/github-script@v7
         with:
           script: |
@@ -92,23 +100,9 @@ jobs:
                 repo: context.repo.repo,
                 ref
               });
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: 41,
-                body: "Final branch cleanup deleteRef succeeded for " + ref + "."
-              });
+              core.info("Deleted " + ref);
             } catch (error) {
-              const status = error.status ?? "unknown";
-              const message = error.message ?? String(error);
-              const data = error.response?.data ? JSON.stringify(error.response.data, null, 2) : "";
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: 41,
-                body: "Final branch cleanup deleteRef FAILED. HTTP status: " + status + "\n\n```text\n" + message + "\n" + data.slice(0, 5000) + "\n```"
-              });
-              throw error;
+              core.setFailed("deleteRef failed: HTTP " + (error.status ?? "unknown") + " - " + (error.message ?? String(error)));
             }
 
       - name: Verify final survivors
@@ -116,14 +110,12 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
-          expected=$'db-baseline-20261008\nmain\nvercel/install-vercel-web-analytics-i-dibup6'
+          expected=$'db-baseline-20261008
+main
+vercel/install-vercel-web-analytics-i-dibup6'
           actual_text="$(printf '%s
 ' "${actual[@]}")"
           test "$actual_text" = "$expected"
-          echo "Cleanup complete. Final remote head set is exactly:"
+          echo "Final remote head set is exactly:"
           printf '%s
 ' "${actual[@]}"
-
-# Final explicit-token cleanup retrigger.
-
-# Final authenticated deleteRef retrigger.

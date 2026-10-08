@@ -138,6 +138,7 @@ async function main() {
   const hostilePath = path.join(os.tmpdir(), 'queuezerotwo-hostile-backup.json');
 
   try {
+    await sp.goto(APP,{waitUntil:'networkidle'});
     // Release 2: identity-free viewer positions, privacy names, rough wait estimates, and compact snapshots.
     const viewerCheck = await sp.evaluate(() => {
       S=mk();

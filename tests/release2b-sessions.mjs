@@ -160,7 +160,7 @@ async function main() {
     assert.doesNotMatch(liveViewerText,/Reyes|Rivera|Lopez|Chen|Diaz/);
 
     await sp.evaluate(() => {
-      RA={code:'R2RESULT01',d:{v:1,name:'Saturday open play',totals:{players:4,games:1,courts:1,playTo:11,winBy:2},leaderboard:[{n:'Mike R.',w:1,l:0,d:2},{n:'Ana',w:0,l:1,d:-2}],matches:[{c:'Court 1',p:['Mike R.','Ana','Bob','Cara'],s:[11,9],w:0,tg:11,t:1,d:240000}]};
+      RA={code:'R2RESULT01',d:{v:1,name:'Saturday open play',totals:{players:4,games:1,courts:1,playTo:11,winBy:2},leaderboard:[{n:'Mike R.',w:1,l:0,d:2},{n:'Ana',w:0,l:1,d:-2}],matches:[{c:'Court 1',p:['Mike R.','Ana','Bob','Cara'],s:[11,9],w:0,tg:11,t:1,d:240000}]}};
       SV=null;V=null;render();
     });
     const archivedText=await sp.locator('#viewer').innerText();

@@ -91,9 +91,18 @@ async function simulateV21ToV22(browser) {
     localStorage.setItem('queuezerotwo-publish-queue-v1',JSON.stringify({v:1,seq:1,items:[{seq:1,sid:'PERSISTEDSID',sh:'a'.repeat(64),kind:'state',attempts:0,lastError:'',payload:{t:11,q:['Persisted player'],courts:[],nx:[],lb:[]}}]}));
   });
   await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();await r.update()});
-  await page.waitForFunction(async()=>!!(await navigator.serviceWorker.getRegistration())?.waiting,null,{timeout:5000});
-  await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();r.waiting.postMessage('SKIP_WAITING')});
-  await page.waitForTimeout(250);
+  await page.waitForFunction(async()=>{
+    const r=await navigator.serviceWorker.getRegistration();
+    return !!r?.waiting || await caches.has('queuezerotwo-v22');
+  },null,{timeout:10000});
+  await page.evaluate(async()=>{
+    const r=await navigator.serviceWorker.getRegistration();
+    if(r?.waiting)r.waiting.postMessage('SKIP_WAITING');
+  });
+  await page.waitForFunction(async()=>{
+    const r=await navigator.serviceWorker.getRegistration();
+    return !!r && !r.waiting && r.active?.state==='activated' && await caches.has('queuezerotwo-v22');
+  },null,{timeout:10000});
   await page.reload({waitUntil:'networkidle'});
   const out=await page.evaluate(async()=>({
     queue:JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items,

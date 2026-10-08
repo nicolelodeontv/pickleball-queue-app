@@ -10,6 +10,12 @@ const BUILD = 'QueueZeroTwo Release 1 real-device gate ' + new Date().toISOStrin
 if (!USER || !KEY) {
   throw new Error('Missing BrowserStack Action secrets. Add BROWSERSTACK_USERNAME and BROWSERSTACK_ACCESS_KEY; never put credentials in source.');
 }
+function scrub(value) {
+  let text = String(value ?? '');
+  if (USER) text = text.split(USER).join('[redacted username]');
+  if (KEY) text = text.split(KEY).join('[redacted access key]');
+  return text;
+}
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function caps(options) {
@@ -390,7 +396,7 @@ async function main() {
     status = 'passed';
     reason = 'real-device handoff and iPhone backup/import assertions passed';
   } catch (error) {
-    reason = error instanceof Error ? error.message : String(error);
+    reason = scrub(error instanceof Error ? error.message : error);
     console.error('REAL DEVICE TEST FAILED: ' + reason);
     throw error;
   } finally {
@@ -402,6 +408,6 @@ async function main() {
 }
 
 main().catch(error => {
-  console.error(error && error.stack ? error.stack : String(error));
+  console.error(scrub(error && error.stack ? error.stack : error));
   process.exitCode = 1;
 });

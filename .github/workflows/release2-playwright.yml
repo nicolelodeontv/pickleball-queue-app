@@ -43,3 +43,61 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/release2b-sessions.mjs
+
+
+  cleanup-retired-branches:
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[branch-cleanup-final]')
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Verify exact remaining branch set
+        shell: bash
+        run: |
+          set -euo pipefail
+          cleanup_branch="tmp/branch-cleanup-trigger-20261008"
+          held=(
+            "main"
+            "db-baseline-20261008"
+            "vercel/install-vercel-web-analytics-i-dibup6"
+          )
+
+          mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+
+          test "${#actual[@]}" -eq 4
+          printf '%s\n' "${actual[@]}" | grep -Fx -- "$cleanup_branch" >/dev/null
+
+          for b in "${held[@]}"; do
+            printf '%s\n' "${actual[@]}" | grep -Fx -- "$b" >/dev/null
+          done
+
+          expected="$(printf '%s\n' "${held[@]}" "$cleanup_branch" | sort)"
+          actual_text="$(printf '%s\n' "${actual[@]}")"
+          test "$actual_text" = "$expected"
+
+          echo "Exact 4-head cleanup preflight passed."
+
+      - name: Delete temporary trigger branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cleanup_branch="tmp/branch-cleanup-trigger-20261008"
+          echo "Deleting $cleanup_branch"
+          git push origin --delete "$cleanup_branch"
+
+      - name: Verify final survivors
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+          expected=$'db-baseline-20261008
+main
+vercel/install-vercel-web-analytics-i-dibup6'
+          actual_text="$(printf '%s\n' "${actual[@]}")"
+          test "$actual_text" = "$expected"
+          echo "Cleanup complete. Final remote head set is exactly:"
+          printf '%s\n' "${actual[@]}"

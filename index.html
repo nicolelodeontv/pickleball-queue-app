@@ -364,6 +364,9 @@ async function flushPublishQueue(){
       item.lastError='';
       savePublishQueue();syncMarker();
       const q=await publishQueuedItem(item);
+      // Session transitions can clear this item while its network request is in flight.
+      // Ignore the stale completion so its failure cannot mark or stall the new session.
+      if(!PQ.includes(item)){syncMarker();continue}
       if(q.error){
         item.lastError=String(q.error.message||'Publish failed').slice(0,160);
         savePublishQueue();syncMarker();
@@ -625,7 +628,7 @@ $('imp').onchange=async e=>{
   const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
   try{
     const o=JSON.parse(await f.text()),R=cleanState(o);
-    ask('Restore backup?','This replaces the current local session. Live View control data is not included; a new session identity will be created on publish.',()=>{
+    ask('Restore backup?','This replaces the current local session and discards any unsent Live View updates for it. Export a backup first if you need those changes. Live View control data is not included; a new session identity will be created on publish.',()=>{
       S=R;S.ho=false;S.hoff=0;S.sid='';S.sh='';S.rid='';clearPublishQueue();save();render();toast('Backup restored','success')
     })
   }catch(err){toast('Not a valid QueueZeroTwo backup','error')}

@@ -1,7 +1,4 @@
 -- QueueZeroTwo Release 2 results snapshots.
--- Additive only: existing live_sessions rows and publish contract remain intact.
--- Results are immutable, read-only snapshots with independent random codes.
-
 create table public.pickle_results (
   code text primary key,
   data jsonb not null,

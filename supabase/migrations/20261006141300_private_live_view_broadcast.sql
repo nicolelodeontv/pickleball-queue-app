@@ -1,5 +1,5 @@
--- QueueZeroTwo: authorize Live View private Broadcasts without client send access.
--- Realtime already has RLS enabled; do not alter that setting here.
+-- QueueZeroTwo private Live View Broadcast transport.
+-- The browser listens to private session:<code> topics; it does not receive host_key.
 
 create or replace function public.live_sessions_broadcast()
 returns trigger
@@ -28,10 +28,15 @@ begin
 end
 $function$;
 
-
 revoke execute on function public.live_sessions_broadcast() from public;
 revoke execute on function public.live_sessions_broadcast() from anon;
 revoke execute on function public.live_sessions_broadcast() from authenticated;
+
+drop trigger if exists live_sessions_broadcast_trigger on public.live_sessions;
+create trigger live_sessions_broadcast_trigger
+after insert or update or delete on public.live_sessions
+for each row
+execute function public.live_sessions_broadcast();
 
 drop policy if exists "live view receive session broadcasts" on realtime.messages;
 create policy "live view receive session broadcasts"

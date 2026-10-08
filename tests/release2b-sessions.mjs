@@ -175,7 +175,7 @@ async function main() {
         totals:{players:1,games:1,courts:1,playTo:11,winBy:2},
         leaderboard:[{n:maliciousName,w:1,l:0,d:2}],
         matches:[{c:'Court 1',p:[maliciousName,'Ana','Bob','Cara'],s:[11,9],w:0,tg:11,t:1,d:240000}]
-      };
+      }};
       SV=null;V=null;render();
     },maliciousName);
     const hostileResultText=await sp.locator('#viewer').innerText();

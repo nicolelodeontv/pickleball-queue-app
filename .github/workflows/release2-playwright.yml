@@ -1,5 +1,5 @@
 name: Release 2 Playwright
-# Release 2 regression + database replay
+# Release 2 regression + database replay v2
 
 on:
   pull_request:
@@ -32,6 +32,8 @@ jobs:
         shell: bash
         run: |
           printf '%s\n' 'create extension if not exists pg_cron with schema pg_catalog;' > supabase/migrations/00000000000000_ci_enable_pg_cron.sql
+          test -f supabase/migrations/00000000000000_ci_enable_pg_cron.sql
+          echo "Created CI-only pg_cron migration"
           supabase db reset
           rm -f supabase/migrations/00000000000000_ci_enable_pg_cron.sql
       - name: Install PostgreSQL client

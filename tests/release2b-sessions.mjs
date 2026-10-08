@@ -36,7 +36,7 @@ async function freshContext(browser, device) {
 async function syncContext(browser, device, publishes) {
   const context = await browser.newContext({
     ...device,
-    serviceWorkers: 'block',
+    serviceWorkers: 'allow',
     locale: 'en-US',
   });
   await context.route(SUPABASE + '/**', route => {
@@ -87,6 +87,10 @@ async function main() {
   try {
     // Release 1: failed whole-state publishes queue locally and drain FIFO after reconnect.
     await setupFour(sp);
+    await sp.evaluate(async () => {
+      if ('serviceWorker' in navigator) await navigator.serviceWorker.ready;
+    });
+    await sp.waitForFunction(() => !!navigator.serviceWorker?.controller, null, {timeout: 5000});
     await sp.evaluate(() => document.getElementById('nvs')?.click());
     await sleep(700);
     syncPublishes.length = 0;
@@ -101,6 +105,10 @@ async function main() {
     await sp.locator('button[aria-label="Plus point, Team 1"]').first().click();
     await sleep(700);
     assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 2);
+    // The durable queue record survives until reconnect; offline page-reload behavior
+    // remains part of the physical PWA pass because browser network emulation can bypass SW navigation.
+    const persistedQueue = await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items);
+    assert.equal(persistedQueue.length, 2);
     await sync.setOffline(false);
     await sp.waitForFunction(
       () => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length === 0,
@@ -113,6 +121,37 @@ async function main() {
       return c?.s?.[0];
     });
     assert.deepEqual(queuedScores, [1, 2]);
+
+    // Release 1 edge case: an old host key is rejected once the handoff has completed,
+    // so the old device drops its queued writes instead of retrying them forever.
+    await sp.evaluate(() => {
+      const oldSid='OLDHANDOFF',oldSh='a'.repeat(64);
+      S.sid=oldSid;S.sh=oldSh;S.ho=false;S.hoff=Date.now();
+      PQ=[{seq:99,sid:oldSid,sh:oldSh,kind:'state',attempts:1,lastError:'',payload:sdata()}];
+      PQS=99;savePublishQueue();clearTimeout(PQRetry);PQRetry=null;
+      sb.rpc=async()=>({error:new Error('Invalid host key.')});
+      syncMarker();
+    });
+    await sp.evaluate(() => flushPublishQueue());
+    assert.equal(await sp.evaluate(() => S.ho), true);
+    assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 0);
+    assert.match(await sp.locator('#ct').innerText(), /No longer host/);
+
+    // Release 1 edge case: repeated non-network failures are visibly marked as stuck,
+    // while still retaining the queue for a later recovery.
+    await sp.evaluate(() => {
+      const sid='STUCKSYNC',sh='b'.repeat(64);
+      S.ho=false;S.sid=sid;S.sh=sh;S.hoff=0;
+      PQ=[{seq:100,sid,sh,kind:'state',attempts:2,lastError:'',payload:sdata()}];
+      PQS=100;savePublishQueue();clearTimeout(PQRetry);PQRetry=null;
+      sb.rpc=async()=>({error:new Error('Server unavailable.')});
+      syncMarker();
+    });
+    await sp.evaluate(() => flushPublishQueue());
+    assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items[0].attempts), 3);
+    assert.equal(await sp.evaluate(() => PQ.length), 1);
+    assert.match(await sp.locator('#ct').innerText(), /Sync stuck/);
+    await sp.evaluate(() => {clearTimeout(PQRetry);PQRetry=null});
 
     // Release 1 regression: End session immediately downloads an import-compatible JSON backup.
     await dp.goto(APP, {waitUntil: 'networkidle'});
@@ -156,6 +195,18 @@ async function main() {
     assert.equal(await ip.locator('#tg').inputValue(), '15');
     assert.equal(await ip.locator('#wbs').inputValue(), '1');
     assert.equal(await ip.locator('#ncs').inputValue(), '6');
+
+    // Mobile-sized fallback: ending a session downloads automatically and leaves a visible Save backup action.
+    await ip.evaluate(() => { localStorage.clear(); S=mk(); S.ended=false; sb.rpc=async()=>({data:true,error:null}); render(); });
+    const mobileEndDialog=ip.locator('[role="dialog"]');
+    await ip.locator('#rs').click();
+    const [mobileAutoBackup] = await Promise.all([
+      ip.waitForEvent('download'),
+      mobileEndDialog.getByRole('button', {name: 'Confirm'}).click(),
+    ]);
+    await mobileAutoBackup.saveAs(path.join(os.tmpdir(), 'queuezerotwo-release1-mobile-auto.json'));
+    await ip.locator('[role="dialog"] .bk').waitFor({state:'visible', timeout:5000});
+    assert.equal(await ip.locator('[role="dialog"] .bk').isVisible(), true);
     await ip.evaluate(() => localStorage.clear());
     await ip.reload({waitUntil: 'networkidle'});
 
@@ -563,7 +614,7 @@ async function main() {
       waitTimestampLifecycle: true,
     }, null, 2));
   } finally {
-    for (const p of [backupPath, persistencePath, endBackupPath, finishedBackupPath, hostilePath]) {
+    for (const p of [backupPath, persistencePath, endBackupPath, finishedBackupPath, hostilePath, path.join(os.tmpdir(), 'queuezerotwo-release1-mobile-auto.json')]) {
       try { fs.unlinkSync(p); } catch {}
     }
     await browser.close();

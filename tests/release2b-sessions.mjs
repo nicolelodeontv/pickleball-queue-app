@@ -229,7 +229,7 @@ async function main() {
     assert.match(codeCheck.source,/crypto\.getRandomValues/);
     assert.match(codeCheck.source,/LIVE_ALPH/);
     assert.equal(codeCheck.alphabet,'ABCDEFGHJKLMNPQRSTUVWXYZ23456789');
-    assert.equal(codeCheck.samples.every(x=>new RegExp('^['+codeCheck.alphabet+']{10}
+    assert.equal(codeCheck.samples.every(x=>new RegExp('^['+codeCheck.alphabet+']{10}$').test(x)),true);
     // Release 1: failed whole-state publishes queue locally and drain FIFO after reconnect.
     await setupFour(sp);
     await sp.evaluate(async () => {

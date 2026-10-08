@@ -142,6 +142,10 @@ async function main() {
     assert.equal(endBackup.version, 1);
     assert.equal(endBackup.state.ended, true);
 
+    // Close the results modal so subsequent fixture resets are not covered by it.
+    await dp.locator('.nw').click();
+    await dp.getByRole('button', {name: 'Confirm'}).click();
+
     // Restore the end-session backup to prove it remains compatible with Import.
     await ip.goto(APP, {waitUntil: 'networkidle'});
     await ip.evaluate(() => localStorage.clear());

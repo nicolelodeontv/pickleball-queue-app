@@ -130,3 +130,5 @@ vercel/install-vercel-web-analytics-i-dibup6'
           test "$actual_text" = "$expected"
           echo "Cleanup complete. Final remote head set is exactly:"
           printf '%s\n' "${actual[@]}"
+
+# Final cleanup diagnostic retrigger marker.

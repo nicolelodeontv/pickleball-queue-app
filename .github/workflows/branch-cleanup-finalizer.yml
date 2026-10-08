@@ -1,0 +1,89 @@
+name: One-time branch cleanup finalizer
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, closed]
+
+permissions:
+  contents: write
+
+jobs:
+  delete-old-trigger:
+    if: github.event.action == 'opened' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'tmp/branch-cleanup-finalizer-20261008'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify five-head preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          old="tmp/branch-cleanup-trigger-20261008"
+          current="tmp/branch-cleanup-finalizer-20261008"
+          held=("main" "db-baseline-20261008" "vercel/install-vercel-web-analytics-i-dibup6")
+          mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+          test "${#actual[@]}" -eq 5
+          for b in "${held[@]}" "$old" "$current"; do
+            printf '%s\n' "${actual[@]}" | grep -Fx -- "$b" >/dev/null
+          done
+          expected="$(printf '%s\n' "${held[@]}" "$old" "$current" | sort)"
+          test "$(printf '%s\n' "${actual[@]}")" = "$expected"
+          echo "Exact five-head preflight passed."
+      - name: Delete old trigger branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.git.deleteRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/tmp/branch-cleanup-trigger-20261008"
+            });
+            core.info("Deleted old trigger branch.");
+      - name: Verify four-head state
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+          expected=$'db-baseline-20261008\nmain\ntmp/branch-cleanup-finalizer-20261008\nvercel/install-vercel-web-analytics-i-dibup6'
+          test "$(printf '%s\n' "${actual[@]}")" = "$expected"
+
+  delete-finalizer:
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'tmp/branch-cleanup-finalizer-20261008'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify four-head preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          current="tmp/branch-cleanup-finalizer-20261008"
+          held=("main" "db-baseline-20261008" "vercel/install-vercel-web-analytics-i-dibup6")
+          mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+          test "${#actual[@]}" -eq 4
+          for b in "${held[@]}" "$current"; do
+            printf '%s\n' "${actual[@]}" | grep -Fx -- "$b" >/dev/null
+          done
+          expected="$(printf '%s\n' "${held[@]}" "$current" | sort)"
+          test "$(printf '%s\n' "${actual[@]}")" = "$expected"
+          echo "Exact four-head preflight passed."
+      - name: Delete finalizer branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.git.deleteRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/tmp/branch-cleanup-finalizer-20261008"
+            });
+            core.info("Deleted finalizer branch.");
+      - name: Verify three survivors
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+          expected=$'db-baseline-20261008\nmain\nvercel/install-vercel-web-analytics-i-dibup6'
+          test "$(printf '%s\n' "${actual[@]}")" = "$expected"
+          echo "Final remote head set is exactly:"
+          printf '%s\n' "${actual[@]}"

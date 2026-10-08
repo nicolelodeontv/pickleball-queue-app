@@ -33,6 +33,25 @@ async function freshContext(browser, device) {
   return context;
 }
 
+async function syncContext(browser, device, publishes) {
+  const context = await browser.newContext({
+    ...device,
+    serviceWorkers: 'block',
+    locale: 'en-US',
+  });
+  await context.route(SUPABASE + '/**', route => {
+    const u = new URL(route.request().url());
+    if (u.pathname.endsWith('/rpc/publish_pickle_session')) {
+      let body = {};
+      try { body = JSON.parse(route.request().postData() || '{}'); } catch {}
+      publishes.push(body);
+      return route.fulfill({status:200, contentType:'application/json', body:'[null]'});
+    }
+    return route.abort();
+  });
+  return context;
+}
+
 async function setupFour(page) {
   await page.goto(APP, {waitUntil: 'networkidle'});
   await page.evaluate(() => {
@@ -56,12 +75,46 @@ async function main() {
   const dp = await desktop.newPage();
   const ip = await iphone.newPage();
   const pp = await pixel.newPage();
+  const syncPublishes = [];
+  const sync = await syncContext(browser, devices['Pixel 7'], syncPublishes);
+  const sp = await sync.newPage();
   const backupPath = path.join(os.tmpdir(), 'queuezerotwo-release2b-backup.json');
   const persistencePath = path.join(os.tmpdir(), 'queuezerotwo-release1-persistence.json');
+  const endBackupPath = path.join(os.tmpdir(), 'queuezerotwo-release1-end-backup.json');
+  const finishedBackupPath = path.join(os.tmpdir(), 'queuezerotwo-release1-finished-backup.json');
   const hostilePath = path.join(os.tmpdir(), 'queuezerotwo-hostile-backup.json');
 
   try {
-    // Release 1 regression: Win by + court count survive Export/Import and New session.
+    // Release 1: failed whole-state publishes queue locally and drain FIFO after reconnect.
+    await setupFour(sp);
+    await sp.evaluate(() => document.getElementById('nvs')?.click());
+    await sleep(700);
+    syncPublishes.length = 0;
+    await sync.setOffline(true);
+    await sp.locator('#go').click();
+    await sp.evaluate(() => document.getElementById('nvp')?.click());
+    await sp.locator('button[aria-label="Plus point, Team 1"]').first().click();
+    await sleep(700);
+    assert.equal(await sp.evaluate(() => navigator.onLine), false);
+    assert.match(await sp.locator('#ct').innerText(), /Offline/);
+    assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 1);
+    await sp.locator('button[aria-label="Plus point, Team 1"]').first().click();
+    await sleep(700);
+    assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 2);
+    await sync.setOffline(false);
+    await sp.waitForFunction(
+      () => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length === 0,
+      null,
+      {timeout:5000},
+    );
+    assert.match(await sp.locator('#ct').innerText(), /Saved on this device/);
+    const queuedScores = syncPublishes.slice(-2).map(x => {
+      const c = (x.p_payload?.courts || []).find(v => v.a);
+      return c?.s?.[0];
+    });
+    assert.deepEqual(queuedScores, [1, 2]);
+
+    // Release 1 regression: End session immediately downloads an import-compatible JSON backup.
     await dp.goto(APP, {waitUntil: 'networkidle'});
     await dp.locator('#tg').selectOption('15');
     await dp.locator('#wbs').selectOption('1');
@@ -77,14 +130,34 @@ async function main() {
     assert.equal(persistedBackup.state.wb, 1);
     assert.equal(persistedBackup.state.courts.length, 6);
 
+    const endDialog = dp.locator('[role="dialog"]');
     await dp.locator('#rs').click();
-    await dp.locator('[role="dialog"]').getByRole('button', {name: 'Confirm'}).click();
+    const [endBackupDownload] = await Promise.all([
+      dp.waitForEvent('download'),
+      endDialog.getByRole('button', {name: 'Confirm'}).click(),
+    ]);
+    await endBackupDownload.saveAs(endBackupPath);
+    const endBackup = JSON.parse(fs.readFileSync(endBackupPath, 'utf8'));
+    assert.equal(endBackup.app, 'QueueZeroTwo');
+    assert.equal(endBackup.version, 1);
+    assert.equal(endBackup.state.ended, true);
+
+    // Close the results modal so subsequent fixture resets are not covered by it.
     await dp.locator('.nw').click();
-    await dp.locator('[role="dialog"]').getByRole('button', {name: 'Confirm'}).click();
-    await dp.waitForFunction(() => S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
-    assert.equal(await dp.locator('#tg').inputValue(), '15');
-    assert.equal(await dp.locator('#wbs').inputValue(), '1');
-    assert.equal(await dp.locator('#ncs').inputValue(), '6');
+    await dp.getByRole('button', {name: 'Confirm'}).click();
+
+    // Restore the end-session backup to prove it remains compatible with Import.
+    await ip.goto(APP, {waitUntil: 'networkidle'});
+    await ip.evaluate(() => localStorage.clear());
+    await ip.reload({waitUntil: 'networkidle'});
+    await ip.locator('#imp').setInputFiles(endBackupPath);
+    await ip.getByRole('button', {name: 'Confirm'}).click();
+    await ip.waitForFunction(() => !S.ended && S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
+    assert.equal(await ip.locator('#tg').inputValue(), '15');
+    assert.equal(await ip.locator('#wbs').inputValue(), '1');
+    assert.equal(await ip.locator('#ncs').inputValue(), '6');
+    await ip.evaluate(() => localStorage.clear());
+    await ip.reload({waitUntil: 'networkidle'});
 
     // Context 2: restore the Release 1 settings backup on a clean device.
     await ip.goto(APP, {waitUntil: 'networkidle'});
@@ -204,10 +277,29 @@ async function main() {
     await dp.getByRole('button', {name: 'FINISH & LOG'}).click();
     await dp.locator('#msg').getByText('Match logged.').waitFor({state:'visible', timeout:5000});
 
+    // Release 1 regression: named finished sessions auto-download a backup containing the scored log.
+    await dp.locator('#rs').click();
+    const finishDialog = dp.locator('[role="dialog"]');
+    const [finishedDownload] = await Promise.all([
+      dp.waitForEvent('download'),
+      finishDialog.getByRole('button', {name: 'Confirm'}).click(),
+    ]);
+    await finishedDownload.saveAs(finishedBackupPath);
+    const finishedBackup = JSON.parse(fs.readFileSync(finishedBackupPath, 'utf8'));
+    assert.equal(finishedBackup.app, 'QueueZeroTwo');
+    assert.equal(finishedBackup.state.log.length, 1);
+    assert.equal(finishedBackup.state.log[0].p.length, 4);
+
+    // Context 2: clean mobile device imports the same end-of-session backup and restores the scored log.
+    await ip.goto(APP, {waitUntil:'networkidle'});
+    await ip.evaluate(() => localStorage.clear());
+    await ip.reload({waitUntil:'networkidle'});
+    await ip.locator('#imp').setInputFiles(finishedBackupPath);
+    await ip.getByRole('button', {name: 'Confirm'}).click();
+    await ip.waitForFunction(() => S.log.length === 1 && S.log[0].p.length === 4, null, {timeout:5000});
+
     // Avoid creating persistent production/Supabase test sessions. The release-2b
     // history behavior is local-device functionality, so the test blocks Supabase.
-    await dp.locator('#rs').click();
-    await dp.locator('[role="dialog"]').getByRole('button', {name: 'Confirm'}).click();
     await dp.locator('#sn').waitFor({state:'visible', timeout:5000});
     await dp.locator('#sn').fill('Sat 6pm');
     assert.equal(await dp.evaluate(() => S.name), 'Sat 6pm');
@@ -257,6 +349,7 @@ async function main() {
     // Release 3 regression: Undo a finished match, then finish it again. All-time Players must count one game.
     await dp.evaluate(() => localStorage.clear());
     await dp.reload({waitUntil: 'networkidle'});
+    await dp.evaluate(() => S.ended = false);
     await dp.locator('#pn').fill('Alpha,Beta,Gamma,Delta');
     await dp.locator('#f button').click();
     await dp.getByRole('button', {name: 'Check in all'}).click();
@@ -470,7 +563,7 @@ async function main() {
       waitTimestampLifecycle: true,
     }, null, 2));
   } finally {
-    for (const p of [backupPath, persistencePath, hostilePath]) {
+    for (const p of [backupPath, persistencePath, endBackupPath, finishedBackupPath, hostilePath]) {
       try { fs.unlinkSync(p); } catch {}
     }
     await browser.close();

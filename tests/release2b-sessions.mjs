@@ -153,11 +153,6 @@ async function main() {
     await ip.evaluate(() => localStorage.clear());
     await ip.reload({waitUntil: 'networkidle'});
 
-    // Return to the existing settings persistence regression.
-    await dp.locator('.nw').click();
-    await dp.locator('[role="dialog"]').getByRole('button', {name: 'Confirm'}).click();
-    await dp.waitForFunction(() => S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
-
     // Release 1 regression: Win by + court count survive Export/Import and New session.
     await dp.goto(APP, {waitUntil: 'networkidle'});
     await dp.locator('#tg').selectOption('15');

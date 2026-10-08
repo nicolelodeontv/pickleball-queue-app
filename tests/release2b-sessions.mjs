@@ -33,7 +33,7 @@ async function freshContext(browser, device) {
   return context;
 }
 
-async function syncContext(browser, device, publishes) {
+async function syncContext(browser, device, publishes, resultPublishes) {
   const context = await browser.newContext({
     ...device,
     serviceWorkers: 'allow',
@@ -46,6 +46,12 @@ async function syncContext(browser, device, publishes) {
       try { body = JSON.parse(route.request().postData() || '{}'); } catch {}
       publishes.push(body);
       return route.fulfill({status:200, contentType:'application/json', body:'[null]'});
+    }
+    if (u.pathname.endsWith('/rpc/publish_pickle_results')) {
+      let body = {};
+      try { body = JSON.parse(route.request().postData() || '{}'); } catch {}
+      resultPublishes.push(body);
+      return route.fulfill({status:200, contentType:'application/json', body:'true'});
     }
     return route.abort();
   });
@@ -66,6 +72,41 @@ async function setupFour(page) {
   assert.equal(await page.locator('#qc').innerText(), '4');
 }
 
+async function simulateV21ToV22(browser) {
+  const context = await browser.newContext({...devices['Desktop Chrome'],serviceWorkers:'allow',locale:'en-US'});
+  const page = await context.newPage();
+  let swFetch = 0;
+  const currentSw = fs.readFileSync(path.resolve('sw.js'), 'utf8');
+  const simulatedV22 = currentSw.replace(/queuezerotwo-v23/g, 'queuezerotwo-v22');
+  const oldV21 = `const V='queuezerotwo-v21';self.addEventListener('install',e=>e.waitUntil(caches.open(V).then(c=>c.put('/__queuezerotwo_v21_sentinel__',new Response('v21'))).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));`;
+  await context.route('**/sw.js', async route => {
+    swFetch++;
+    await route.fulfill({status:200,contentType:'application/javascript',body:swFetch===1?oldV21:simulatedV22});
+  });
+  await page.goto(APP,{waitUntil:'networkidle'});
+  await page.waitForFunction(()=>!!navigator.serviceWorker?.controller,null,{timeout:5000});
+  await page.evaluate(()=>{
+    localStorage.setItem('pickleStackState',JSON.stringify({courts:[{id:1,name:'Court 1',isActive:false,players:[],score:[0,0],mid:'',t:0}],queue:['Persisted player'],waiting:[],rest:{},log:[],target:11,lv:{},md:'bal',sd:0,gp:{},wt:{},ws:false,wl:2,eq:false,tts:false,hap:true,sid:'PERSISTEDSID',sh:'a'.repeat(64)}));
+    localStorage.setItem('queuezerotwo-publish-queue-v1',JSON.stringify({v:1,seq:1,items:[{seq:1,sid:'PERSISTEDSID',sh:'a'.repeat(64),kind:'state',attempts:0,lastError:'',payload:{t:11,q:['Persisted player'],courts:[],nx:[],lb:[]}}]}));
+  });
+  await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();await r.update()});
+  await page.waitForFunction(async()=>!!(await navigator.serviceWorker.getRegistration())?.waiting,null,{timeout:5000});
+  await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();r.waiting.postMessage('SKIP_WAITING')});
+  await page.waitForTimeout(250);
+  await page.reload({waitUntil:'networkidle'});
+  const out=await page.evaluate(async()=>({
+    queue:JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items,
+    state:JSON.parse(localStorage.getItem('pickleStackState')||'{}'),
+    oldCache:await caches.has('queuezerotwo-v21')
+  }));
+  assert.equal(out.oldCache,false);
+  assert.equal(out.queue.length,1);
+  assert.equal(out.queue[0].sid,'PERSISTEDSID');
+  assert.equal(out.state.queue[0],'Persisted player');
+  assert.equal(out.state.sid,'PERSISTEDSID');
+  await context.close();
+}
+
 async function main() {
   const browser = await chromium.launch({headless: true});
   const desktop = await freshContext(browser, devices['Desktop Chrome']);
@@ -76,7 +117,9 @@ async function main() {
   const ip = await iphone.newPage();
   const pp = await pixel.newPage();
   const syncPublishes = [];
-  const sync = await syncContext(browser, devices['Pixel 7'], syncPublishes);
+  const resultPublishes = [];
+  await simulateV21ToV22(browser);
+  const sync = await syncContext(browser, devices['Pixel 7'], syncPublishes, resultPublishes);
   const sp = await sync.newPage();
   const backupPath = path.join(os.tmpdir(), 'queuezerotwo-release2b-backup.json');
   const persistencePath = path.join(os.tmpdir(), 'queuezerotwo-release1-persistence.json');
@@ -85,6 +128,57 @@ async function main() {
   const hostilePath = path.join(os.tmpdir(), 'queuezerotwo-hostile-backup.json');
 
   try {
+    // Release 2: identity-free viewer positions, privacy names, rough wait estimates, and compact snapshots.
+    const viewerCheck = await sp.evaluate(() => {
+      S=mk();
+      S.queue=['Mike Reyes','Mike Rivera','Ana Lopez','Bob Chen','Cara Diaz','Dan Reed','Eli Moss','Fay Cruz'];
+      S.log=[
+        {p:['Mike Reyes','Ana Lopez','Bob Chen','Cara Diaz'],s:[11,9],w:0,c:'Court 1',tg:11,t:1,d:240000},
+        {p:['Mike Rivera','Dan Reed','Eli Moss','Fay Cruz'],s:[9,11],w:1,c:'Court 2',tg:11,t:2,d:240000},
+        {p:['Mike Reyes','Mike Rivera','Dan Reed','Eli Moss'],s:[11,8],w:0,c:'Court 1',tg:11,t:3,d:240000}
+      ];
+      const nameMap=displayNameMap([S.queue,S.log.flatMap(x=>x.p)]);
+      return {m1:safePlayerName('Mike Reyes',nameMap),m2:safePlayerName('Mike Rivera',nameMap),a:safePlayerName('Ana Lopez',nameMap),tm:timingMeta()};
+    });
+    assert.equal(viewerCheck.m1,'Mike R.');
+    assert.equal(viewerCheck.m2,'Mike R.');
+    assert.equal(viewerCheck.a,'Ana');
+    assert.ok(viewerCheck.tm&&viewerCheck.tm.a>=240000);
+
+    await sp.evaluate(() => {
+      S=mk();
+      S.queue=['Mike Reyes','Mike Rivera','Ana Lopez','Bob Chen','Cara Diaz','Dan Reed','Eli Moss','Fay Cruz'];
+      SV={code:'R2VIEWER01',d:{t:11,courts:[{n:'Court 1',a:true,p:['Mike Reyes','Ana Lopez','Bob Chen','Cara Diaz'],s:[5,3]}],nx:['Mike Reyes','Mike Rivera','Ana Lopez','Bob Chen'],up:[{n:'Mike Reyes',p:1},{n:'Mike Rivera',p:2},{n:'Ana Lopez',p:3},{n:'Bob Chen',p:4}],q:S.queue,lb:[{n:'Mike Reyes',w:2,l:0,d:8},{n:'Mike Rivera',w:1,l:1,d:0}],tm:{a:240000}},status:'SUBSCRIBED'};
+      V=null;RA=null;render();
+    });
+    const liveViewerText=await sp.locator('#viewer').innerText();
+    assert.match(liveViewerText,/#1/);
+    assert.match(liveViewerText,/#8/);
+    assert.match(liveViewerText,/about 4 min/);
+    assert.match(liveViewerText,/Mike R\./);
+    assert.doesNotMatch(liveViewerText,/Reyes|Rivera|Lopez|Chen|Diaz/);
+
+    await sp.evaluate(() => {
+      RA={code:'R2RESULT01',d:{v:1,name:'Saturday open play',totals:{players:4,games:1,courts:1,playTo:11,winBy:2},leaderboard:[{n:'Mike R.',w:1,l:0,d:2},{n:'Ana',w:0,l:1,d:-2}],matches:[{c:'Court 1',p:['Mike R.','Ana','Bob','Cara'],s:[11,9],w:0,tg:11,t:1,d:240000}]};
+      SV=null;V=null;render();
+    });
+    const archivedText=await sp.locator('#viewer').innerText();
+    assert.match(archivedText,/Saturday open play/);
+    assert.match(archivedText,/READ-ONLY/);
+    assert.doesNotMatch(archivedText,/R2VIEWER01|PERSISTEDSID/);
+
+    await sp.evaluate(() => {
+      S=mk();
+      S.log=Array.from({length:100},(_,i)=>({p:[i%2?'Mike Reyes':'Mike Rivera','Player'+((i*3)%38+1),'Player'+((i*5)%38+1),'Player'+((i*7)%38+1)],s:[11,9],w:0,c:'Court '+(i%4+1),tg:11,t:i,d:240000}));
+      S.queue=[];
+      const p=resultsSnapshot();
+      window.__r2size={bytes:new Blob([JSON.stringify(p)]).size,players:p.totals.players,games:p.totals.games,hasMike:p.leaderboard.some(x=>x.n==='Mike R.')};
+    });
+    const snapSize=await sp.evaluate(()=>window.__r2size);
+    assert.ok(snapSize.bytes<200000);
+    assert.equal(snapSize.games,100);
+    assert.equal(snapSize.hasMike,true);
+
     // Release 1: failed whole-state publishes queue locally and drain FIFO after reconnect.
     await setupFour(sp);
     await sp.evaluate(async () => {
@@ -152,6 +246,30 @@ async function main() {
     assert.equal(await sp.evaluate(() => PQ.length), 1);
     assert.match(await sp.locator('#ct').innerText(), /Sync stuck/);
     await sp.evaluate(() => {clearTimeout(PQRetry);PQRetry=null});
+
+    // Release 2: offline End session queues one results snapshot and only exposes its link after publish succeeds.
+    await setupFour(sp);
+    await sp.evaluate(() => { S.name='Offline results test';S.ended=false;S.rr=false;S.lr=false;S.rid='';PQ=[];PQS=0;savePublishQueue();render(); });
+    resultPublishes.length=0;
+    await sync.setOffline(true);
+    await sp.locator('#rs').click();
+    const endOfflineDialog=sp.locator('[role="dialog"]');
+    const [offlineResultBackup]=await Promise.all([sp.waitForEvent('download'),endOfflineDialog.getByRole('button',{name:'Confirm'}).click()]);
+    await offlineResultBackup.delete();
+    await sp.waitForFunction(() => {
+      const q=JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items;
+      return !!q.find(x=>x.kind==='results'&&x.rid&&x.rid.length===10) && S.rr===false;
+    },null,{timeout:5000});
+    assert.match(await sp.locator('[role="dialog"]').innerText(),/Results link will appear when sync completes/);
+    const queuedResult=await sp.evaluate(()=>JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.find(x=>x.kind==='results'));
+    assert.equal(queuedResult.rid.length,10);
+    await sync.setOffline(false);
+    await sp.waitForFunction(() => S.rr===true && JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.filter(x=>x.kind==='results').length===0,null,{timeout:5000});
+    assert.equal(resultPublishes.length,1);
+    assert.equal(resultPublishes[0].p_results_code.length,10);
+    const readyUrlText=await sp.locator('[role="dialog"]').innerText();
+    assert.match(readyUrlText,/#r=/);
+    assert.doesNotMatch(readyUrlText,/PERSISTEDSID/);
 
     // Release 1 regression: End session immediately downloads an import-compatible JSON backup.
     await dp.goto(APP, {waitUntil: 'networkidle'});

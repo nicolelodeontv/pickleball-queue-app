@@ -1,6 +1,6 @@
 /* QueueZeroTwo service worker. Bump V on each release to refresh the cache. Profiles are included in the app shell. */
-const V = 'queuezerotwo-v18';
-const SHELL = ['/', '/manifest.webmanifest', '/tailwind.css', '/favicon.svg', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
+const V = 'queuezerotwo-v19';
+const SHELL = ['/', '/manifest.webmanifest', '/tailwind.css', '/favicon.svg', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png', '/apple-touch-icon.png'];
 const CDN = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js',
@@ -33,10 +33,8 @@ self.addEventListener('fetch', e => {
   if (r.method !== 'GET') return;
   const u = new URL(r.url);
   if (u.protocol !== 'https:' && u.hostname !== 'localhost') return;
-  // Live data and realtime are never cached.
   if (u.hostname.endsWith('supabase.co')) return;
 
-  // App page: network first so a new deploy shows up right away, cache when offline.
   if (r.mode === 'navigate') {
     e.respondWith(
       fetch(r).then(res => {
@@ -47,7 +45,6 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Everything else: cached copy first, refreshed in the background.
   e.respondWith(
     caches.match(r, { ignoreVary: true }).then(hit => {
       const net = fetch(r).then(res => {
@@ -59,5 +56,4 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// The page asks for activation when the person taps Reload on the update notice.
 self.addEventListener('message', e => { if (e.data === 'SKIP_WAITING') self.skipWaiting(); });

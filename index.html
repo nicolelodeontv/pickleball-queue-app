@@ -300,6 +300,11 @@ function savePublishQueue(){try{localStorage.setItem(PUBLISH_QUEUE_KEY,JSON.stri
 function persistStateOnly(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
 function syncMarker(){
   const on=navigator.onLine,pending=PQ.length>0,stuck=pending&&on&&PQ.some(x=>x.attempts>=3);
+  if(S&&S.ho){
+    $('ci').className='fa-solid fa-wifi text-red-500';
+    $('ct').textContent='No longer host';
+    return
+  }
   $('ci').className='fa-solid fa-wifi '+(on?(stuck?'text-red-500':pending?'text-orange-400':'text-green-400'):'text-red-500');
   $('ct').textContent=on?(stuck?'Sync stuck':pending?'Sync pending':'Saved on this device'):(pending?'Offline · will sync':'Offline');
 }

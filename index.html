@@ -298,6 +298,7 @@ function loadPublishQueue(){
   }catch(e){PQ=[];PQS=0}
 }
 function savePublishQueue(){try{localStorage.setItem(PUBLISH_QUEUE_KEY,JSON.stringify({v:1,seq:PQS,items:PQ}))}catch(e){}}
+function clearPublishQueue(){PQ=[];PQS=0;if(PQRetry){clearTimeout(PQRetry);PQRetry=null}savePublishQueue();syncMarker()}
 function persistStateOnly(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
 function syncMarker(){
   const on=navigator.onLine,pending=PQ.length>0,stuck=pending&&on&&PQ.some(x=>x.attempts>=3);
@@ -535,7 +536,7 @@ function showRes(){
   const cp=d.querySelector('.cp');if(cp)cp.onclick=async()=>{try{await navigator.clipboard.writeText(url);toast('Link copied','success')}catch(e){toast('Copy blocked by browser.','error')}};
   d.querySelector('.bk').onclick=()=>downloadBackup('Backup saved.');
   d.querySelector('.sh').onclick=shareImg;d.querySelector('#sn').oninput=e=>{S.name=e.target.value.trim().slice(0,40);save();RF=null;prepImg()};
-  d.querySelector('.nw').onclick=()=>ask('Start new session?','This clears the stack, courts, leaderboard and log. Make sure you have shared the results.',()=>{d.__close();const nc=S.courts.length,k={snd:S.snd,hap:S.hap,md:S.md,ws:S.ws,wl:S.wl,eq:S.eq,tts:S.tts,target:S.target,wb:S.wb,hist:archive()};S=Object.assign(mk(),k);setCourts(nc);save();render();toast('New session started','success')})
+  d.querySelector('.nw').onclick=()=>ask('Start new session?','This clears the stack, courts, leaderboard and log. Make sure you have shared the results.',()=>{d.__close();const nc=S.courts.length,k={snd:S.snd,hap:S.hap,md:S.md,ws:S.ws,wl:S.wl,eq:S.eq,tts:S.tts,target:S.target,wb:S.wb,hist:archive()};S=Object.assign(mk(),k);S.ho=false;S.hoff=0;S.sid='';S.sh='';clearPublishQueue();setCourts(nc);save();render();toast('New session started','success')})
 }
 
 /* Stack */
@@ -625,7 +626,7 @@ $('imp').onchange=async e=>{
   try{
     const o=JSON.parse(await f.text()),R=cleanState(o);
     ask('Restore backup?','This replaces the current local session. Live View control data is not included; a new session identity will be created on publish.',()=>{
-      S=R;S.sid='';S.sh='';S.rid='';save();render();toast('Backup restored','success')
+      S=R;S.ho=false;S.hoff=0;S.sid='';S.sh='';S.rid='';clearPublishQueue();save();render();toast('Backup restored','success')
     })
   }catch(err){toast('Not a valid QueueZeroTwo backup','error')}
 };
@@ -910,7 +911,7 @@ setTimeout(()=>{if(d.isConnected)d.__close()},12e4)}}
 function takeover(){const m=/^#h=([A-Za-z0-9]{4,10})\.([0-9a-f]{64})$/.exec(location.hash);if(!m)return;history.replaceState(null,'',location.pathname+location.search);
 ask('Take over this Live View?',"This device becomes the host and the other device stops publishing. Viewers will see this device's stack and courts.",async()=>{
 if(!sb)return toast('Live View needs Supabase.','error');const nk=randHostKey(),q=await sb.rpc('rotate_pickle_host_key',{p_code:m[1],p_old_key:m[2],p_new_key:nk});
-if(q.error)return toast('Handoff failed: '+q.error.message,'error');S.sid=m[1];S.sh=nk;S.ho=false;S.hoff=0;save();render();toast('This device is now the host','success')})}
+if(q.error)return toast('Handoff failed: '+q.error.message,'error');S.sid=m[1];S.sh=nk;S.ho=false;S.hoff=0;clearPublishQueue();save();render();toast('This device is now the host','success')})}
  
 /* Release 1: court count, undo, wake lock, demo */
 function setCourts(n){n=Math.max(1,Math.min(8,n|0));const cs=S.courts;

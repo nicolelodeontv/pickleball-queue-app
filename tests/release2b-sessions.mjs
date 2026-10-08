@@ -92,6 +92,7 @@ async function main() {
     syncPublishes.length = 0;
     await sync.setOffline(true);
     await sp.locator('#go').click();
+    await sp.evaluate(() => document.getElementById('nvp')?.click());
     await sp.locator('button[aria-label="Plus point, Team 1"]').first().click();
     await sleep(700);
     assert.equal(await sp.evaluate(() => navigator.onLine), false);

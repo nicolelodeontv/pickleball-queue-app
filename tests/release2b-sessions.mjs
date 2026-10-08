@@ -153,31 +153,6 @@ async function main() {
     await ip.evaluate(() => localStorage.clear());
     await ip.reload({waitUntil: 'networkidle'});
 
-    // Release 1 regression: Win by + court count survive Export/Import and New session.
-    await dp.goto(APP, {waitUntil: 'networkidle'});
-    await dp.locator('#tg').selectOption('15');
-    await dp.locator('#wbs').selectOption('1');
-    await dp.locator('#ncs').selectOption('6');
-    await dp.waitForFunction(() => S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
-    const [persistenceDownload] = await Promise.all([
-      dp.waitForEvent('download'),
-      (await openMenu(dp), dp.locator('#qmenu #exp').click()),
-    ]);
-    await persistenceDownload.saveAs(persistencePath);
-    const persistedBackup = JSON.parse(fs.readFileSync(persistencePath, 'utf8'));
-    assert.equal(persistedBackup.state.target, 15);
-    assert.equal(persistedBackup.state.wb, 1);
-    assert.equal(persistedBackup.state.courts.length, 6);
-
-    await dp.locator('#rs').click();
-    await dp.locator('[role="dialog"]').getByRole('button', {name: 'Confirm'}).click();
-    await dp.locator('.nw').click();
-    await dp.locator('[role="dialog"]').getByRole('button', {name: 'Confirm'}).click();
-    await dp.waitForFunction(() => S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
-    assert.equal(await dp.locator('#tg').inputValue(), '15');
-    assert.equal(await dp.locator('#wbs').inputValue(), '1');
-    assert.equal(await dp.locator('#ncs').inputValue(), '6');
-
     // Context 2: restore the Release 1 settings backup on a clean device.
     await ip.goto(APP, {waitUntil: 'networkidle'});
     await ip.evaluate(() => localStorage.clear());

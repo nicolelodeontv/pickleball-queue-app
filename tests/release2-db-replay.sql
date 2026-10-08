@@ -7,7 +7,6 @@ declare
   v_rls boolean;
   v_policies integer;
   v_secdef boolean;
-  v_search_path boolean;
 begin
   select c.relrowsecurity
     into v_rls
@@ -52,18 +51,28 @@ begin
     raise exception 'publish_pickle_results_v2 is not SECURITY DEFINER';
   end if;
 
-  select exists(
+  if not exists (
     select 1
       from pg_proc p
       join pg_namespace n on n.oid=p.pronamespace
       cross join unnest(coalesce(p.proconfig, array[]::text[])) cfg
      where n.nspname='public'
-       and p.proname in ('publish_pickle_results','publish_pickle_results_v2')
-       and cfg = 'search_path='
-  ) into v_search_path;
-
-  if not v_search_path then
+       and p.proname='publish_pickle_results'
+       and replace(cfg, '"', '') = 'search_path='
+  ) then
     raise exception 'publish_pickle_results does not pin search_path to empty';
+  end if;
+
+  if not exists (
+    select 1
+      from pg_proc p
+      join pg_namespace n on n.oid=p.pronamespace
+      cross join unnest(coalesce(p.proconfig, array[]::text[])) cfg
+     where n.nspname='public'
+       and p.proname='publish_pickle_results_v2'
+       and replace(cfg, '"', '') = 'search_path='
+  ) then
+    raise exception 'publish_pickle_results_v2 does not pin search_path to empty';
   end if;
 
   if not exists (

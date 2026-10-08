@@ -105,3 +105,5 @@ jobs:
           echo "Cleanup complete. Final remote head set is exactly:"
           printf '%s
 ' "${actual[@]}"
+
+# Final explicit-token cleanup retrigger.

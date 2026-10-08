@@ -29,7 +29,11 @@ jobs:
       - name: Start local Supabase
         run: supabase start --exclude studio,mail,analytics,pooler
       - name: Replay all migrations
-        run: supabase db reset
+        shell: bash
+        run: |
+          printf '%s\n' 'create extension if not exists pg_cron with schema pg_catalog;' > supabase/migrations/00000000000000_ci_enable_pg_cron.sql
+          supabase db reset
+          rm -f supabase/migrations/00000000000000_ci_enable_pg_cron.sql
       - name: Install PostgreSQL client
         run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
       - name: Run Release 2 database replay checks

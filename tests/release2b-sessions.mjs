@@ -193,9 +193,20 @@ async function main() {
     await ip.getByRole('button', {name: 'Confirm'}).click();
     await ip.waitForFunction(() => !S.ended && S.target === 15 && S.wb === 1 && S.courts.length === 6, null, {timeout: 5000});
     assert.equal(await ip.locator('#tg').inputValue(), '15');
-    assert.equal(await ip.locator('[role="dialog"] .bk').isVisible(), true);
     assert.equal(await ip.locator('#wbs').inputValue(), '1');
     assert.equal(await ip.locator('#ncs').inputValue(), '6');
+
+    // Mobile-sized fallback: ending a session downloads automatically and leaves a visible Save backup action.
+    await ip.evaluate(() => { localStorage.clear(); S=mk(); S.ended=false; sb.rpc=async()=>({data:true,error:null}); render(); });
+    const mobileEndDialog=ip.locator('[role="dialog"]');
+    await ip.locator('#rs').click();
+    const [mobileAutoBackup] = await Promise.all([
+      ip.waitForEvent('download'),
+      mobileEndDialog.getByRole('button', {name: 'Confirm'}).click(),
+    ]);
+    await mobileAutoBackup.saveAs(path.join(os.tmpdir(), 'queuezerotwo-release1-mobile-auto.json'));
+    await ip.locator('[role="dialog"] .bk').waitFor({state:'visible', timeout:5000});
+    assert.equal(await ip.locator('[role="dialog"] .bk').isVisible(), true);
     await ip.evaluate(() => localStorage.clear());
     await ip.reload({waitUntil: 'networkidle'});
 
@@ -603,7 +614,7 @@ async function main() {
       waitTimestampLifecycle: true,
     }, null, 2));
   } finally {
-    for (const p of [backupPath, persistencePath, endBackupPath, finishedBackupPath, hostilePath]) {
+    for (const p of [backupPath, persistencePath, endBackupPath, finishedBackupPath, hostilePath, path.join(os.tmpdir(), 'queuezerotwo-release1-mobile-auto.json')]) {
       try { fs.unlinkSync(p); } catch {}
     }
     await browser.close();

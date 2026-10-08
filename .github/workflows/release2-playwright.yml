@@ -125,3 +125,5 @@ jobs:
 ' "${actual[@]}"
 
 # Final explicit-token cleanup retrigger.
+
+# Final authenticated deleteRef retrigger.

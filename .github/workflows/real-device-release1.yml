@@ -1,0 +1,48 @@
+name: Optional real-device Release 1 checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/real-device-release1.yml'
+      - 'tests/browserstack-release1.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check test syntax
+        run: node --check tests/browserstack-release1.mjs
+      - name: Check BrowserStack credentials
+        id: credentials
+        shell: bash
+        env:
+          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+        run: |
+          if [[ -n "$BROWSERSTACK_USERNAME" && -n "$BROWSERSTACK_ACCESS_KEY" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "BrowserStack credentials are present."
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Real-device gate not run::Add BROWSERSTACK_USERNAME and BROWSERSTACK_ACCESS_KEY as repository Actions secrets and rerun this workflow. A skipped device test is NOT a physical-device pass."
+          fi
+      - name: Install Playwright client
+        if: steps.credentials.outputs.configured == 'true'
+        run: npm install --no-save --no-package-lock playwright@1.55.0
+      - name: Run on real iPhone Safari and Android Chrome
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+          APP_URL: https://queuezerotwo.vercel.app/
+        run: node tests/browserstack-release1.mjs

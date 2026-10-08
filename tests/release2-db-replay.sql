@@ -41,13 +41,24 @@ begin
     raise exception 'publish_pickle_results is not SECURITY DEFINER';
   end if;
 
+  select p.prosecdef
+    into v_secdef
+    from pg_proc p
+    join pg_namespace n on n.oid=p.pronamespace
+   where n.nspname='public'
+     and p.proname='publish_pickle_results_v2';
+
+  if not v_secdef then
+    raise exception 'publish_pickle_results_v2 is not SECURITY DEFINER';
+  end if;
+
   select exists(
     select 1
       from pg_proc p
       join pg_namespace n on n.oid=p.pronamespace
       cross join unnest(coalesce(p.proconfig, array[]::text[])) cfg
      where n.nspname='public'
-       and p.proname='publish_pickle_results'
+       and p.proname in ('publish_pickle_results','publish_pickle_results_v2')
        and cfg = 'search_path='
   ) into v_search_path;
 
@@ -91,6 +102,41 @@ begin
      where specific_schema='public' and routine_name='publish_pickle_results_v2'
        and grantee='authenticated' and privilege_type='EXECUTE'
   ) then raise exception 'authenticated EXECUTE grant must not exist for v2'; end if;
+end
+$$;
+
+do $$
+declare v_msg text; v_count integer;
+begin
+  begin
+    perform public.publish_pickle_results_v2(
+      'R2DB001', repeat('b',64), 'R2BADKEY01',
+      '{"v":1,"totals":{"players":0,"games":0},"leaderboard":[],"matches":[]}'::jsonb
+    );
+    raise exception 'wrong host key was accepted';
+  exception when others then
+    v_msg:=sqlerrm;
+    if v_msg <> 'Invalid host key or expired session.' then
+      raise exception 'wrong host key unexpected error: %',v_msg;
+    end if;
+  end;
+
+  begin
+    perform public.publish_pickle_results_v2(
+      'R2DB001', null, 'R2BADKEY02',
+      '{"v":1,"totals":{"players":0,"games":0},"leaderboard":[],"matches":[]}'::jsonb
+    );
+    raise exception 'null host key was accepted';
+  exception when others then
+    v_msg:=sqlerrm;
+    if v_msg <> 'Invalid host key.' then
+      raise exception 'null host key unexpected error: %',v_msg;
+    end if;
+  end;
+
+  select count(*) into v_count
+    from public.pickle_results where code in ('R2BADKEY01','R2BADKEY02');
+  if v_count<>0 then raise exception 'bad-key calls wrote % rows',v_count; end if;
 end
 $$;
 

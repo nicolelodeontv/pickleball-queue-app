@@ -35,7 +35,7 @@ jobs:
       - name: Run Release 2 database replay checks
         shell: bash
         run: |
-          supabase status --env --output-format text > /tmp/queuezerotwo-supabase.env
+          supabase status -o env > /tmp/queuezerotwo-supabase.env
           set -a
           source /tmp/queuezerotwo-supabase.env
           set +a

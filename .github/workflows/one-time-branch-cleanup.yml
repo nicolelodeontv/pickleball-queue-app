@@ -1,15 +1,15 @@
 name: One-time branch cleanup
 
 on:
-  issues:
-    types: [opened]
+  push:
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   cleanup:
-    if: github.event.issue.title == '[branch-cleanup-final]' && github.event.issue.state == 'open'
+    if: contains(github.event.head_commit.message, '[branch-cleanup]')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

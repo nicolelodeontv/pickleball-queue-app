@@ -2,8 +2,6 @@
 -- Additive only: existing live_sessions rows and publish contract remain intact.
 -- Results are immutable, read-only snapshots with independent random codes.
 
-create extension if not exists pg_cron with schema pg_catalog;
-
 create table public.pickle_results (
   code text primary key,
   data jsonb not null,

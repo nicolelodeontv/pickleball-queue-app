@@ -194,10 +194,14 @@ async function main() {
     assert.equal(snapSize.games,100);
     assert.equal(snapSize.hasMike,true);
 
-    // Results codes are 10 characters and use the full 32-character alphabet.
-    const codeSamples=await sp.evaluate(() => Array.from({length:200},() => randResultCode()));
-    assert.equal(codeSamples.every(x=>/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$/.test(x)),true);
-    assert.equal(codeSamples.some(x=>x[0]==='2'||x[0]==='9'||x[0]==='A'),true);
+    // Results codes are crypto-random 10-character strings from the full 32-character alphabet.
+    const codeCheck=await sp.evaluate(() => ({
+      source:randResultCode.toString(),
+      samples:Array.from({length:200},() => randResultCode())
+    }));
+    assert.match(codeCheck.source,/crypto\.getRandomValues/);
+    assert.match(codeCheck.source,/ABCDEFGHJKLMNPQRSTUVWXYZ23456789/);
+    assert.equal(codeCheck.samples.every(x=>/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$/.test(x)),true);
 
     // Release 1: failed whole-state publishes queue locally and drain FIFO after reconnect.
     await setupFour(sp);

@@ -300,7 +300,11 @@ async function main() {
 
     // Release 2: offline End session queues one results snapshot and only exposes its link after publish succeeds.
     await setupFour(sp);
-    await sp.evaluate(() => { S.name='Offline results test';S.ended=false;S.rr=false;S.lr=false;S.rid='';PQ=[];PQS=0;savePublishQueue();render(); });
+    await sp.evaluate(() => {
+      S.name='Offline results test';S.ended=false;S.rr=false;S.lr=false;S.rid='';
+      S.ho=false;S.hoff=0;S.sid='';S.sh='';ensureLiveIdentity();persistStateOnly();
+      PQ=[];PQS=0;savePublishQueue();render();
+    });
     resultPublishes.length=0;
     await sync.setOffline(true);
     await sp.locator('#rs').click();

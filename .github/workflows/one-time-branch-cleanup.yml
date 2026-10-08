@@ -1,0 +1,152 @@
+name: One-time branch cleanup
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: contains(github.event.head_commit.message, '[branch-cleanup]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Verify exact branch set
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          targets=(
+            "broadcast-probe-20261006"
+            "feature/equal-sitout-wait"
+            "feature/live-view-qr"
+            "feature/menu-hidden"
+            "fix/private-live-view-broadcast"
+            "footer-fix-20261005"
+            "handoff-e2e-20261006"
+            "handoff-e2e-final-20261006"
+            "handoff-final-run-20261006"
+            "handoff-sql-docs-20261006"
+            "haptics-20261006"
+            "header-fix-20261005"
+            "light-fix-20261005"
+            "live-broadcast-fix-20261006"
+            "release1-20261006"
+            "release10-rail-narrow"
+            "release10-rail-narrow-final"
+            "release12-13-seo-shipping"
+            "release2-handoff-20261006"
+            "release2-test-hardening"
+            "release2b-sessions"
+            "release3-final"
+            "release3-polish"
+            "release4-faq"
+            "release5-menu"
+            "release6-sidebar"
+            "release7-menu-labels"
+            "release8-header-icons"
+            "release9-header-rows"
+            "remove-penguin"
+            "repo-cleanup-20261008"
+            "tailwind-v3-build"
+            "temp/private-broadcast-probe"
+            "temp/private-broadcast-transport-test"
+            "test-hostile-import-20261005"
+            "test/migration-replay-20261008"
+            "tmp/phone-pass-20261006"
+            "tmp/prod-liveview-check-20261006"
+            "tmp/production-browser-smoke-20261004"
+            "ui-upgrade-20261005"
+            "update/session-results-ui-20261004"
+            "verify/two-device-smoke-20261004"
+          )
+          held=(
+            "main"
+            "db-baseline-20261008"
+            "vercel/install-vercel-web-analytics-i-dibup6"
+          )
+
+          mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+
+          test "${#actual[@]}" -eq 45
+          test "${#targets[@]}" -eq 42
+          test "${#held[@]}" -eq 3
+
+          for b in "${targets[@]}" "${held[@]}"; do
+            printf '%s\n' "${actual[@]}" | grep -Fx -- "$b" >/dev/null
+          done
+
+          expected="$(printf '%s\n' "${targets[@]}" "${held[@]}" | sort)"
+          actual_text="$(printf '%s\n' "${actual[@]}")"
+          test "$actual_text" = "$expected"
+
+          echo "Exact 45-head preflight passed."
+
+      - name: Delete retired branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          targets=(
+            "broadcast-probe-20261006"
+            "feature/equal-sitout-wait"
+            "feature/live-view-qr"
+            "feature/menu-hidden"
+            "fix/private-live-view-broadcast"
+            "footer-fix-20261005"
+            "handoff-e2e-20261006"
+            "handoff-e2e-final-20261006"
+            "handoff-final-run-20261006"
+            "handoff-sql-docs-20261006"
+            "haptics-20261006"
+            "header-fix-20261005"
+            "light-fix-20261005"
+            "live-broadcast-fix-20261006"
+            "release1-20261006"
+            "release10-rail-narrow"
+            "release10-rail-narrow-final"
+            "release12-13-seo-shipping"
+            "release2-handoff-20261006"
+            "release2-test-hardening"
+            "release2b-sessions"
+            "release3-final"
+            "release3-polish"
+            "release4-faq"
+            "release5-menu"
+            "release6-sidebar"
+            "release7-menu-labels"
+            "release8-header-icons"
+            "release9-header-rows"
+            "remove-penguin"
+            "repo-cleanup-20261008"
+            "tailwind-v3-build"
+            "temp/private-broadcast-probe"
+            "temp/private-broadcast-transport-test"
+            "test-hostile-import-20261005"
+            "test/migration-replay-20261008"
+            "tmp/phone-pass-20261006"
+            "tmp/prod-liveview-check-20261006"
+            "tmp/production-browser-smoke-20261004"
+            "ui-upgrade-20261005"
+            "update/session-results-ui-20261004"
+            "verify/two-device-smoke-20261004"
+          )
+          for b in "${targets[@]}"; do
+            echo "Deleting $b"
+            git push origin --delete "$b"
+          done
+
+      - name: Verify survivors
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t actual < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+          expected=$'db-baseline-20261008\nmain\nvercel/install-vercel-web-analytics-i-dibup6'
+          actual_text="$(printf '%s\n' "${actual[@]}")"
+          test "$actual_text" = "$expected"
+          echo "Final remote head set is exactly:"
+          printf '%s\n' "${actual[@]}"

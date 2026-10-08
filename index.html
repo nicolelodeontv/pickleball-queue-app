@@ -331,7 +331,7 @@ function queuePublishPayload(payload,sid,sh,kind='state',rid=''){
 async function publishQueuedItem(item){
   let q;
   if(item.kind==='results'&&item.rid){
-    q=await sb.rpc('publish_pickle_results',{p_live_code:item.sid,p_host_key:item.sh,p_results_code:item.rid,p_payload:item.payload});
+    q=await sb.rpc('publish_pickle_results_v2',{p_live_code:item.sid,p_host_key:item.sh,p_results_code:item.rid,p_payload:item.payload});
   }else{
     q=await sb.rpc('publish_pickle_session',{p_code:item.sid,p_host_key:item.sh,p_payload:item.payload});
   }
@@ -373,10 +373,8 @@ async function flushPublishQueue(){
         break
       }
       PQ.shift();savePublishQueue();syncMarker();
-      if(item.kind==='results'&&item.rid&&S.ended&&S.rid===item.rid){
-        S.rr=true;S.lr=false;persistStateOnly();showRes()
-      }else if(item.kind==='results'&&S.ended&&S.sid===item.sid&&S.sh===item.sh&&!S.rid){
-        S.rid=item.sid;S.lr=true;persistStateOnly()
+      if(item.kind==='results'&&item.rid&&S.ended&&S.sid===item.sid&&S.sh===item.sh){
+        S.rid=String(q.data||item.rid).slice(0,10);S.rr=!!S.rid;S.lr=false;persistStateOnly();showRes()
       }
     }
   }finally{
@@ -488,7 +486,7 @@ async function shareImg(){
 async function publishResultsSnapshot(payload){
   if(!sb)return {error:new Error('Supabase unavailable')};
   if(!S.sid||!S.sh||!S.rid)return {error:new Error('Live session identity unavailable')};
-  const q=await sb.rpc('publish_pickle_results',{p_live_code:S.sid,p_host_key:S.sh,p_results_code:S.rid,p_payload:payload});
+  const q=await sb.rpc('publish_pickle_results_v2',{p_live_code:S.sid,p_host_key:S.sh,p_results_code:S.rid,p_payload:payload});
   if(q.error&&S.hoff&&Date.now()-S.hoff<864e5&&/Invalid host key/i.test(q.error.message||'')){
     const oldSid=S.sid,oldSh=S.sh;
     S.hoff=0;S.ho=true;S.sid='';S.sh='';
@@ -511,7 +509,8 @@ async function endS(){
       ensureLiveIdentity();
       const q=await publishResultsSnapshot(pay);
       if(!q.error){
-        S.rr=true;S.lr=false;
+        S.rid=String(q.data||S.rid||'').slice(0,10);
+        S.rr=!!S.rid;S.lr=false;
         dropPublishQueue(S.sid,S.sh)
       }else if(!S.ho&&S.sid&&S.sh){
         queuePublishPayload(pay,S.sid,S.sh,'results',S.rid)

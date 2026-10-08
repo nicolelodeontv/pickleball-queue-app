@@ -1,3 +1,4 @@
+-- Reopens public insert/update policies. Never run on production.
 -- Run once in Supabase: SQL Editor > New query > Run
 -- PickleStack uses live_matches for individual match links and live_sessions for
 -- the read-only session-wide Live View.

@@ -270,7 +270,7 @@ update public.pickle_results
    set expires_at=now()+interval '1 day'
  where code='R2RES00001';
 
-do $
+do $$
 declare
   v_command text;
   v_rows integer;
@@ -295,9 +295,9 @@ begin
     raise exception 'scheduled cleanup command removed % rows; expected 1', v_rows;
   end if;
 end
-$;
+$$;
 
-do $
+do $$
 begin
   if exists(select 1 from public.pickle_results where code='CLNEXPIRE1') then
     raise exception 'expired result row was not deleted by the cleanup job command';
@@ -306,7 +306,7 @@ begin
     raise exception 'unexpired result row was deleted';
   end if;
 end
-$;
+$$;
 
 select 'release2-db-replay-ok' as status;
 

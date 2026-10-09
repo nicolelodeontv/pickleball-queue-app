@@ -287,12 +287,18 @@ const viewerClient=code=>SB_URL&&SB_KEY&&window.supabase?supabase.createClient(S
 const resultsViewerClient=code=>SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY,{global:{headers:{'x-picklestack-results-code':code}}}):null;
 const PUBLISH_QUEUE_KEY='queuezerotwo-publish-queue-v1';
 let PQ=[],PQS=0,PQBusy=false,PQRetry=null;
+function newPublishEntryId(){try{const b=new Uint8Array(16);crypto.getRandomValues(b);return Array.from(b,v=>v.toString(16).padStart(2,'0')).join('')}catch(e){return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2)}}
 function loadPublishQueue(){
   try{
     const q=JSON.parse(localStorage.getItem(PUBLISH_QUEUE_KEY)||'null');
     const items=Array.isArray(q&&q.items)?q.items:[];
-    PQ=items.filter(x=>x&&x.sid&&x.sh&&x.payload&&typeof x.payload==='object')
-      .slice(0,200).map(x=>({seq:Math.max(0,Number(x.seq)||0),sid:String(x.sid),sh:String(x.sh),kind:x.kind==='results'?'results':'state',rid:String(x.rid||'').slice(0,10),attempts:Math.max(0,Number(x.attempts)||0),lastError:String(x.lastError||'').slice(0,160),payload:x.payload}));
+    const seenIds=new Set();
+    PQ=items.filter(x=>x&&x.sid&&x.sh&&x.payload&&typeof x.payload==='object').slice(0,200).map(x=>{
+      let id=String(x.id||'');
+      if(!id||seenIds.has(id)){do{id=newPublishEntryId()}while(seenIds.has(id))}
+      seenIds.add(id);
+      return {id,seq:Math.max(0,Number(x.seq)||0),sid:String(x.sid),sh:String(x.sh),kind:x.kind==='results'?'results':'state',rid:String(x.rid||'').slice(0,10),attempts:Math.max(0,Number(x.attempts)||0),lastError:String(x.lastError||'').slice(0,160),payload:x.payload};
+    });
     PQS=Math.max(0,...PQ.map(x=>x.seq));
     savePublishQueue();
   }catch(e){PQ=[];PQS=0}
@@ -325,7 +331,7 @@ function queuePublishPayload(payload,sid,sh,kind='state',rid=''){
       return true
     }
   }
-  PQ.push({seq:++PQS,sid,sh,kind,rid:String(rid||'').slice(0,10),attempts:0,lastError:'',payload:JSON.parse(JSON.stringify(payload))});
+  PQ.push({id:newPublishEntryId(),seq:++PQS,sid,sh,kind,rid:String(rid||'').slice(0,10),attempts:0,lastError:'',payload:JSON.parse(JSON.stringify(payload))});
   savePublishQueue();syncMarker();flushPublishQueue();
   return true
 }
@@ -366,7 +372,7 @@ async function flushPublishQueue(){
       const q=await publishQueuedItem(item);
       // Session transitions can clear this item while its network request is in flight.
       // Ignore the stale completion so its failure cannot mark or stall the new session.
-      if(!PQ.includes(item)){syncMarker();continue}
+      if(!PQ.some(x=>x.id===item.id)){syncMarker();continue}
       if(q.error){
         item.lastError=String(q.error.message||'Publish failed').slice(0,160);
         savePublishQueue();syncMarker();
@@ -376,7 +382,7 @@ async function flushPublishQueue(){
         }
         break
       }
-      const qi=PQ.findIndex(x=>x.seq===item.seq&&x.sid===item.sid&&x.sh===item.sh);if(qi>=0)PQ.splice(qi,1);savePublishQueue();syncMarker();
+      const qi=PQ.findIndex(x=>x.id===item.id);if(qi>=0)PQ.splice(qi,1);savePublishQueue();syncMarker();
       if(item.kind==='results'&&item.rid&&S.ended&&S.sid===item.sid&&S.sh===item.sh){
         S.rid=String(q.data||item.rid).slice(0,10);S.rr=!!S.rid;S.lr=false;persistStateOnly();showRes()
       }

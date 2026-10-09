@@ -112,6 +112,7 @@ async function simulateV21ToV22(browser) {
   assert.equal(out.oldCache,false);
   assert.equal(out.queue.length,1);
   assert.equal(out.queue[0].sid,'PERSISTEDSID');
+  assert.match(out.queue[0].id,/^[0-9a-f]{32}$/);
   assert.equal(out.state.queue[0],'Persisted player');
   assert.equal(out.state.sid,'PERSISTEDSID');
   await context.close();
@@ -272,7 +273,7 @@ async function main() {
     await sp.evaluate(() => {
       const oldSid='OLDHANDOFF',oldSh='a'.repeat(64);
       S.sid=oldSid;S.sh=oldSh;S.ho=false;S.hoff=Date.now();
-      PQ=[{seq:99,sid:oldSid,sh:oldSh,kind:'state',attempts:1,lastError:'',payload:sdata()}];
+      PQ=[{id:'old-host-entry-99',seq:99,sid:oldSid,sh:oldSh,kind:'state',attempts:1,lastError:'',payload:sdata()}];
       PQS=99;savePublishQueue();clearTimeout(PQRetry);PQRetry=null;
       sb.rpc=async()=>({error:new Error('Invalid host key.')});
       syncMarker();
@@ -289,7 +290,7 @@ async function main() {
       S.rid = '';
       S.rr = false;
       S.lr = false;
-      PQ = [{seq:101,sid:'STALESESSION',sh:'c'.repeat(64),kind:'state',attempts:0,lastError:'',payload:sdata()}];
+      PQ = [{id:'stale-session-entry-101',seq:101,sid:'STALESESSION',sh:'c'.repeat(64),kind:'state',attempts:0,lastError:'',payload:sdata()}];
       PQS = 101;
       savePublishQueue();
       window.__freshSessionPublish = null;
@@ -346,7 +347,7 @@ async function main() {
         if (name === 'publish_pickle_session') window.__freshWrites.push(args.p_code);
         return Promise.resolve({data:true,error:null});
       };
-      PQ = [{seq:150,sid:S.sid,sh:S.sh,kind:'state',attempts:2,lastError:'',payload:sdata()}];
+      PQ = [{id:'old-inflight-entry-150',seq:150,sid:S.sid,sh:S.sh,kind:'state',attempts:2,lastError:'',payload:sdata()}];
       PQS = 150;
       savePublishQueue();
       void flushPublishQueue();
@@ -359,11 +360,14 @@ async function main() {
     const freshIdentity = await sp.evaluate(() => {
       clearTimeout(st);
       ensureLiveIdentity();
-      const identity = {sid:S.sid,sh:S.sh};
+      const identity = {sid:S.sid,sh:S.sh,oldEntryId:'old-inflight-entry-150'};
       queuePublishPayload(sdata(),S.sid,S.sh);
-      return identity;
+      return {...identity,freshEntryId:PQ[0]?.id,freshEntryPosition:PQ.findIndex(x=>x.sid===S.sid&&x.sh===S.sh)};
     });
     assert.notEqual(freshIdentity.sid,'OLDINFLIGHT');
+    assert.ok(freshIdentity.freshEntryId);
+    assert.notEqual(freshIdentity.freshEntryId,freshIdentity.oldEntryId);
+    assert.equal(freshIdentity.freshEntryPosition,0,'the fresh entry occupies the old request\'s former queue position');
     await sp.evaluate(() => window.__resolveOldPublish());
     await sp.waitForFunction(() => PQ.length === 0, null, {timeout:5000});
     const staleCompletion = await sp.evaluate(() => ({
@@ -385,7 +389,7 @@ async function main() {
     await sp.evaluate(() => {
       const sid='STUCKSYNC',sh='b'.repeat(64);
       S.ho=false;S.sid=sid;S.sh=sh;S.hoff=0;
-      PQ=[{seq:100,sid,sh,kind:'state',attempts:2,lastError:'',payload:sdata()}];
+      PQ=[{id:'stuck-entry-100',seq:100,sid,sh,kind:'state',attempts:2,lastError:'',payload:sdata()}];
       PQS=100;savePublishQueue();clearTimeout(PQRetry);PQRetry=null;
       sb.rpc=async()=>({error:new Error('Server unavailable.')});
       syncMarker();

@@ -170,6 +170,29 @@ async function main() {
     assert.match(liveViewerText,/Mike R\./);
     assert.doesNotMatch(liveViewerText,/Reyes|Rivera|Lopez|Chen|Diaz/);
 
+    // The database broadcasts data:null when an expired live session is deleted.
+    // Exercise the exact callback registered on session_update and keep the last view intact.
+    const nullBroadcastCheck = await sp.evaluate(() => {
+      const oldData = JSON.stringify(SV.d);
+      const oldHtml = document.getElementById('viewer').innerHTML;
+      const accepted = applyLiveSessionBroadcast({
+        payload: {
+          code: SV.code,
+          data: null,
+          updated_at: new Date().toISOString(),
+          expires_at: new Date().toISOString(),
+        },
+      });
+      return {
+        accepted,
+        stateUnchanged: JSON.stringify(SV.d) === oldData,
+        markupUnchanged: document.getElementById('viewer').innerHTML === oldHtml,
+      };
+    });
+    assert.equal(nullBroadcastCheck.accepted, false, 'a null-data broadcast is ignored');
+    assert.equal(nullBroadcastCheck.stateUnchanged, true, 'the viewer retains its previous session payload');
+    assert.equal(nullBroadcastCheck.markupUnchanged, true, 'the viewer keeps rendering the previous state');
+
     await sp.evaluate(() => {
       RA={code:'R2RESULT01',d:{v:1,name:'Saturday open play',totals:{players:4,games:1,courts:1,playTo:11,winBy:2},leaderboard:[{n:'Mike R.',w:1,l:0,d:2},{n:'Ana',w:0,l:1,d:-2}],matches:[{c:'Court 1',p:['Mike R.','Ana','Bob','Cara'],s:[11,9],w:0,tg:11,t:1,d:240000}]}};
       SV=null;V=null;render();
@@ -882,6 +905,7 @@ async function main() {
     console.log(JSON.stringify({
       pass: true,
       namedSession: true,
+      nullSessionUpdateIgnored: true,
       archivedHistory: true,
       topThreeStored: true,
       exportContainsHistory: true,

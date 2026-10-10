@@ -40,7 +40,7 @@ jobs:
           assert.equal(testUrl, 'https://yeytqiyhosoyuassjcef.supabase.co', 'Only the dedicated QueueZeroTwo test project is allowed.');
           assert.notEqual(testUrl, 'https://wochetemsnrysnjrgoed.supabase.co', 'Production Supabase is forbidden for device checks.');
 
-          // Fetch the Preview before allocating paid real-device sessions.
+          // Fetch the Preview before allocating the requested real-device sessions.
           // Vercel share links set cookies across redirects, so Node fetch needs a tiny cookie jar.
           // Never print APP_URL, redirect locations, cookie values, or Supabase keys.
           const cookieJar = [];

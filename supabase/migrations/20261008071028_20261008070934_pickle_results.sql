@@ -1,3 +1,4 @@
+-- The filename suffix matches the deployed schema_migrations.name for version 20261008071028.
 -- QueueZeroTwo Release 2 results snapshots.
 create table public.pickle_results (
   code text primary key,

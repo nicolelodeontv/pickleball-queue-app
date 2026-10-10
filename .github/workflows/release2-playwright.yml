@@ -1,5 +1,10 @@
 name: Release 2 Playwright
-# Release 2 regression + database replay v2
+# Release 2 regression + database replay v3
+
+# Local Supabase uses fixed host ports; serialize runs to avoid port collisions.
+concurrency:
+  group: release2-playwright-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   pull_request:

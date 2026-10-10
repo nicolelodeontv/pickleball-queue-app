@@ -142,7 +142,7 @@ async function networkProbe(page) {
 async function verifyPreviewTarget(page) {
   await ready(page);
   const html = await page.content();
-  const config = html.match(/const SB_URL=(["'])(https:\/\/[^"']+)\\1,SB_KEY=(["'])([^"']+)\\3;/);
+  const config = html.match(/const SB_URL=(["'])(https:\/\/[^"']+)\1,SB_KEY=(["'])([^"']+)\3;/);
   assert.ok(config, 'deployed HTML must contain the inline Supabase config');
   assert.equal(new URL(config[2]).origin, SUPABASE_URL, 'preview HTML must target the dedicated test backend');
   assert.notEqual(new URL(config[2]).origin, 'https://wochetemsnrysnjrgoed.supabase.co', 'production Supabase is forbidden');

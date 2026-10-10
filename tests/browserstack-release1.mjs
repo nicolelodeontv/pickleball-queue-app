@@ -35,6 +35,7 @@ function caps(options) {
     realMobile: 'true',
     'browserstack.username': USER,
     'browserstack.accessKey': KEY,
+    'client.playwrightVersion': '1.55.1',
     'browserstack.debug': 'true',
     'browserstack.networkLogs': 'true',
     build: BUILD,

@@ -311,7 +311,7 @@ function loadPublishQueue(){
       }
       PQ.push(item);
     }
-    PQS=Math.max(0,...PQ.map(x=>x.seq));
+    PQS=PQ.reduce((max,x)=>Math.max(max,x.seq),0);
     savePublishQueue();
   }catch(e){PQ=[];PQS=0}
 }

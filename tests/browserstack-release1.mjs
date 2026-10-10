@@ -237,7 +237,7 @@ async function verifyProfilesPrecachedOffline(device) {
     assert.match(content, /No players yet|All-time stats on this device/);
     console.log('PASS: Android offline shell loaded and Players opened from the cached profiles.js.');
   } finally {
-    await setNetwork(device, '4g-lte-good').catch(() => {});
+    await setNetwork(device, 'reset').catch(() => {});
   }
   await waitUntil(async () => {
     const probe = await networkProbe(page);
@@ -577,7 +577,7 @@ async function main() {
     assert.equal(newHost.storedState.includes(handoff.sh), false, 'old host key is absent from replacement state');
     assert.equal(newHost.storedQueue.includes(handoff.sh), false, 'old host key is absent from replacement sync queue');
 
-    await setNetwork(phoneA, '4g-lte-good');
+    await setNetwork(phoneA, 'reset');
     let lastReconnectProbe = null;
     try {
       await waitUntil(async () => {
@@ -638,7 +638,7 @@ async function main() {
     console.error('REAL DEVICE TEST FAILED: ' + reason);
     throw error;
   } finally {
-    if (phoneA) await setNetwork(phoneA, '4g-lte-good').catch(() => {});
+    if (phoneA) await setNetwork(phoneA, 'reset').catch(() => {});
     await markStatus(phoneA, status, reason);
     await markStatus(phoneB, status, reason);
     await Promise.all([phoneA, phoneB].filter(Boolean).map(async device => {

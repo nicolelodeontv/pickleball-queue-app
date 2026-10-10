@@ -71,6 +71,28 @@ async function getSessionId(page, name) {
   throw new Error('Unable to identify BrowserStack session: ' + name);
 }
 
+async function installTestSessionCodePrefix(context) {
+  await context.addInitScript(() => {
+    const nativeGetRandomValues = crypto.getRandomValues.bind(crypto);
+    Object.defineProperty(crypto, 'getRandomValues', {
+      configurable: true,
+      value(array) {
+        const result = nativeGetRandomValues(array);
+        let alphabet = '';
+        try { alphabet = LIVE_ALPH; } catch {}
+        if (array instanceof Uint8Array && array.length === 10 && alphabet) {
+          for (const [index, character] of Array.from('ZZTEST').entries()) {
+            const value = alphabet.indexOf(character);
+            if (value < 0) throw new Error('ZZTEST prefix is absent from the app session-code alphabet');
+            array[index] = value;
+          }
+        }
+        return result;
+      },
+    });
+  });
+}
+
 async function connectDevice(options) {
   const endpoint = 'wss://cdp.browserstack.com/playwright?caps=' + encodeURIComponent(JSON.stringify(caps(options)));
   const browser = await chromium.connect(endpoint, { timeout: 120000 });
@@ -270,6 +292,8 @@ async function main() {
       name: 'QueueZeroTwo replacement host - real Android Chrome',
     });
     console.log('Connected to a real iPhone Safari and Android Chrome device pair.');
+    await installTestSessionCodePrefix(phoneA.context);
+    await installTestSessionCodePrefix(phoneB.context);
 
     // Validate both real devices have the intended Preview build before any writes.
     await verifyPreviewTarget(phoneA.page);
@@ -300,7 +324,7 @@ async function main() {
       sh: S.sh,
       url: location.origin + location.pathname + '#h=' + S.sid + '.' + S.sh,
     }));
-    assert.match(handoff.sid, /^[A-Za-z0-9]{4,10}$/);
+    assert.match(handoff.sid, /^ZZTEST[A-Za-z0-9]{4}$/, 'temporary Live View sessions must use the ZZTEST prefix');
     assert.match(handoff.sh, /^[0-9a-f]{64}$/);
     await phoneA.page.locator('[role="dialog"] [data-x]').first().click();
 

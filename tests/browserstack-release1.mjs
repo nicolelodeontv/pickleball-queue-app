@@ -167,8 +167,8 @@ async function networkProbe(page) {
   }, SUPABASE_URL);
 }
 
-async function verifyPreviewTarget(page) {
-  await ready(page);
+async function verifyPreviewTarget(page, initialUrl = APP_URL) {
+  await ready(page, initialUrl);
   const html = await page.content();
   const config = html.match(/const SB_URL=(["'])(https:\/\/[^"']+)\1,SB_KEY=(["'])([^"']+)\3;/);
   assert.ok(config, 'deployed HTML must contain the inline Supabase config');
@@ -268,8 +268,8 @@ async function verifyWinByOneLiveView(hostPage, viewerPage) {
   return { sid: session.sid, scores: scores.slice(0, 2) };
 }
 
-async function ready(page) {
-  await page.goto(APP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+async function ready(page, initialUrl = APP_URL) {
+  await page.goto(initialUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await waitUntil(() => page.locator('#pn').isVisible(), 'app form ready', 30000);
 }
 
@@ -389,7 +389,22 @@ async function main() {
 
     // Validate both real devices have the intended Preview build before any writes.
     await verifyPreviewTarget(phoneA.page);
-    await verifyPreviewTarget(phoneB.page);
+
+    // The Vercel share query redeems into a browser cookie. Copy only cookies
+    // scoped to this Preview deployment into the iPhone context instead of
+    // attempting to redeem the same one-time URL a second time.
+    const previewHost = new URL(APP_URL).hostname;
+    const previewCookies = (await phoneA.context.cookies()).filter(cookie => {
+      const domain = String(cookie.domain || '').replace(/^\\./, '').toLowerCase();
+      return domain && (previewHost === domain || previewHost.endsWith('.' + domain));
+    });
+    assert.ok(previewCookies.length > 0, 'Android Preview access did not establish a cookie scoped to this deployment');
+    await phoneB.context.addCookies(previewCookies);
+    const iPhonePreviewUrl = new URL(APP_URL);
+    iPhonePreviewUrl.searchParams.delete('_vercel_share');
+    iPhonePreviewUrl.hash = '';
+    await verifyPreviewTarget(phoneB.page, iPhonePreviewUrl.toString());
+    console.log('PASS: both real-device browsers can load the isolated Preview app shell.');
     await verifyProfilesPrecachedOffline(phoneA);
     const startNetwork = await networkProbe(phoneA.page);
     assert.equal(startNetwork.reachable, true, 'Android begins online');

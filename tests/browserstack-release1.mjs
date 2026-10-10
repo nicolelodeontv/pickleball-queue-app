@@ -510,7 +510,7 @@ async function main() {
     const liveViewerUrl = await phoneB.page.evaluate(() => location.origin + location.pathname + '#s=' + S.sid);
     await phoneA.page.goto(liveViewerUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await waitUntil(
-      () => phoneA.page.evaluate(() => !!SV?.d && (SV.d.courts || []).some(c => c.a)),
+      () => phoneA.page.evaluate(() => !!SV?.d && (SV.d.courts || []).some(c => c.a && c.s?.[0] === 2 && c.s?.[1] === 0)),
       'reconnected Android opens the new host Live View',
       30000,
     );

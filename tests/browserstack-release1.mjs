@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import playwright from 'playwright';
-const { chromium } = playwright;
 
 const APP_URL = process.env.APP_URL || '';
 const SUPABASE_URL = process.env.TEST_SUPABASE_URL || '';

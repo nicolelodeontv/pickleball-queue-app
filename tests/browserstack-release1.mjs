@@ -152,6 +152,94 @@ async function verifyPreviewTarget(page) {
   assert.equal(probe.reachable, true, 'dedicated test Supabase endpoint must be reachable from the device');
 }
 
+async function verifyProfilesPrecachedOffline(device) {
+  const page = device.page;
+  // The Vercel share URL sets a browser cookie; remove its one-time query token before reloads.
+  await page.evaluate(() => history.replaceState(null, '', location.pathname));
+  await waitUntil(
+    () => page.evaluate(() => !!navigator.serviceWorker?.controller),
+    'service worker controls Android page',
+    30000,
+  );
+  await waitUntil(
+    () => page.evaluate(async () => !!(await caches.match('/profiles.js'))),
+    'profiles.js is present in the service-worker cache',
+    30000,
+  );
+
+  await setNetwork(device, 'no-network');
+  try {
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
+    await waitUntil(() => page.locator('#pn').isVisible(), 'app shell reloads offline', 30000);
+    await page.locator('#mnb').click();
+    await waitUntil(
+      () => page.locator('#qmenu button[title="Players"]').isVisible(),
+      'Players feature button exists after offline reload',
+    );
+    await page.locator('#qmenu button[title="Players"]').click();
+    await waitUntil(
+      () => page.getByText('All-time stats on this device').isVisible(),
+      'Players feature opens offline',
+    );
+    const content = await page.locator('[role="dialog"]').innerText();
+    assert.match(content, /No players yet|All-time stats on this device/);
+    console.log('PASS: Android offline shell loaded and Players opened from the cached profiles.js.');
+  } finally {
+    await setNetwork(device, '4g-lte-good').catch(() => {});
+  }
+  await waitUntil(async () => {
+    const probe = await networkProbe(page);
+    return probe.reachable && probe.online;
+  }, 'Android returns online after offline Players check', 60000);
+}
+
+async function verifyWinByOneLiveView(hostPage, viewerPage) {
+  await hostPage.goto(APP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await ready(hostPage);
+  const session = await hostPage.evaluate(async () => {
+    localStorage.clear();
+    S = mk();
+    S.name = 'Win-by-one device check';
+    S.target = 11;
+    S.wb = 1;
+    S.queue = [];
+    S.waiting = [];
+    S.log = [];
+    S.courts = [{
+      id: 1,
+      name: 'Court 1',
+      isActive: true,
+      players: ['Ana', 'Ben', 'Cara', 'Dan'],
+      score: [11, 10],
+      mid: 'WBYONE01',
+      t: Date.now(),
+    }];
+    ensureLiveIdentity();
+    const published = await publishSession(sdata());
+    if (published?.error) throw new Error('Could not publish win-by-one test session: ' + published.error.message);
+    dropPublishQueue(S.sid, S.sh);
+    save();
+    return { sid: S.sid, wb: S.wb };
+  });
+  assert.match(session.sid, /^ZZTEST[A-Za-z0-9]{4}$/, 'win-by-one test must use an isolated ZZTEST code');
+  assert.equal(session.wb, 1);
+
+  const viewerUrl = await hostPage.evaluate(sid => location.origin + location.pathname + '#s=' + sid, session.sid);
+  await viewerPage.goto(viewerUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitUntil(
+    () => viewerPage.evaluate(() => !!SV?.d && (SV.d.courts || []).some(c => c.a)),
+    'Live View loads the win-by-one test session',
+    30000,
+  );
+  const scores = await viewerPage.locator('#viewer span.font-sport.text-3xl').evaluateAll(
+    els => els.map(el => ({ text: el.textContent.trim(), highlighted: el.classList.contains('text-pickle-500') })),
+  );
+  assert.deepEqual(scores.slice(0, 2).map(x => x.text), ['11', '10'], 'Live View displays the 11-10 score');
+  assert.deepEqual(scores.slice(0, 2).map(x => x.highlighted), [true, false], 'win-by-1 highlights Team 1 at 11-10');
+  console.log('PASS: iPhone-hosted win-by-1 session highlights the winning team in the Android Live View.');
+  return { sid: session.sid, scores: scores.slice(0, 2) };
+}
+
 async function ready(page) {
   await page.goto(APP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await waitUntil(() => page.locator('#pn').isVisible(), 'app form ready', 30000);
@@ -258,24 +346,25 @@ async function main() {
   let reason = 'test did not finish';
   try {
     phoneA = await connectDevice({
-      browser: 'safari',
-      osVersion: '17',
-      deviceName: 'iPhone 15 Pro Max',
-      name: 'QueueZeroTwo handoff host - real iPhone Safari',
-    });
-    phoneB = await connectDevice({
       browser: 'chrome',
       osVersion: '13',
       deviceName: 'Samsung Galaxy S22',
-      name: 'QueueZeroTwo replacement host - real Android Chrome',
+      name: 'QueueZeroTwo offline host - real Android Chrome',
     });
-    console.log('Connected to a real iPhone Safari and Android Chrome device pair.');
+    phoneB = await connectDevice({
+      browser: 'safari',
+      osVersion: '17',
+      deviceName: 'iPhone 15 Pro Max',
+      name: 'QueueZeroTwo replacement host - real iPhone Safari',
+    });
+    console.log('Connected to a real Android Chrome and iPhone Safari device pair.');
 
     // Validate both real devices have the intended Preview build before any writes.
     await verifyPreviewTarget(phoneA.page);
     await verifyPreviewTarget(phoneB.page);
+    await verifyProfilesPrecachedOffline(phoneA);
     const startNetwork = await networkProbe(phoneA.page);
-    assert.equal(startNetwork.reachable, true, 'iPhone begins online');
+    assert.equal(startNetwork.reachable, true, 'Android begins online');
     await setupEight(phoneA.page);
     await phoneA.page.evaluate(() => {
       window.__handoffBackupJson = [];
@@ -317,10 +406,15 @@ async function main() {
 
     await phoneA.page.locator('button[aria-label="Plus point, Team 1"]').first().click();
     await waitUntil(
+      () => phoneA.page.evaluate(() => S.courts.some(c => c.isActive && c.score[0] === 1)),
+      'first Android offline point is recorded',
+    );
+    await phoneA.page.locator('button[aria-label="Plus point, Team 1"]').first().click();
+    await waitUntil(
       () => phoneA.page.evaluate(() =>
-        S.courts.some(c => c.isActive && c.score[0] === 1) &&
+        S.courts.some(c => c.isActive && c.score[0] === 2) &&
         JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1') || '{"items":[]}').items.length >= 1),
-      'offline score is present in durable publish queue',
+      'two Android offline points are present in the durable publish queue',
     );
     // Use the actual Export action while offline, then import those exact JSON bytes on phone B.
     if (!(await phoneA.page.locator('#qmenu').isVisible())) await phoneA.page.locator('#mnb').click();
@@ -331,7 +425,7 @@ async function main() {
     );
     const offlineBackup = JSON.parse(await phoneA.page.evaluate(() => window.__handoffBackupJson[0]));
     assert.equal(offlineBackup.app, 'QueueZeroTwo');
-    assert.equal(offlineBackup.state.courts.find(c => c.isActive).score[0], 1);
+    assert.equal(offlineBackup.state.courts.find(c => c.isActive).score[0], 2);
     assert.equal(offlineBackup.state.queue.length, 4);
 
     // Restore on the new host, then use the displayed handoff URL to rotate authority.
@@ -410,17 +504,34 @@ async function main() {
       'old host rejects stale queue and displays No longer host',
       30000,
     );
-    console.log('PASS: real-device offline score, host handoff, new host key, and stale-queue rejection.');
+    console.log('PASS: Android offline scoring, iPhone host handoff, key rotation, and stale-queue rejection.');
+
+    // Check that the reconnected Android can read the authoritative post-handoff state.
+    const liveViewerUrl = await phoneB.page.evaluate(() => location.origin + location.pathname + '#s=' + S.sid);
+    await phoneA.page.goto(liveViewerUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await waitUntil(
+      () => phoneA.page.evaluate(() => !!SV?.d && (SV.d.courts || []).some(c => c.a)),
+      'reconnected Android opens the new host Live View',
+      30000,
+    );
+    const syncedScores = await phoneA.page.locator('#viewer span.font-sport.text-3xl').evaluateAll(
+      els => els.map(el => el.textContent.trim()),
+    );
+    assert.deepEqual(syncedScores.slice(0, 2), ['2', '0'], 'the new host Live View shows both offline points');
+    console.log('PASS: post-handoff Live View on Android shows the authoritative 2-0 score.');
 
     // End the temporary host session, not any user-owned live session.
     await phoneB.page.locator('#nvp').click();
     await phoneB.page.locator('#rs').click();
     await confirmDialog(phoneB.page);
-    await waitUntil(() => phoneB.page.evaluate(() => S.ended === true), 'temporary handoff session ended', 20000);
+    await waitUntil(() => phoneB.page.evaluate(() => S.ended === true), 'temporary host session ended', 20000);
 
-    const backupReport = await backupAndImportOnIPhone(phoneA.page);
-    console.log('PASS: real iPhone Safari backup JSON generation, Save backup fallback, and import.');
+    const backupReport = await backupAndImportOnIPhone(phoneB.page);
+    console.log('PASS: iPhone Safari backup JSON generation, Save backup fallback, and import.');
     console.log('Backup/import assertions: ' + JSON.stringify(backupReport));
+
+    const winByOneReport = await verifyWinByOneLiveView(phoneB.page, phoneA.page);
+    console.log('Win-by-one Live View assertions: ' + JSON.stringify(winByOneReport));
     status = 'passed';
     reason = 'real-device handoff and iPhone backup/import assertions passed';
   } catch (error) {

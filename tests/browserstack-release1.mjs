@@ -599,14 +599,43 @@ async function main() {
         }));
     }
     await phoneA.page.evaluate(() => flushPublishQueue());
-    await waitUntil(
-      () => phoneA.page.evaluate(() =>
-        S.ho === true &&
-        JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1') || '{"items":[]}').items.length === 0 &&
-        document.getElementById('ct').textContent.includes('No longer host')),
-      'old host rejects stale queue and displays No longer host',
-      30000,
-    );
+    try {
+      await waitUntil(
+        () => phoneA.page.evaluate(() =>
+          S.ho === true &&
+          JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1') || '{"items":[]}').items.length === 0 &&
+          document.getElementById('ct').textContent.includes('No longer host')),
+        'old host rejects stale queue and displays No longer host',
+        30000,
+      );
+    } catch (error) {
+      const diagnostic = await phoneA.page.evaluate(() => {
+        const stored = JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1') || '{"items":[]}');
+        const describe = item => ({
+          kind: item.kind || 'state',
+          attempts: Number(item.attempts) || 0,
+          lastError: String(item.lastError || '').slice(0, 120),
+          matchesCurrentSession: item.sid === S.sid,
+          matchesCurrentHostKey: item.sh === S.sh,
+          hasResultId: !!item.rid,
+        });
+        return {
+          online: navigator.onLine,
+          hostDemoted: !!S.ho,
+          handoffFlagActive: !!S.hoff && Date.now() - S.hoff < 86400000,
+          sessionIdentityPresent: !!S.sid && !!S.sh,
+          inMemoryQueueLength: PQ.length,
+          inMemoryQueue: PQ.slice(0, 3).map(describe),
+          storedQueueLength: Array.isArray(stored.items) ? stored.items.length : null,
+          storedQueue: (Array.isArray(stored.items) ? stored.items : []).slice(0, 3).map(describe),
+          queueBusy: !!PQBusy,
+          queueInflight: !!PQInflightId,
+          statusText: String(document.getElementById('ct')?.textContent || '').slice(0, 120),
+        };
+      });
+      throw new Error((error instanceof Error ? error.message : String(error)) +
+        '; stale-host diagnostic=' + JSON.stringify(diagnostic));
+    }
     console.log('PASS: Android offline scoring, iPhone host handoff, key rotation, and stale-queue rejection.');
 
     // Check that the reconnected Android can read the authoritative post-handoff state.

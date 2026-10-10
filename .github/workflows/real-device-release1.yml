@@ -53,7 +53,7 @@ jobs:
           assert.equal(new URL(config[2]).origin, testUrl, 'Fetched Preview HTML must target the isolated test Supabase project.');
           assert.ok(!config[4].startsWith('sb_secret_'), 'A Supabase secret key must never be embedded in browser HTML.');
           console.log(`Preview fetch passed (HTTP ${response.status}): QueueZeroTwo app shell and isolated test backend verified.`);
-          console.log('Target guard passed: Vercel Preview URL + dedicated test Supabase project.');
+          console.log('Target guard passed: Vercel Preview URL + dedicated test Supabase project.'); // no-cost preflight
           NODE
       - name: Check BrowserStack credentials
         id: credentials

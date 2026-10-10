@@ -527,6 +527,7 @@ async function main() {
       buffer: Buffer.from(JSON.stringify(offlineBackup), 'utf8'),
     });
     await confirmDialog(phoneB.page);
+    // The Android backup captured both offline points; import must preserve score 2.
     await waitUntil(
       () => phoneB.page.evaluate(() => S.queue.length === 4 && S.courts.some(c => c.isActive && c.score[0] === 2)),
       'offline state restored on phone B',

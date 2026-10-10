@@ -218,7 +218,7 @@ async function verifyProfilesPrecachedOffline(device) {
   await setNetwork(device, 'no-network');
   try {
     await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
-    await waitUntil(() => page.locator('#pn').isVisible(), 'app shell reloads offline', 30000);
+    await waitUntil(() => page.locator('#app').isVisible() && page.locator('header h1').isVisible(), 'app shell reloads offline', 30000);
     await page.locator('#mnb').click();
     await waitUntil(
       () => page.locator('#qmenu button[title="Players"]').isVisible(),

@@ -287,6 +287,15 @@ const viewerClient=code=>SB_URL&&SB_KEY&&window.supabase?supabase.createClient(S
 const resultsViewerClient=code=>SB_URL&&SB_KEY&&window.supabase?supabase.createClient(SB_URL,SB_KEY,{global:{headers:{'x-picklestack-results-code':code}}}):null;
 const PUBLISH_QUEUE_KEY='queuezerotwo-publish-queue-v1';
 let PQ=[],PQS=0,PQBusy=false,PQRetry=null,PQInflightId=null;
+const StorageFailures=new Set();
+function storageWriteFailed(kind){
+  const first=!StorageFailures.has(kind);
+  StorageFailures.add(kind);
+  if(first)toast('Device storage could not safely save your latest changes. They may exist only in memory. Export a backup and free storage before continuing.','error');
+  syncMarker();
+}
+function storageWriteSucceeded(kind){if(StorageFailures.delete(kind))syncMarker()}
+addEventListener('beforeunload',e=>{if(StorageFailures.size){e.preventDefault();e.returnValue='Some changes are not safely saved on this device. Export a backup before leaving.';return e.returnValue}});
 function newPublishEntryId(){try{const b=new Uint8Array(16);crypto.getRandomValues(b);return Array.from(b,v=>v.toString(16).padStart(2,'0')).join('')}catch(e){return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2)}}
 function loadPublishQueue(){
   try{
@@ -315,9 +324,12 @@ function loadPublishQueue(){
     savePublishQueue();
   }catch(e){PQ=[];PQS=0}
 }
-function savePublishQueue(){try{localStorage.setItem(PUBLISH_QUEUE_KEY,JSON.stringify({v:1,seq:PQS,items:PQ}))}catch(e){}}
+function savePublishQueue(){
+  try{localStorage.setItem(PUBLISH_QUEUE_KEY,JSON.stringify({v:1,seq:PQS,items:PQ}));storageWriteSucceeded('queue');return true}
+  catch(e){storageWriteFailed('queue');return false}
+}
 function clearPublishQueue(){PQ=[];PQS=0;if(PQRetry){clearTimeout(PQRetry);PQRetry=null}savePublishQueue();syncMarker()}
-function persistStateOnly(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+function persistStateOnly(){try{localStorage.setItem(K,JSON.stringify(S));storageWriteSucceeded('state');return true}catch(e){storageWriteFailed('state');return false}}
 function syncMarker(){
   const on=navigator.onLine,pending=PQ.length>0,stuck=pending&&on&&PQ.some(x=>x.attempts>=3);
   if(S&&S.ho){
@@ -325,6 +337,7 @@ function syncMarker(){
     $('ct').textContent='No longer host';
     return
   }
+  if(StorageFailures.size){$('ci').className='fa-solid fa-triangle-exclamation text-red-500';$('ct').textContent='Storage error · export backup';$('sr').textContent='Warning: some changes are not safely saved on this device. Export a backup and free storage.';return}
   $('ci').className='fa-solid fa-wifi '+(on?(stuck?'text-red-500':pending?'text-orange-400':'text-green-400'):'text-red-500');
   $('ct').textContent=on?(stuck?'Sync stuck':pending?'Sync pending':'Saved on this device'):(pending?'Offline · will sync':'Offline');
 }
@@ -435,7 +448,7 @@ function markWaiting(players,at=Date.now()){S.wt=S.wt||{};players.forEach(p=>{S.
 function clearWaiting(players){if(!S.wt)return;players.forEach(p=>delete S.wt[wk(p)])}
 
 function load(){try{const raw=localStorage.getItem(K),s=JSON.parse(raw);if(s&&s.courts){S=s;S.log=S.log||[];S.waiting=S.waiting||[];S.rest=S.rest||{};S.target=S.target||11;S.lv=S.lv||{};S.md=S.md||'bal';S.sd=S.sd||0;S.gp=S.gp||{};S.wt=normalizeWaitTimes(S.queue||[],S.wt);S.ws=!!S.ws;S.eq=!!S.eq;S.tts=!!S.tts;S.wl=S.wl==null?2:S.wl;S.rr=!!S.rr;S.lr=!!S.lr;if(s.ended&&s.rid&&!Object.prototype.hasOwnProperty.call(s,'rr'))S.lr=true;S.courts.forEach(c=>{c.score=c.score||[0,0]})}}catch(e){}}
-function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}pushS()}
+function save(){try{localStorage.setItem(K,JSON.stringify(S));storageWriteSucceeded('state')}catch(e){storageWriteFailed('state')}pushS()}
 
 function toast(m,type){const d=document.createElement('div');
 d.className='mb border px-4 py-3 rounded-lg shadow-xl pointer-events-auto text-sm font-medium '+(type=='error'?'bg-red-500/90 border-red-400':type=='success'?'bg-pickle-500/90 border-pickle-400 text-dark-900':'bg-dark-700/90 border-dark-700');

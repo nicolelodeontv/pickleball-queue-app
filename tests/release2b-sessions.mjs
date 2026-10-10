@@ -72,16 +72,16 @@ async function setupFour(page) {
   assert.equal(await page.locator('#qc').innerText(), '4');
 }
 
-async function simulateV23ToV24(browser) {
+async function simulateV24ToV25(browser) {
   const context = await browser.newContext({...devices['Desktop Chrome'],serviceWorkers:'allow',locale:'en-US'});
   const page = await context.newPage();
   let swFetch = 0;
   const currentSw = fs.readFileSync(path.resolve('sw.js'), 'utf8');
-  assert.match(currentSw,/queuezerotwo-v24/);
-  const oldV23 = `const V='queuezerotwo-v23';self.addEventListener('install',e=>e.waitUntil(caches.open(V).then(c=>c.put('/__queuezerotwo_v23_sentinel__',new Response('v23'))).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));`;
+  assert.match(currentSw,/queuezerotwo-v25/);
+  const oldV24 = `const V='queuezerotwo-v24';self.addEventListener('install',e=>e.waitUntil(caches.open(V).then(c=>c.put('/__queuezerotwo_v24_sentinel__',new Response('v24'))).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));`;
   await context.route('**/sw.js', async route => {
     swFetch++;
-    await route.fulfill({status:200,contentType:'application/javascript',body:swFetch===1?oldV23:currentSw});
+    await route.fulfill({status:200,contentType:'application/javascript',body:swFetch===1?oldV24:currentSw});
   });
   await page.goto(APP,{waitUntil:'networkidle'});
   await page.waitForFunction(()=>!!navigator.serviceWorker?.controller,null,{timeout:5000});
@@ -92,7 +92,7 @@ async function simulateV23ToV24(browser) {
   await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();await r.update()});
   await page.waitForFunction(async()=>{
     const r=await navigator.serviceWorker.getRegistration();
-    return !!r?.waiting || await caches.has('queuezerotwo-v24');
+    return !!r?.waiting || await caches.has('queuezerotwo-v25');
   },null,{timeout:10000});
   await page.evaluate(async()=>{
     const r=await navigator.serviceWorker.getRegistration();
@@ -100,15 +100,15 @@ async function simulateV23ToV24(browser) {
   });
   await page.waitForFunction(async()=>{
     const r=await navigator.serviceWorker.getRegistration();
-    return !!r && !r.waiting && r.active?.state==='activated' && await caches.has('queuezerotwo-v24');
+    return !!r && !r.waiting && r.active?.state==='activated' && await caches.has('queuezerotwo-v25');
   },null,{timeout:10000});
   await page.reload({waitUntil:'networkidle'});
   const out=await page.evaluate(async()=>{
-    const cache=await caches.open('queuezerotwo-v24');
+    const cache=await caches.open('queuezerotwo-v25');
     return {
       queue:JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items,
       state:JSON.parse(localStorage.getItem('pickleStackState')||'{}'),
-      oldCache:await caches.has('queuezerotwo-v23'),
+      oldCache:await caches.has('queuezerotwo-v24'),
       profilesCached:!!(await cache.match('/profiles.js'))
     };
   });
@@ -266,7 +266,7 @@ async function main() {
   const pp = await pixel.newPage();
   const syncPublishes = [];
   const resultPublishes = [];
-  await simulateV23ToV24(browser);
+  await simulateV24ToV25(browser);
   await durableQueueCompactionRegression(browser);
   const sync = await syncContext(browser, devices['Pixel 7'], syncPublishes, resultPublishes);
   const sp = await sync.newPage();
@@ -444,20 +444,37 @@ async function main() {
     });
     assert.deepEqual(queuedScores, [2], 'the latest queued whole-state snapshot is published after reconnect');
 
-    // Release 1 edge case: an old host key is rejected once the handoff has completed,
-    // so the old device drops its queued writes instead of retrying them forever.
+    // Regression: the server intentionally folds a stale host-key rejection into the
+    // message "Invalid host key or expired session". It must demote the old host rather
+    // than mistake the combined message for an expired code and create a fresh session.
     await sp.evaluate(() => {
       const oldSid='OLDHANDOFF',oldSh='a'.repeat(64);
       S.sid=oldSid;S.sh=oldSh;S.ho=false;S.hoff=Date.now();
       PQ=[{id:'old-host-entry-99',seq:99,sid:oldSid,sh:oldSh,kind:'state',attempts:1,lastError:'',payload:sdata()}];
       PQS=99;savePublishQueue();clearTimeout(PQRetry);PQRetry=null;
-      sb.rpc=async()=>({error:new Error('Invalid host key.')});
+      window.__handoffRpcCalls=[];
+      sb.rpc=async(name,args)=>{
+        if(name!=='publish_pickle_session')return {error:new Error('Unexpected RPC '+name)};
+        window.__handoffRpcCalls.push({isOldCode:args.p_code===oldSid,isOldHostKey:args.p_host_key===oldSh});
+        if(args.p_code===oldSid&&args.p_host_key===oldSh)return {error:new Error('Invalid host key or expired session.')};
+        return {data:true,error:null};
+      };
       syncMarker();
     });
     await sp.evaluate(() => flushPublishQueue());
-    assert.equal(await sp.evaluate(() => S.ho), true);
-    assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 0);
-    assert.match(await sp.locator('#ct').innerText(), /No longer host/);
+    const staleHostResult=await sp.evaluate(()=>({
+      demoted:S.ho===true,
+      sessionCleared:!S.sid&&!S.sh,
+      queueLength:JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length,
+      status:document.getElementById('ct')?.textContent||'',
+      rpcCalls:window.__handoffRpcCalls.slice()
+    }));
+    assert.equal(staleHostResult.demoted,true,'the previous host is demoted after the server rejects its old key');
+    assert.equal(staleHostResult.sessionCleared,true,'the previous host no longer owns a live identity');
+    assert.equal(staleHostResult.queueLength,0,'stale writes are removed after handoff');
+    assert.match(staleHostResult.status,/No longer host/);
+    assert.equal(staleHostResult.rpcCalls.length,1,'a rejected old host key must not create a replacement session');
+    assert.deepEqual(staleHostResult.rpcCalls[0],{isOldCode:true,isOldHostKey:true});
 
     // Regression: after demotion, starting a fresh session clears the old marker and queued writes.
     await sp.evaluate(() => {

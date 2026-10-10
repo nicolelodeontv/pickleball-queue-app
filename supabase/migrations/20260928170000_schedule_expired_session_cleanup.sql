@@ -4,23 +4,14 @@
 -- migration; it is not asserted to be the job's creation timestamp.
 -- pg_cron does not expose a creator timestamp, so this migration records the
 -- deployed job without asserting who created it.
--- The job is created only when the expected job name is absent, so replaying
--- this migration is idempotent and will not create a duplicate.
+-- The checked-in shared-chain version also ensures the extension exists when
+-- a fresh replay reaches this migration. Production already has both the
+-- extension and job and this version is already recorded there.
 
 create extension if not exists pg_cron with schema pg_catalog;
 
-do $
-begin
-  if not exists (
-    select 1
-    from cron.job
-    where jobname = 'crg-expired-session-cleanup'
-  ) then
-    perform cron.schedule(
-      'crg-expired-session-cleanup',
-      '0 * * * *',
-      'delete from public.court_rotation_sessions where expires_at <= now()'
-    );
-  end if;
-end
-$$;
+select cron.schedule(
+  'crg-expired-session-cleanup',
+  '0 * * * *',
+  'delete from public.court_rotation_sessions where expires_at <= now()'
+);

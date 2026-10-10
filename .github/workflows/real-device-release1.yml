@@ -1,5 +1,7 @@
 name: Release 2 real-device checks (BrowserStack)
 
+# Use [device-preflight] for a no-cost protected Preview check before any paid mobile sessions.
+
 on:
   # This workflow is branch-only until Release 2 lands. To opt into a cloud-device run,
   # create a test-only commit whose message contains [run-real-device]. That marker is the deliberate opt-in to potentially billable BrowserStack sessions.

@@ -528,7 +528,7 @@ async function main() {
     });
     await confirmDialog(phoneB.page);
     await waitUntil(
-      () => phoneB.page.evaluate(() => S.queue.length === 4 && S.courts.some(c => c.isActive && c.score[0] === 1)),
+      () => phoneB.page.evaluate(() => S.queue.length === 4 && S.courts.some(c => c.isActive && c.score[0] === 2)),
       'offline state restored on phone B',
     );
     await phoneB.page.evaluate(() => {
@@ -551,7 +551,7 @@ async function main() {
     await confirmDialog(phoneB.page);
     await waitUntil(
       () => phoneB.page.evaluate(sid => S.sid === sid && !!S.sh && !S.ho &&
-        S.courts.some(c => c.isActive && c.score[0] === 1) && S.queue.length === 4, handoff.sid),
+        S.courts.some(c => c.isActive && c.score[0] === 2) && S.queue.length === 4, handoff.sid),
       'phone B takes control while preserving the offline score',
       30000,
     );
@@ -568,7 +568,7 @@ async function main() {
     assert.notEqual(newHost.sh, handoff.sh, 'new host key is rotated');
     assert.equal(newHost.ho, false);
     assert.equal(newHost.queue.length, 4);
-    assert.equal(newHost.active[0].score[0], 1);
+    assert.equal(newHost.active[0].score[0], 2);
     assert.equal(newHost.storedState.includes(handoff.sh), false, 'old host key is absent from replacement state');
     assert.equal(newHost.storedQueue.includes(handoff.sh), false, 'old host key is absent from replacement sync queue');
 

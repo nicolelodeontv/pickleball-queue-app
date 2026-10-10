@@ -1,8 +1,17 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 
-const APP_URL = process.env.APP_URL || 'https://queuezerotwo.vercel.app/';
-const SUPABASE_URL = 'https://wochetemsnrysnjrgoed.supabase.co';
+const APP_URL = process.env.APP_URL || '';
+const SUPABASE_URL = process.env.TEST_SUPABASE_URL || '';
+const TEST_PROJECT_REF = 'yeytqiyhosoyuassjcef';
+if (!APP_URL) throw new Error('APP_URL must be a protected Vercel Preview share link; production fallback is intentionally disabled.');
+if (new URL(SUPABASE_URL).origin !== 'https://' + TEST_PROJECT_REF + '.supabase.co') {
+  throw new Error('TEST_SUPABASE_URL must identify the dedicated QueueZeroTwo test project.');
+}
+if (new URL(APP_URL).hostname === 'queuezerotwo.vercel.app') {
+  throw new Error('The production app is forbidden in the BrowserStack workflow.');
+}
+
 const USER = process.env.BROWSERSTACK_USERNAME;
 const KEY = process.env.BROWSERSTACK_ACCESS_KEY;
 const BUILD = 'QueueZeroTwo Release 1 real-device gate ' + new Date().toISOString();
@@ -117,17 +126,30 @@ async function waitUntil(read, description, timeout = 25000, interval = 500) {
 }
 
 async function networkProbe(page) {
-  return page.evaluate(async () => {
+  return page.evaluate(async baseUrl => {
     try {
       const response = await fetch(
-        'https://wochetemsnrysnjrgoed.supabase.co/auth/v1/health?probe=' + Date.now(),
+        baseUrl + '/auth/v1/health?probe=' + Date.now(),
         { cache: 'no-store' },
       );
       return { reachable: true, status: response.status, online: navigator.onLine };
     } catch (error) {
       return { reachable: false, error: String(error), online: navigator.onLine };
     }
-  });
+  }, SUPABASE_URL);
+}
+
+async function verifyPreviewTarget(page) {
+  await ready(page);
+  const html = await page.content();
+  const config = html.match(/const SB_URL=(["'])(https:\/\/[^"']+)\\1,SB_KEY=(["'])([^"']+)\\3;/);
+  assert.ok(config, 'deployed HTML must contain the inline Supabase config');
+  assert.equal(new URL(config[2]).origin, SUPABASE_URL, 'preview HTML must target the dedicated test backend');
+  assert.notEqual(new URL(config[2]).origin, 'https://wochetemsnrysnjrgoed.supabase.co', 'production Supabase is forbidden');
+  assert.equal(config[2], SUPABASE_URL, 'preview backend URL must exactly match TEST_SUPABASE_URL');
+  assert.ok(!config[4].startsWith('sb_secret_'), 'a Supabase secret key must never be embedded in browser code');
+  const probe = await networkProbe(page);
+  assert.equal(probe.reachable, true, 'dedicated test Supabase endpoint must be reachable from the device');
 }
 
 async function ready(page) {
@@ -249,6 +271,9 @@ async function main() {
     });
     console.log('Connected to a real iPhone Safari and Android Chrome device pair.');
 
+    // Validate both real devices have the intended Preview build before any writes.
+    await verifyPreviewTarget(phoneA.page);
+    await verifyPreviewTarget(phoneB.page);
     const startNetwork = await networkProbe(phoneA.page);
     assert.equal(startNetwork.reachable, true, 'iPhone begins online');
     await setupEight(phoneA.page);

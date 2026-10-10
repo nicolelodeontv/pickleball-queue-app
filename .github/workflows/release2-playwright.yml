@@ -32,15 +32,11 @@ jobs:
       - name: Start local Supabase
         shell: bash
         run: |
-          printf '%s\n' 'create extension if not exists pg_cron with schema pg_catalog;' > supabase/migrations/20261008070000_ci_enable_pg_cron.sql
-          test -f supabase/migrations/20261008070000_ci_enable_pg_cron.sql
-          echo "Created CI-only pg_cron migration before Supabase startup"
+          test -f supabase/migrations/20261008070000_enable_pg_cron.sql
           supabase start --exclude studio,mailpit,logflare,vector,postgres-meta,gotrue,imgproxy,kong,postgrest,realtime,storage-api,supavisor,edge-runtime
       - name: Replay all migrations
         shell: bash
-        run: |
-          supabase db reset
-          rm -f supabase/migrations/20261008070000_ci_enable_pg_cron.sql
+        run: supabase db reset
       - name: Install PostgreSQL client
         run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
       - name: Run Release 2 database replay checks

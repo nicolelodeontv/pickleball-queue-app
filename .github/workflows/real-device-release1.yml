@@ -1,6 +1,10 @@
 name: Release 2 real-device checks (BrowserStack)
 
 on:
+  # This workflow is branch-only until Release 2 lands. To opt into a cloud-device run,
+  # create a test-only commit whose message contains [run-real-device].
+  push:
+    branches: [release2-results-viewer-20261008]
   workflow_dispatch:
 
 permissions:
@@ -8,6 +12,8 @@ permissions:
 
 jobs:
   real-mobile:
+    # Avoid accidental BrowserStack usage/cost on routine PR commits.
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-real-device]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:

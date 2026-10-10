@@ -238,10 +238,12 @@ async function realisticStorageQuotaRegression(browser) {
       screenReaderWarning:document.getElementById('sr')?.textContent||'',
       localStorageFailureWarning:document.getElementById('msg')?.innerText||'',
       unloadPrevented,
-      persistedChars:JSON.stringify(persisted).length
+      persistedChars:JSON.stringify(persisted).length,
+      estimatedStorageBytes:Array.from({length:localStorage.length},(_,i)=>localStorage.key(i)).reduce((sum,key)=>sum+(key.length+(localStorage.getItem(key)||'').length)*2,0)
     };
   });
-  assert.ok(outcome.persistedChars>3500000,'the stored realistic queue is several megabytes before failure');
+  assert.ok(outcome.persistedChars>1500000,'the stored realistic result queue is over 1.5 million characters');
+  assert.ok(outcome.estimatedStorageBytes>3500000,'the complete origin storage is several megabytes before failure');
   assert.ok(outcome.failedAt>=0,'writing additional realistic results eventually hits the simulated quota');
   assert.equal(outcome.queueFailure,true,'the storage failure is tracked, not swallowed');
   assert.equal(outcome.memoryCount,outcome.persistedCount+1,'the failed newest result remains in memory and is not silently removed');

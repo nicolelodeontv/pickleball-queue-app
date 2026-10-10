@@ -13,7 +13,7 @@ permissions:
 jobs:
   real-mobile:
     # Avoid accidental BrowserStack usage/cost on routine PR commits.
-    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-real-device]') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-real-device]') || contains(github.event.head_commit.message, '[device-preflight]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
@@ -55,9 +55,16 @@ jobs:
             echo "::error title=Real-device gate blocked::Add BROWSERSTACK_USERNAME and BROWSERSTACK_ACCESS_KEY as repository Actions secrets. This job cannot pass without a real-device run."
             exit 1
           fi
+      - name: Report no-cost preflight result
+        if: ${{ github.event_name != 'workflow_dispatch' && contains(github.event.head_commit.message, '[device-preflight]') }}
+        run: |
+          echo "Preflight passed: the protected Preview URL and BrowserStack credentials are configured." >> "$GITHUB_STEP_SUMMARY"
+          echo "No BrowserStack device session was started. This is not a physical-device pass." >> "$GITHUB_STEP_SUMMARY"
       - name: Install Playwright client
+        if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-real-device]') }}
         run: npm install --no-save --no-package-lock playwright@1.55.0
       - name: Run Release 2 scenarios on real iPhone Safari and Android Chrome
+        if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-real-device]') }}
         env:
           BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
           BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}

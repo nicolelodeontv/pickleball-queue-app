@@ -83,7 +83,7 @@ jobs:
           echo "No BrowserStack device session was started. This is not a physical-device pass." >> "$GITHUB_STEP_SUMMARY"
       - name: Install Playwright client
         if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-real-device]') }}
-        run: npm install --no-save --no-package-lock playwright@1.55.1
+        run: npm install --no-save --no-package-lock playwright@1.56.1
       - name: Run Release 2 scenarios on real iPhone Safari and Android Chrome
         if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-real-device]') }}
         env:

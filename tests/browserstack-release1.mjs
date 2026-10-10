@@ -204,7 +204,7 @@ async function verifyPreviewTarget(page, initialUrl = APP_URL, probeSupabase = t
   }
 }
 
-async function verifyProfilesPrecachedOffline(device) {
+async function verifyProfilesPrecachedOffline(device, verifyRestoredConnectivity = true) {
   const page = device.page;
   // The Vercel share URL sets a browser cookie; remove its one-time query token before reloads.
   await page.evaluate(() => history.replaceState(null, '', location.pathname));
@@ -235,14 +235,18 @@ async function verifyProfilesPrecachedOffline(device) {
     );
     const content = await page.locator('[role="dialog"]').innerText();
     assert.match(content, /No players yet|All-time stats on this device/);
-    console.log('PASS: Android offline shell loaded and Players opened from the cached profiles.js.');
+    console.log('PASS: offline shell loaded and Players opened from the cached profiles.js on ' + device.kind + '.');
   } finally {
-    await setNetwork(device, 'reset').catch(() => {});
+    await setNetwork(device, '4g-lte-good').catch(() => {});
   }
-  await waitUntil(async () => {
-    const probe = await networkProbe(page);
-    return probe.reachable && probe.online;
-  }, 'Android returns online after offline Players check', 60000);
+  if (verifyRestoredConnectivity) {
+    await waitUntil(async () => {
+      const probe = await networkProbe(page);
+      return probe.reachable && probe.online;
+    }, 'device returns online after offline Players check', 60000);
+  } else {
+    console.log('iPhone offline shell/Players check completed; subsequent handoff RPCs will verify connectivity after profile restoration.');
+  }
 }
 
 async function verifyWinByOneLiveView(hostPage, viewerPage) {
@@ -448,7 +452,7 @@ async function main() {
     iPhonePreviewUrl.hash = '';
     await verifyPreviewTarget(phoneB.page, iPhonePreviewUrl.toString(), false);
     console.log('PASS: both real-device browsers can load the isolated Preview app shell.');
-    await verifyProfilesPrecachedOffline(phoneA);
+    await verifyProfilesPrecachedOffline(phoneB, false);
     const startNetwork = await networkProbe(phoneA.page);
     assert.equal(startNetwork.reachable, true, 'Android begins online');
     await setupEight(phoneA.page);
@@ -577,7 +581,7 @@ async function main() {
     assert.equal(newHost.storedState.includes(handoff.sh), false, 'old host key is absent from replacement state');
     assert.equal(newHost.storedQueue.includes(handoff.sh), false, 'old host key is absent from replacement sync queue');
 
-    await setNetwork(phoneA, 'reset');
+    await setNetwork(phoneA, '4g-lte-good');
     let lastReconnectProbe = null;
     try {
       await waitUntil(async () => {
@@ -638,7 +642,7 @@ async function main() {
     console.error('REAL DEVICE TEST FAILED: ' + reason);
     throw error;
   } finally {
-    if (phoneA) await setNetwork(phoneA, 'reset').catch(() => {});
+    if (phoneA) await setNetwork(phoneA, '4g-lte-good').catch(() => {});
     await markStatus(phoneA, status, reason);
     await markStatus(phoneB, status, reason);
     await Promise.all([phoneA, phoneB].filter(Boolean).map(async device => {

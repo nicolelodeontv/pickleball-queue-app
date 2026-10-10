@@ -46,7 +46,12 @@ Live View uses Supabase. The organizer publishes session state through the app's
 - The production project also retains a locked-down legacy `live_matches` table and older dashboard-applied migration history. The active app no longer uses that path, so it is intentionally excluded from the secure Live View baseline.
 - Do not run the checked-in baseline chain against the existing production database. Its schema is already present there. Before adopting the files as the authoritative CLI history, reconcile the existing remote migration history with `supabase migration repair` after verifying the live schema.
 
-For a separate deployment, set `SB_URL` and `SB_KEY` in `index.html` to the project's URL and browser-safe publishable key. Use a publishable/browser-safe key only.
+For a separate deployment, set `SB_URL` and `SB_KEY` to the project's URL and browser-safe anon/publishable key.
+
+- Vercel deployments use `npm run build:vercel` with output directory `.`. It builds Tailwind CSS and, **only when `VERCEL_ENV=preview`**, reads `SB_URL` and `SB_KEY` from the Preview environment and substitutes the inline browser config in that deployment's build workspace. It refuses a missing key, the production URL, a different project ref, or a service-role/secret key. Production builds and local builds leave the checked-in production defaults untouched.
+- Set `SB_URL` and `SB_KEY` as **Preview-only** Vercel environment variables for the isolated test project. Never set the test values in Production. The Content Security Policy includes the exact test project origin to allow Preview browser requests; the app config decides which backend is actually contacted.
+- The real-device workflow requires `secrets.QUEUEZEROTWO_TEST_APP_URL` to contain the protected Preview deployment's temporary Vercel share link, `BROWSERSTACK_USERNAME` and `BROWSERSTACK_ACCESS_KEY`, and confirms the deployed HTML and network probe target `https://yeytqiyhosoyuassjcef.supabase.co`. Do not replace the guard with a production URL or remove it.
+- Because this is a static app, ordinary Vercel environment variables do not alter HTML by themselves; the `build:vercel` script performs the Preview-only substitution.
 
 ## Development
 

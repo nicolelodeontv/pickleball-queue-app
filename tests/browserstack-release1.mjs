@@ -271,7 +271,7 @@ async function verifyWinByOneLiveView(hostPage, viewerPage) {
 async function ready(page, initialUrl = APP_URL) {
   await page.goto(initialUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
   try {
-    await waitUntil(() => page.locator('#pn').isVisible(), 'app form ready', 30000);
+    await waitUntil(() => page.locator('#app').isVisible() && page.locator('header h1').isVisible(), 'main app layout ready', 30000);
   } catch (error) {
     const diagnostic = await page.evaluate(() => ({
       host: location.hostname,
@@ -281,7 +281,7 @@ async function ready(page, initialUrl = APP_URL) {
       hasAppForm: !!document.getElementById('pn'),
     })).catch(() => ({ host: 'unavailable', path: '/', title: '', body: 'Unable to inspect page', hasAppForm: false }));
     console.error('Preview browser diagnostic: ' + JSON.stringify(diagnostic));
-    throw new Error('App form did not load on ' + diagnostic.host + diagnostic.path +
+    throw new Error('Main app layout did not load on ' + diagnostic.host + diagnostic.path +
       '; title=' + diagnostic.title + '; hasAppForm=' + diagnostic.hasAppForm +
       '; body=' + diagnostic.body);
   }

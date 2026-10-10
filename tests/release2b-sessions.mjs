@@ -152,6 +152,107 @@ async function durableQueueCompactionRegression(browser) {
   await context.close();
 }
 
+async function realisticStorageQuotaRegression(browser) {
+  const context=await freshContext(browser,devices['Desktop Chrome']);
+  const page=await context.newPage();
+  await page.addInitScript(()=>{
+    const queueKey='queuezerotwo-publish-queue-v1';
+    const roster=Array.from({length:32},(_,i)=>'Player '+String(i+1).padStart(2,'0')+' Advanced');
+    const payloadFor=seed=>({
+      v:1,
+      name:'Saturday open play '+seed,
+      totals:{players:32,games:500,courts:8,playTo:11,winBy:2},
+      leaderboard:roster.map((n,i)=>({n,w:50-(i%7),l:20+(i%5),d:10-(i%9)})),
+      matches:Array.from({length:500},(_,g)=>({
+        c:'Court '+(g%8+1),
+        p:[roster[g%32],roster[(g+1)%32],roster[(g+2)%32],roster[(g+3)%32]],
+        s:g%2?[11,8]:[8,11],w:g%2,tg:11,t:1791500000000-g*60000,d:240000
+      }))
+    });
+    const items=Array.from({length:20},(_,i)=>({
+      id:'seed-result-'+String(i).padStart(4,'0'),seq:i+1,
+      sid:'QSEED'+String(i).padStart(5,'0'),sh:'a'.repeat(64),
+      kind:'results',rid:'RSLT'+String(i).padStart(6,'0'),
+      attempts:0,lastError:'',payload:payloadFor(i)
+    }));
+    // Each saved result resembles a full 500-match session snapshot, not a tiny placeholder.
+    localStorage.setItem(queueKey,JSON.stringify({v:1,seq:items.length,items}));
+    localStorage.setItem('__qzt_quota_padding','p'.repeat(250000));
+
+    // Model localStorage's commonly documented ~5 MiB budget in UTF-16 storage units.
+    // The initial realistic queue fits; a few additional result snapshots push it over.
+    const limit=5*1024*1024;
+    const nativeSetItem=Storage.prototype.setItem;
+    Storage.prototype.setItem=function(key,value){
+      const k=String(key),v=String(value);
+      let used=0;
+      for(let i=0;i<this.length;i++){
+        const oldKey=this.key(i),oldValue=this.getItem(oldKey)||'';
+        used+=(oldKey.length+oldValue.length)*2;
+      }
+      const existing=this.getItem(k);
+      if(existing!==null)used-=(k.length+existing.length)*2;
+      used+=(k.length+v.length)*2;
+      if(used>limit)throw new DOMException('The quota has been exceeded.','QuotaExceededError');
+      return nativeSetItem.call(this,k,v);
+    };
+  });
+  await page.goto(APP,{waitUntil:'networkidle'});
+  await context.setOffline(true);
+  await page.waitForTimeout(150);
+  const outcome=await page.evaluate(()=>{
+    const key='queuezerotwo-publish-queue-v1';
+    const roster=Array.from({length:32},(_,i)=>'Player '+String(i+1).padStart(2,'0')+' Advanced');
+    const payloadFor=seed=>({
+      v:1,name:'Additional open play '+seed,
+      totals:{players:32,games:500,courts:8,playTo:11,winBy:2},
+      leaderboard:roster.map((n,i)=>({n,w:49-(i%7),l:21+(i%5),d:9-(i%9)})),
+      matches:Array.from({length:500},(_,g)=>({
+        c:'Court '+(g%8+1),
+        p:[roster[g%32],roster[(g+1)%32],roster[(g+2)%32],roster[(g+3)%32]],
+        s:g%2?[11,8]:[8,11],w:g%2,tg:11,t:1791500000000-g*60000,d:240000
+      }))
+    });
+    const initialCount=PQ.length;
+    let failedAt=-1;
+    for(let i=0;i<20;i++){
+      const seq=++PQS;
+      PQ.push({
+        id:newPublishEntryId(),seq,sid:'QNEW'+String(i).padStart(5,'0'),
+        sh:'b'.repeat(64),kind:'results',rid:'NRES'+String(i).padStart(6,'0'),
+        attempts:0,lastError:'',payload:payloadFor(i+100)
+      });
+      if(!savePublishQueue()){failedAt=i;break}
+    }
+    const persisted=JSON.parse(localStorage.getItem(key)||'{"items":[]}');
+    const latest=PQ[PQ.length-1];
+    let unloadPrevented=false;
+    const before=new Event('beforeunload',{cancelable:true});
+    unloadPrevented=!window.dispatchEvent(before)||before.defaultPrevented;
+    return {
+      initialCount,memoryCount:PQ.length,persistedCount:persisted.items.length,
+      failedAt,latestId:latest&&latest.id,
+      latestPersistedId:persisted.items[persisted.items.length-1]?.id,
+      queueFailure:StorageFailures.has('queue'),
+      marker:document.getElementById('ct')?.textContent||'',
+      screenReaderWarning:document.getElementById('sr')?.textContent||'',
+      localStorageFailureWarning:document.getElementById('msg')?.innerText||'',
+      unloadPrevented,
+      persistedChars:JSON.stringify(persisted).length
+    };
+  });
+  assert.ok(outcome.persistedChars>3500000,'the stored realistic queue is several megabytes before failure');
+  assert.ok(outcome.failedAt>=0,'writing additional realistic results eventually hits the simulated quota');
+  assert.equal(outcome.queueFailure,true,'the storage failure is tracked, not swallowed');
+  assert.equal(outcome.memoryCount,outcome.persistedCount+1,'the failed newest result remains in memory and is not silently removed');
+  assert.notEqual(outcome.latestId,outcome.latestPersistedId,'the failed entry is visibly not yet persisted');
+  assert.match(outcome.marker,/Storage error/i,'the connection status no longer claims the device is saved');
+  assert.match(outcome.screenReaderWarning,/not safely saved/i,'the persistent warning is exposed to assistive technology');
+  assert.match(outcome.localStorageFailureWarning,/Export a backup/i,'the user sees instructions to protect their data');
+  assert.equal(outcome.unloadPrevented,true,'leaving the page is guarded while entries are not safely persisted');
+  await context.close();
+}
+
 async function main() {
   const browser = await chromium.launch({headless: true});
   const desktop = await freshContext(browser, devices['Desktop Chrome']);
@@ -952,6 +1053,9 @@ async function main() {
     await pp.locator('button[aria-label="Plus point, Team 1"]').first().click();
     await assert.equal(await pp.locator('.sbn').first().innerText(), '1');
 
+    // Large, realistic result records must fail loudly at a simulated 5 MiB localStorage budget.
+    await realisticStorageQuotaRegression(browser);
+
     console.log(JSON.stringify({
       pass: true,
       namedSession: true,
@@ -967,6 +1071,7 @@ async function main() {
       durableQueueCompaction: true,
       profilesPrecached: true,
       liveViewHostWinBy: true,
+      realisticQueueQuotaWarning: true,
     }, null, 2));
   } finally {
     for (const p of [backupPath, persistencePath, endBackupPath, finishedBackupPath, hostilePath, path.join(os.tmpdir(), 'queuezerotwo-release1-mobile-auto.json')]) {

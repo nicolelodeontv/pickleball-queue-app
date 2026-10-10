@@ -315,9 +315,10 @@ async function setupEight(page, navigate = true) {
   await waitUntil(() => page.evaluate(() => S.waiting.length === 8), 'eight test players added');
   await page.getByRole('button', { name: 'Check in all' }).click();
   await waitUntil(() => page.evaluate(() => S.queue.length === 8 && S.waiting.length === 0), 'all test players checked in');
-  await page.locator('#nvp').click();
+  // The Send Next 4 action belongs to the Stack tab on narrow viewports.
   await page.locator('#go').click();
   await waitUntil(() => page.evaluate(() => S.courts.some(c => c.isActive && c.players.length === 4)), 'court started');
+  await page.locator('#nvp').click();
   await page.locator('button[aria-label="Plus point, Team 1"]').first().waitFor({ state: 'visible' });
 }
 

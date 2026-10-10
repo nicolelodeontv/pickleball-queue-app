@@ -1,6 +1,5 @@
--- QueueZeroTwo private Live View Broadcast transport.
--- The browser listens to private session:<code> topics; it does not receive host_key.
-
+-- QueueZeroTwo production migration 20261006061538_private_live_view_broadcast.
+-- Reconstructed from the statements stored in the shared project's migration ledger.
 create or replace function public.live_sessions_broadcast()
 returns trigger
 language plpgsql
@@ -31,12 +30,6 @@ $function$;
 revoke execute on function public.live_sessions_broadcast() from public;
 revoke execute on function public.live_sessions_broadcast() from anon;
 revoke execute on function public.live_sessions_broadcast() from authenticated;
-
-drop trigger if exists live_sessions_broadcast_trigger on public.live_sessions;
-create trigger live_sessions_broadcast_trigger
-after insert or update or delete on public.live_sessions
-for each row
-execute function public.live_sessions_broadcast();
 
 drop policy if exists "live view receive session broadcasts" on realtime.messages;
 create policy "live view receive session broadcasts"

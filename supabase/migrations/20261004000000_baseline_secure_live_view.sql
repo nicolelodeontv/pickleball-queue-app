@@ -1,8 +1,10 @@
 -- QueueZeroTwo secure Live View baseline.
 -- Schema-only: no production rows or test session codes are included.
 -- This baseline replaces the old public-policy setup for a fresh PickleStack DB.
+-- IF NOT EXISTS also lets migration repair/deploy safely when the shared remote
+-- database already has this table from the earlier, timestamped secure migrations.
 
-create table public.live_sessions (
+create table if not exists public.live_sessions (
   code text primary key,
   data jsonb not null,
   updated_at timestamptz not null default now(),

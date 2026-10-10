@@ -352,11 +352,21 @@ async function backupAndImportOnIPhone(page) {
   });
 
   await setupEight(page, false);
+  // End-session intentionally cancels active matches without logging them.
+  // Finish one short, scored game first so the backup must preserve a real log entry.
+  await page.evaluate(() => {
+    S.target = 1;
+    S.wb = 1;
+    save();
+    render();
+  });
   await page.locator('button[aria-label="Plus point, Team 1"]').first().click();
   await waitUntil(
-    () => page.evaluate(() => S.courts.some(c => c.isActive && c.score[0] === 1)),
-    'score recorded before backup',
+    () => page.evaluate(() => S.courts.some(c => c.isActive && c.score[0] === 1 && win(c.score, S.target) >= 0)),
+    'winning point recorded before backup',
   );
+  await page.getByRole('button', { name: /FINISH & LOG/i }).first().click();
+  await waitUntil(() => page.evaluate(() => S.log.length >= 1), 'completed match added to the log before backup');
   await page.locator('#rs').click();
   await confirmDialog(page);
   await page.locator('[role="dialog"] .bk').waitFor({ state: 'visible', timeout: 15000 });

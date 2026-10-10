@@ -72,17 +72,16 @@ async function setupFour(page) {
   assert.equal(await page.locator('#qc').innerText(), '4');
 }
 
-async function simulateV21ToV22(browser) {
+async function simulateV23ToV24(browser) {
   const context = await browser.newContext({...devices['Desktop Chrome'],serviceWorkers:'allow',locale:'en-US'});
   const page = await context.newPage();
   let swFetch = 0;
   const currentSw = fs.readFileSync(path.resolve('sw.js'), 'utf8');
-  assert.match(currentSw,/queuezerotwo-v23/);
-  const simulatedV22 = currentSw.replace(/queuezerotwo-v23/g, 'queuezerotwo-v22');
-  const oldV21 = `const V='queuezerotwo-v21';self.addEventListener('install',e=>e.waitUntil(caches.open(V).then(c=>c.put('/__queuezerotwo_v21_sentinel__',new Response('v21'))).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));`;
+  assert.match(currentSw,/queuezerotwo-v24/);
+  const oldV23 = `const V='queuezerotwo-v23';self.addEventListener('install',e=>e.waitUntil(caches.open(V).then(c=>c.put('/__queuezerotwo_v23_sentinel__',new Response('v23'))).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));`;
   await context.route('**/sw.js', async route => {
     swFetch++;
-    await route.fulfill({status:200,contentType:'application/javascript',body:swFetch===1?oldV21:simulatedV22});
+    await route.fulfill({status:200,contentType:'application/javascript',body:swFetch===1?oldV23:currentSw});
   });
   await page.goto(APP,{waitUntil:'networkidle'});
   await page.waitForFunction(()=>!!navigator.serviceWorker?.controller,null,{timeout:5000});
@@ -93,7 +92,7 @@ async function simulateV21ToV22(browser) {
   await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();await r.update()});
   await page.waitForFunction(async()=>{
     const r=await navigator.serviceWorker.getRegistration();
-    return !!r?.waiting || await caches.has('queuezerotwo-v22');
+    return !!r?.waiting || await caches.has('queuezerotwo-v24');
   },null,{timeout:10000});
   await page.evaluate(async()=>{
     const r=await navigator.serviceWorker.getRegistration();
@@ -101,20 +100,55 @@ async function simulateV21ToV22(browser) {
   });
   await page.waitForFunction(async()=>{
     const r=await navigator.serviceWorker.getRegistration();
-    return !!r && !r.waiting && r.active?.state==='activated' && await caches.has('queuezerotwo-v22');
+    return !!r && !r.waiting && r.active?.state==='activated' && await caches.has('queuezerotwo-v24');
   },null,{timeout:10000});
   await page.reload({waitUntil:'networkidle'});
-  const out=await page.evaluate(async()=>({
-    queue:JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items,
-    state:JSON.parse(localStorage.getItem('pickleStackState')||'{}'),
-    oldCache:await caches.has('queuezerotwo-v21')
-  }));
+  const out=await page.evaluate(async()=>{
+    const cache=await caches.open('queuezerotwo-v24');
+    return {
+      queue:JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items,
+      state:JSON.parse(localStorage.getItem('pickleStackState')||'{}'),
+      oldCache:await caches.has('queuezerotwo-v23'),
+      profilesCached:!!(await cache.match('/profiles.js'))
+    };
+  });
   assert.equal(out.oldCache,false);
+  assert.equal(out.profilesCached,true,'profiles.js is present in the offline shell cache');
   assert.equal(out.queue.length,1);
   assert.equal(out.queue[0].sid,'PERSISTEDSID');
   assert.match(out.queue[0].id,/^[0-9a-f]{32}$/);
   assert.equal(out.state.queue[0],'Persisted player');
   assert.equal(out.state.sid,'PERSISTEDSID');
+  await context.close();
+}
+
+async function durableQueueCompactionRegression(browser) {
+  const context=await freshContext(browser,devices['Desktop Chrome']);
+  const page=await context.newPage();
+  await page.addInitScript(()=>{
+    const items=[];
+    const hostKey='a'.repeat(64);
+    for(let i=0;i<250;i++){
+      items.push({id:'state-'+i,seq:i+1,sid:'QUEUE0001',sh:hostKey,kind:'state',attempts:0,lastError:'',payload:{marker:i}});
+    }
+    // Results entries are independent durable records; keep every one even beyond 200 items.
+    for(let i=0;i<205;i++){
+      items.push({id:'result-'+i,seq:251+i,sid:'CODE'+String(i).padStart(6,'0'),sh:String(i).padStart(64,'a'),kind:'results',rid:'RESLT'+String(i).padStart(5,'0'),attempts:0,lastError:'',payload:{v:1,marker:i,leaderboard:[],matches:[]}});
+    }
+    localStorage.setItem('queuezerotwo-publish-queue-v1',JSON.stringify({v:1,seq:455,items}));
+  });
+  await page.goto(APP,{waitUntil:'networkidle'});
+  const result=await page.evaluate(()=>{
+    const q=JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}');
+    const states=q.items.filter(x=>x.kind==='state');
+    const results=q.items.filter(x=>x.kind==='results');
+    return {total:q.items.length,stateCount:states.length,latestStateMarker:states[0]?.payload?.marker,resultsCount:results.length,uniqueResults:new Set(results.map(x=>x.rid)).size};
+  });
+  assert.ok(result.total>200,'the test queue stays above the former cap');
+  assert.equal(result.stateCount,1,'old state snapshots for the same host are coalesced');
+  assert.equal(result.latestStateMarker,249,'the newest whole-state snapshot survives');
+  assert.equal(result.resultsCount,205,'no results publications are trimmed');
+  assert.equal(result.uniqueResults,205,'all distinct result codes remain queued');
   await context.close();
 }
 
@@ -129,7 +163,8 @@ async function main() {
   const pp = await pixel.newPage();
   const syncPublishes = [];
   const resultPublishes = [];
-  await simulateV21ToV22(browser);
+  await simulateV23ToV24(browser);
+  await durableQueueCompactionRegression(browser);
   const sync = await syncContext(browser, devices['Pixel 7'], syncPublishes, resultPublishes);
   const sp = await sync.newPage();
   const backupPath = path.join(os.tmpdir(), 'queuezerotwo-release2b-backup.json');
@@ -156,6 +191,20 @@ async function main() {
     assert.equal(viewerCheck.m2,'Mike R.');
     assert.equal(viewerCheck.a,'Ana');
     assert.ok(viewerCheck.tm&&viewerCheck.tm.a>=240000);
+
+    const viewerWinByCheck=await sp.evaluate(()=>{
+      const oldS=S,oldSV=SV,oldV=V,oldRA=RA;
+      S=mk();S.wb=2;V=null;RA=null;
+      SV={code:'R2WINBY001',d:{t:11,wb:1,courts:[{n:'Court 1',a:true,p:['Ana','Ben','Cara','Dan'],s:[11,10]}],nx:[],q:[],lb:[]},status:'SUBSCRIBED'};
+      renderSession();
+      const winByOne=[...document.querySelectorAll('#viewer span.font-sport')].map(el=>el.classList.contains('text-pickle-500'));
+      SV.d.wb=2;renderSession();
+      const winByTwo=[...document.querySelectorAll('#viewer span.font-sport')].map(el=>el.classList.contains('text-pickle-500'));
+      S=oldS;SV=oldSV;V=oldV;RA=oldRA;render();
+      return {winByOne,winByTwo};
+    });
+    assert.deepEqual(viewerWinByCheck.winByOne,[true,false],'win-by-1 viewer uses the host setting even if local preference differs');
+    assert.deepEqual(viewerWinByCheck.winByTwo,[false,false],'win-by-2 viewer does not mark 11-10 as a win');
 
     await sp.evaluate(() => {
       S=mk();
@@ -914,6 +963,9 @@ async function main() {
       mobileScoring: true,
       equalSitoutWaitTieBreak: true,
       waitTimestampLifecycle: true,
+      durableQueueCompaction: true,
+      profilesPrecached: true,
+      liveViewHostWinBy: true,
     }, null, 2));
   } finally {
     for (const p of [backupPath, persistencePath, endBackupPath, finishedBackupPath, hostilePath, path.join(os.tmpdir(), 'queuezerotwo-release1-mobile-auto.json')]) {

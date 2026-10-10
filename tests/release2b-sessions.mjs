@@ -322,11 +322,12 @@ async function main() {
     assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 1);
     await sp.locator('button[aria-label="Plus point, Team 1"]').first().click();
     await sleep(700);
-    assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 2);
-    // The durable queue record survives until reconnect; offline page-reload behavior
-    // remains part of the physical PWA pass because browser network emulation can bypass SW navigation.
+    assert.equal(await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length), 1);
+    // Superseded whole-state snapshots are coalesced; the newest remains durable until reconnect.
+    // Offline page-reload behavior remains part of the physical PWA pass because browser network emulation can bypass SW navigation.
     const persistedQueue = await sp.evaluate(() => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items);
-    assert.equal(persistedQueue.length, 2);
+    assert.equal(persistedQueue.length, 1);
+    assert.equal((persistedQueue[0].payload.courts||[]).find(v=>v.a)?.s?.[0], 2);
     await sync.setOffline(false);
     await sp.waitForFunction(
       () => JSON.parse(localStorage.getItem('queuezerotwo-publish-queue-v1')||'{"items":[]}').items.length === 0,
@@ -334,11 +335,11 @@ async function main() {
       {timeout:5000},
     );
     assert.match(await sp.locator('#ct').innerText(), /Saved on this device/);
-    const queuedScores = syncPublishes.slice(-2).map(x => {
+    const queuedScores = syncPublishes.slice(-1).map(x => {
       const c = (x.p_payload?.courts || []).find(v => v.a);
       return c?.s?.[0];
     });
-    assert.deepEqual(queuedScores, [1, 2]);
+    assert.deepEqual(queuedScores, [2], 'the latest queued whole-state snapshot is published after reconnect');
 
     // Release 1 edge case: an old host key is rejected once the handoff has completed,
     // so the old device drops its queued writes instead of retrying them forever.

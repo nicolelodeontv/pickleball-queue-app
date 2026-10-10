@@ -54,5 +54,15 @@ if (!match || !match[0].includes(productionUrl)) {
 }
 
 const replacement = 'const SB_URL=' + JSON.stringify(url) + ',SB_KEY=' + JSON.stringify(key) + ';';
-await writeFile(path, html.replace(configPattern, replacement), 'utf8');
-console.log('Configured this Vercel Preview build for the isolated QueueZeroTwo test project.');
+const liveCodePattern = /const randLiveCode=\(\)=>\{const a=new Uint8Array\(10\);crypto\.getRandomValues\(a\);return Array\.from\(a,v=>LIVE_ALPH\[v%LIVE_ALPH\.length\]\)\.join\(''\)\};/;
+if (!liveCodePattern.test(html)) {
+  throw new Error('Expected randLiveCode generator was not found; refusing to deploy a Preview without test-prefixed session codes.');
+}
+const configured = html
+  .replace(configPattern, replacement)
+  .replace(liveCodePattern, "const randLiveCode=()=> 'ZZTEST'+Array.from(crypto.getRandomValues(new Uint8Array(4)),v=>LIVE_ALPH[v%LIVE_ALPH.length]).join('');");
+if (!configured.includes('const randLiveCode=()=> \'ZZTEST\'+')) {
+  throw new Error('Preview test-code prefix substitution failed.');
+}
+await writeFile(path, configured, 'utf8');
+console.log('Configured this Vercel Preview build for the isolated QueueZeroTwo test project with ZZTEST-prefixed live session codes.');

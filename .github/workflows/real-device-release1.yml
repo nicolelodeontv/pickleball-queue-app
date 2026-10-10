@@ -40,12 +40,60 @@ jobs:
           assert.equal(testUrl, 'https://yeytqiyhosoyuassjcef.supabase.co', 'Only the dedicated QueueZeroTwo test project is allowed.');
           assert.notEqual(testUrl, 'https://wochetemsnrysnjrgoed.supabase.co', 'Production Supabase is forbidden for device checks.');
 
-          // Fetch the Preview before allocating any paid real-device sessions.
-          // Never print APP_URL because it includes the temporary share-link token.
-          const response = await fetch(appUrl, { redirect: 'follow' });
+          // Fetch the Preview before allocating paid real-device sessions.
+          // Vercel share links set cookies across redirects, so Node fetch needs a tiny cookie jar.
+          // Never print APP_URL, redirect locations, cookie values, or Supabase keys.
+          const cookieJar = [];
+          const cookieHeader = target => {
+            const u = new URL(target);
+            return cookieJar
+              .filter(c => (u.hostname === c.domain || u.hostname.endsWith('.' + c.domain)) &&
+                u.pathname.startsWith(c.path) && (!c.secure || u.protocol === 'https:'))
+              .map(c => c.name + '=' + c.value)
+              .join('; ');
+          };
+          let currentUrl = appUrl;
+          let response;
+          for (let hop = 0; hop < 10; hop++) {
+            const headers = {};
+            const cookie = cookieHeader(currentUrl);
+            if (cookie) headers.Cookie = cookie;
+            response = await fetch(currentUrl, { redirect: 'manual', headers });
+            const setCookies = typeof response.headers.getSetCookie === 'function'
+              ? response.headers.getSetCookie()
+              : (response.headers.get('set-cookie') ? [response.headers.get('set-cookie')] : []);
+            for (const header of setCookies) {
+              const [pair, ...attrs] = header.split(';');
+              const eq = pair.indexOf('=');
+              if (eq <= 0) continue;
+              const name = pair.slice(0, eq).trim();
+              const value = pair.slice(eq + 1).trim();
+              const attr = Object.fromEntries(attrs.map(s => {
+                const ix = s.indexOf('=');
+                return ix < 0 ? [s.trim().toLowerCase(), true] :
+                  [s.slice(0, ix).trim().toLowerCase(), s.slice(ix + 1).trim()];
+              }));
+              const host = new URL(currentUrl).hostname;
+              const domain = String(attr.domain || host).replace(/^\\./, '').toLowerCase();
+              const cookiePath = typeof attr.path === 'string' ? attr.path : '/';
+              for (let i = cookieJar.length - 1; i >= 0; i--) {
+                if (cookieJar[i].name === name && cookieJar[i].domain === domain && cookieJar[i].path === cookiePath) cookieJar.splice(i, 1);
+              }
+              if (attr['max-age'] !== '0' && value !== '') {
+                cookieJar.push({ name, value, domain, path: cookiePath, secure: Boolean(attr.secure) });
+              }
+            }
+            if (response.status >= 300 && response.status < 400 && response.headers.get('location')) {
+              currentUrl = new URL(response.headers.get('location'), currentUrl).toString();
+              continue;
+            }
+            break;
+          }
+          assert.ok(response, 'Preview share-link fetch did not return a response.');
+          assert.ok(!(response.status >= 300 && response.status < 400), 'Preview share-link redirect chain exceeded the limit.');
           assert.ok(response.ok, `Preview share link returned HTTP ${response.status}.`);
-          const finalUrl = new URL(response.url);
-          assert.equal(finalUrl.hostname, app.hostname, 'Preview share link redirected outside its deployment hostname.');
+          const finalUrl = new URL(currentUrl);
+          assert.equal(finalUrl.hostname, app.hostname, 'Preview share link did not return to its deployment host after authentication.');
           const html = await response.text();
           assert.match(html, /id=["']pn["']/, 'Preview response is not the QueueZeroTwo app shell; share link may be expired or protection may be blocking it.');
           const config = html.match(/const SB_URL=(["'])(https:\/\/[^"']+)\1,SB_KEY=(["'])([^"']+)\3;/);

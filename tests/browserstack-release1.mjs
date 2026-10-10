@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright';
+import playwright from 'playwright';
+const { chromium } = playwright;
 
 const APP_URL = process.env.APP_URL || '';
 const SUPABASE_URL = process.env.TEST_SUPABASE_URL || '';
@@ -75,14 +76,40 @@ async function getSessionId(page, name) {
 
 async function connectDevice(options) {
   const endpoint = 'wss://cdp.browserstack.com/playwright?caps=' + encodeURIComponent(JSON.stringify(caps(options)));
-  const browser = await chromium.connect(endpoint, { timeout: 120000 });
-  const context = browser.contexts()[0];
-  if (!context) {
-    await browser.close().catch(() => {});
-    throw new Error('No context returned for real device ' + options.name);
+
+  if (options.browser === 'chrome') {
+    // BrowserStack real Android devices use Playwright's Android API, not chromium.connect().
+    const android = await playwright._android.connect(endpoint);
+    try {
+      await android.shell('am force-stop com.android.chrome');
+      const context = await android.launchBrowser();
+      const page = await context.newPage();
+      const sessionId = await getSessionId(page, options.name);
+      return { kind: 'android', android, context, page, name: options.name, sessionId };
+    } catch (error) {
+      await android.close().catch(() => {});
+      throw error;
+    }
   }
-  const page = context.pages()[0] || await context.newPage();
-  return { browser, context, page, name: options.name, sessionId: await getSessionId(page, options.name) };
+
+  if (options.browser === 'safari') {
+    // BrowserStack real iPhone Safari uses Playwright's WebKit connection.
+    const browser = await playwright.webkit.connect({
+      wsEndpoint: endpoint,
+      timeout: 120000,
+    });
+    try {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      const sessionId = await getSessionId(page, options.name);
+      return { kind: 'ios', browser, context, page, name: options.name, sessionId };
+    } catch (error) {
+      await browser.close().catch(() => {});
+      throw error;
+    }
+  }
+
+  throw new Error('Unsupported BrowserStack real device browser: ' + options.browser);
 }
 
 async function setNetwork(device, networkProfile) {
@@ -404,7 +431,7 @@ async function main() {
     await waitUntil(async () => {
       const probe = await networkProbe(phoneA.page);
       return probe.reachable === false && probe.online === false;
-    }, 'iPhone is truly offline', 60000);
+    }, 'Android is truly offline', 60000);
 
     await phoneA.page.locator('button[aria-label="Plus point, Team 1"]').first().click();
     await waitUntil(
@@ -496,7 +523,7 @@ async function main() {
     await waitUntil(async () => {
       const probe = await networkProbe(phoneA.page);
       return probe.reachable === true && probe.online === true;
-    }, 'old iPhone reconnects', 60000);
+    }, 'old Android host reconnects', 60000);
     await phoneA.page.evaluate(() => flushPublishQueue());
     await waitUntil(
       () => phoneA.page.evaluate(() =>
@@ -544,7 +571,10 @@ async function main() {
     if (phoneA) await setNetwork(phoneA, '4g-lte-good').catch(() => {});
     await markStatus(phoneA, status, reason);
     await markStatus(phoneB, status, reason);
-    await Promise.all([phoneA, phoneB].filter(Boolean).map(device => device.browser.close().catch(() => {})));
+    await Promise.all([phoneA, phoneB].filter(Boolean).map(async device => {
+      if (device.kind === 'android') await device.android.close().catch(() => {});
+      else await device.browser.close().catch(() => {});
+    }));
   }
 }
 

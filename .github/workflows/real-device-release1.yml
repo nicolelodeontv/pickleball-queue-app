@@ -17,13 +17,24 @@ jobs:
           node-version: '22'
       - name: Check test syntax
         run: node --check tests/browserstack-release1.mjs
-      - name: Refuse production-backed device testing
+      - name: Verify isolated test deployment target
         shell: bash
+        env:
+          APP_URL: ${{ secrets.QUEUEZEROTWO_TEST_APP_URL }}
+          TEST_SUPABASE_URL: https://yeytqiyhosoyuassjcef.supabase.co
         run: |
-          if grep -Fq "https://wochetemsnrysnjrgoed.supabase.co" index.html; then
-            echo "::error title=Unsafe target::This checkout points at the production Supabase project. The device test creates live sessions and does not yet guarantee cleanup after every failure. Do not add BrowserStack secrets or run it until an isolated test project and failure-safe cleanup are configured."
-            exit 1
-          fi
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const appUrl = process.env.APP_URL;
+          const testUrl = process.env.TEST_SUPABASE_URL;
+          assert.ok(appUrl, 'Set QUEUEZEROTWO_TEST_APP_URL to the SSO-bypass link for the test Preview deployment.');
+          const app = new URL(appUrl);
+          assert.ok(app.hostname.endsWith('.vercel.app'), 'BrowserStack must open a Vercel Preview deployment.');
+          assert.notEqual(app.hostname, 'queuezerotwo.vercel.app', 'Production URL is forbidden for device checks.');
+          assert.equal(testUrl, 'https://yeytqiyhosoyuassjcef.supabase.co', 'Only the dedicated QueueZeroTwo test project is allowed.');
+          assert.notEqual(testUrl, 'https://wochetemsnrysnjrgoed.supabase.co', 'Production Supabase is forbidden for device checks.');
+          console.log('Target guard passed: Vercel Preview URL + dedicated test Supabase project.');
+          NODE
       - name: Check BrowserStack credentials
         id: credentials
         shell: bash
@@ -46,5 +57,6 @@ jobs:
         env:
           BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
           BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
-          APP_URL: https://queuezerotwo.vercel.app/
+          APP_URL: ${{ secrets.QUEUEZEROTWO_TEST_APP_URL }}
+          TEST_SUPABASE_URL: https://yeytqiyhosoyuassjcef.supabase.co
         run: node tests/browserstack-release1.mjs

@@ -375,7 +375,9 @@ async function publishQueuedItem(item){
     q=await sb.rpc('publish_pickle_session',{p_code:item.sid,p_host_key:item.sh,p_payload:item.payload});
   }
   const msg=q.error&&q.error.message||'';
-  if(q.error&&/expired session/i.test(msg)&&!item.rid&&item.sid===S.sid&&item.sh===S.sh&&!S.ho){
+  // The server intentionally returns "Invalid host key or expired session" for a stale host after handoff.
+  // A mismatched host key must demote this device, not trigger expired-session recovery.
+  if(q.error&&/expired session/i.test(msg)&&!/invalid host key/i.test(msg)&&!item.rid&&item.sid===S.sid&&item.sh===S.sh&&!S.ho){
     const oldSid=item.sid,oldSh=item.sh,nid=randLiveCode(),nkey=randHostKey();
     S.sid=nid;S.sh=nkey;
     PQ.forEach(x=>{if(x.sid===oldSid&&x.sh===oldSh){x.sid=nid;x.sh=nkey}});

@@ -154,17 +154,33 @@ async function waitUntil(read, description, timeout = 25000, interval = 500) {
 }
 
 async function networkProbe(page) {
-  return page.evaluate(async baseUrl => {
-    try {
-      const response = await fetch(
-        baseUrl + '/auth/v1/health?probe=' + Date.now(),
-        { cache: 'no-store' },
-      );
-      return { reachable: true, status: response.status, online: navigator.onLine };
-    } catch (error) {
-      return { reachable: false, error: String(error), online: navigator.onLine };
-    }
+  // Some BrowserStack WebKit sessions do not serialize an async evaluate return
+  // consistently. Store the result in-page, then read it synchronously.
+  await page.evaluate(baseUrl => {
+    window.__qztNetworkProbe = null;
+    fetch(baseUrl + '/auth/v1/health?probe=' + Date.now(), { cache: 'no-store' })
+      .then(response => {
+        window.__qztNetworkProbe = {
+          reachable: true,
+          status: response.status,
+          online: navigator.onLine,
+        };
+      })
+      .catch(error => {
+        window.__qztNetworkProbe = {
+          reachable: false,
+          error: String(error),
+          online: navigator.onLine,
+        };
+      });
   }, SUPABASE_URL);
+  try {
+    await page.waitForFunction(() => window.__qztNetworkProbe !== null, null, { timeout: 15000 });
+  } catch {
+    const online = await page.evaluate(() => navigator.onLine).catch(() => null);
+    return { reachable: false, error: 'health probe timed out in page context', online };
+  }
+  return page.evaluate(() => window.__qztNetworkProbe);
 }
 
 async function verifyPreviewTarget(page, initialUrl = APP_URL) {

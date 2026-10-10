@@ -40,7 +40,7 @@ function caps(options) {
     'browserstack.debug': 'true',
     'browserstack.networkLogs': 'true',
     build: BUILD,
-    name: options.name,
+    name: options.sessionName,
   };
   return result;
 }
@@ -74,7 +74,11 @@ async function getSessionId(page, name) {
 }
 
 async function connectDevice(options) {
-  const endpoint = 'wss://cdp.browserstack.com/playwright?caps=' + encodeURIComponent(JSON.stringify(caps(options)));
+  // Session names are unique per workflow run. getSessionId() uses the name
+  // to call BrowserStack's session API, and duplicate names can target another run.
+  const sessionName = options.name + ' [' + BUILD + ']';
+  const sessionOptions = { ...options, sessionName };
+  const endpoint = 'wss://cdp.browserstack.com/playwright?caps=' + encodeURIComponent(JSON.stringify(caps(sessionOptions)));
 
   if (options.browser === 'chrome') {
     // BrowserStack real Android devices use Playwright's Android API, not chromium.connect().
@@ -83,7 +87,7 @@ async function connectDevice(options) {
       await android.shell('am force-stop com.android.chrome');
       const context = await android.launchBrowser();
       const page = await context.newPage();
-      const sessionId = await getSessionId(page, options.name);
+      const sessionId = await getSessionId(page, sessionName);
       return { kind: 'android', android, context, page, name: options.name, sessionId };
     } catch (error) {
       await android.close().catch(() => {});
@@ -100,7 +104,7 @@ async function connectDevice(options) {
     try {
       const context = await browser.newContext();
       const page = await context.newPage();
-      const sessionId = await getSessionId(page, options.name);
+      const sessionId = await getSessionId(page, sessionName);
       return { kind: 'ios', browser, context, page, name: options.name, sessionId };
     } catch (error) {
       await browser.close().catch(() => {});
@@ -574,10 +578,22 @@ async function main() {
     assert.equal(newHost.storedQueue.includes(handoff.sh), false, 'old host key is absent from replacement sync queue');
 
     await setNetwork(phoneA, '4g-lte-good');
-    await waitUntil(async () => {
-      const probe = await networkProbe(phoneA.page);
-      return probe.reachable === true && probe.online === true;
-    }, 'old Android host reconnects', 60000);
+    let lastReconnectProbe = null;
+    try {
+      await waitUntil(async () => {
+        lastReconnectProbe = await networkProbe(phoneA.page);
+        return lastReconnectProbe.reachable === true && lastReconnectProbe.online === true;
+      }, 'old Android host reconnects', 60000);
+    } catch (error) {
+      throw new Error((error instanceof Error ? error.message : String(error)) +
+        '; final Android reconnect probe=' +
+        JSON.stringify(lastReconnectProbe && {
+          reachable: lastReconnectProbe.reachable,
+          online: lastReconnectProbe.online,
+          status: lastReconnectProbe.status ?? null,
+          error: lastReconnectProbe.error ?? null,
+        }));
+    }
     await phoneA.page.evaluate(() => flushPublishQueue());
     await waitUntil(
       () => phoneA.page.evaluate(() =>

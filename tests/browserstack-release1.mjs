@@ -74,7 +74,8 @@ async function getSessionId(page, name) {
 
 async function connectDevice(options) {
   const endpoint = 'wss://cdp.browserstack.com/playwright?caps=' + encodeURIComponent(JSON.stringify(caps(options)));
-  const browser = await chromium.connect(endpoint, { timeout: 120000 });
+  // BrowserStack's device endpoint is a CDP bridge, not a Playwright launchServer endpoint.
+  const browser = await chromium.connectOverCDP(endpoint, { timeout: 120000 });
   const context = browser.contexts()[0];
   if (!context) {
     await browser.close().catch(() => {});

@@ -47,18 +47,39 @@ jobs:
         env:
           BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
           BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          if [[ -n "$BROWSERSTACK_USERNAME" && -n "$BROWSERSTACK_ACCESS_KEY" ]]; then
+          missing=()
+          if [[ -z "$BROWSERSTACK_USERNAME" ]]; then missing+=("BROWSERSTACK_USERNAME"); fi
+          if [[ -z "$BROWSERSTACK_ACCESS_KEY" ]]; then missing+=("BROWSERSTACK_ACCESS_KEY"); fi
+          if (( ${#missing[@]} == 0 )); then
             echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "missing_secrets=" >> "$GITHUB_OUTPUT"
             echo "BrowserStack credentials are present."
           else
-            echo "::error title=Real-device gate blocked::Add BROWSERSTACK_USERNAME and BROWSERSTACK_ACCESS_KEY as repository Actions secrets. This job cannot pass without a real-device run."
-            exit 1
+            missing_csv=$(IFS=,; echo "${missing[*]}")
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "missing_secrets=$missing_csv" >> "$GITHUB_OUTPUT"
+            if [[ "$EVENT_NAME" == "workflow_dispatch" || "$HEAD_COMMIT_MESSAGE" == *"[run-real-device]"* ]]; then
+              echo "::error title=Real-device gate blocked::Missing repository Actions secrets: $missing_csv. No secret values were printed."
+              exit 1
+            fi
+            echo "::notice title=No-cost preflight only::Preview target passed. Missing BrowserStack secret(s): $missing_csv. No device session will start."
+            echo "Missing BrowserStack secret(s): $missing_csv" >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Report no-cost preflight result
         if: ${{ github.event_name != 'workflow_dispatch' && contains(github.event.head_commit.message, '[device-preflight]') }}
+        env:
+          BROWSERSTACK_CONFIGURED: ${{ steps.credentials.outputs.configured }}
+          MISSING_SECRETS: ${{ steps.credentials.outputs.missing_secrets }}
         run: |
-          echo "Preflight passed: the protected Preview URL and BrowserStack credentials are configured." >> "$GITHUB_STEP_SUMMARY"
+          echo "Protected Preview URL guard passed and points at the dedicated test Supabase project." >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$BROWSERSTACK_CONFIGURED" == "true" ]]; then
+            echo "BrowserStack credentials are configured." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "BrowserStack run is blocked until these repository secrets are added: $MISSING_SECRETS." >> "$GITHUB_STEP_SUMMARY"
+          fi
           echo "No BrowserStack device session was started. This is not a physical-device pass." >> "$GITHUB_STEP_SUMMARY"
       - name: Install Playwright client
         if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-real-device]') }}

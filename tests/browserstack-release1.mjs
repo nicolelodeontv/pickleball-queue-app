@@ -35,7 +35,8 @@ function caps(options) {
     realMobile: 'true',
     'browserstack.username': USER,
     'browserstack.accessKey': KEY,
-    'client.playwrightVersion': '1.55.1',
+    'browserstack.playwrightVersion': '1.56.1',
+    'client.playwrightVersion': '1.56.1',
     'browserstack.debug': 'true',
     'browserstack.networkLogs': 'true',
     build: BUILD,
@@ -74,8 +75,7 @@ async function getSessionId(page, name) {
 
 async function connectDevice(options) {
   const endpoint = 'wss://cdp.browserstack.com/playwright?caps=' + encodeURIComponent(JSON.stringify(caps(options)));
-  // BrowserStack's device endpoint is a CDP bridge, not a Playwright launchServer endpoint.
-  const browser = await chromium.connectOverCDP(endpoint, { timeout: 120000 });
+  const browser = await chromium.connect(endpoint, { timeout: 120000 });
   const context = browser.contexts()[0];
   if (!context) {
     await browser.close().catch(() => {});

@@ -1,6 +1,7 @@
 name: Release 2 real-device checks (BrowserStack)
 
 # Use [device-preflight] for a no-cost protected Preview check before any paid mobile sessions.
+# Use [run-real-device] only after the Preview preflight passes; it may incur BrowserStack charges.
 
 on:
   # This workflow is branch-only until Release 2 lands. To opt into a cloud-device run,

@@ -177,7 +177,7 @@ async function verifyPreviewTarget(page, initialUrl = APP_URL) {
   assert.equal(config[2], SUPABASE_URL, 'preview backend URL must exactly match TEST_SUPABASE_URL');
   assert.ok(!config[4].startsWith('sb_secret_'), 'a Supabase secret key must never be embedded in browser code');
   const probe = await networkProbe(page);
-  assert.equal(probe.reachable, true, 'dedicated test Supabase endpoint must be reachable from the device');
+  assert.equal(probe.reachable, true, 'dedicated test Supabase endpoint must be reachable from the device; probe=' + JSON.stringify({ status: probe.status ?? null, error: probe.error ?? null, online: probe.online }));
 }
 
 async function verifyProfilesPrecachedOffline(device) {
@@ -400,6 +400,10 @@ async function main() {
       name: 'QueueZeroTwo replacement host - real iPhone Safari',
     });
     console.log('Connected to a real Android Chrome and iPhone Safari device pair.');
+    // BrowserStack devices may inherit a restricted network state, so set both to known-good LTE before validation.
+    await setNetwork(phoneA, '4g-lte-good');
+    await setNetwork(phoneB, '4g-lte-good');
+    console.log('Both device sessions set to the 4g-lte-good network profile.');
 
     // Validate both real devices have the intended Preview build before any writes.
     await verifyPreviewTarget(phoneA.page);

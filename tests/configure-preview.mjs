@@ -49,7 +49,7 @@ const offline = await runCase({});
 assert.equal(offline.code, 0, offline.stderr || offline.stdout);
 assert.ok(offline.html.includes("const SB_URL='',SB_KEY='';"), 'Offline Preview must clear the production backend config.');
 assert.ok(!offline.html.includes(productionUrl), 'Offline Preview must never fall back to Production.');
-assert.ok(offline.html.includes("const randLiveCode()=> 'ZZTEST'+") === false || offline.html.includes("const randLiveCode=()=> 'ZZTEST'+"), 'Offline Preview must keep test-prefixed session codes.');
+assert.ok(offline.html.includes("const randLiveCode=()=> 'ZZTEST'+"), 'Offline Preview must keep test-prefixed session codes.');
 assert.match(offline.stdout, /snapshot-only mode/);
 
 // When both vars are present, the exact test backend is still required and accepted.

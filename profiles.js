@@ -3,7 +3,7 @@
 const PK='pickleStackPlayers',ky=n=>n.toLowerCase();
 let P={};
 try{P=JSON.parse(localStorage.getItem(PK))||{}}catch(e){P={}}
-const sv=()=>{try{localStorage.setItem(PK,JSON.stringify(P))}catch(e){}};
+const sv=()=>{try{localStorage.setItem(PK,JSON.stringify(P));return true}catch(e){return false}};
 window.pRestore=s=>{if(!s)return;try{const o=JSON.parse(s);P=o.p||{};S.pseen=o.ps||{};sv()}catch(e){}};
 const num=(v,m)=>Math.min(m,Math.max(0,Math.floor(Number(v))||0));
 const ptc=o=>{const r={};if(o&&typeof o==='object')Object.keys(o).slice(0,300).forEach(k=>{const x=o[k];if(x&&k!=='__proto__')r[String(k).slice(0,40)]={n:String(x.n||'').slice(0,40),g:num(x.g,1e5),w:num(x.w,1e5)}});return r};

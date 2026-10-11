@@ -15,6 +15,11 @@ function avatarHTML(r,size=44){
     ? '<img alt="" src="'+src+'" style="display:block;width:'+size+'px;height:'+size+'px;object-fit:cover;flex:none;border-radius:50%;border:2px solid #334155">'
     : '<span aria-hidden="true" style="'+base+'background:#ccff00;color:#0B0F19;font-size:'+Math.max(12,Math.round(size*.32))+'px;font-weight:800;border:2px solid #334155">'+esc(initials(r.n))+'</span>';
 }
+function refreshAvatarRows(r){
+  document.querySelectorAll('.pr').forEach(b=>{
+    if(b.dataset.k===ky(r.n)){const a=b.querySelector('.profile-list-avatar');if(a)a.innerHTML=avatarHTML(r,40)}
+  });
+}
 const cln=x=>({n:String(x.n).slice(0,40),w:num(x.w,1e5),l:num(x.l,1e5),pf:num(x.pf,1e7),pa:num(x.pa,1e7),s:num(x.s,1e5),last:num(x.last,9e15),form:(Array.isArray(x.form)?x.form:[]).slice(0,10).map(f=>f=='W'?'W':'L'),pt:ptc(x.pt),lv:num(x.lv,6),avatar:safeAvatar(x.avatar)});
 const row=n=>P[ky(n)]||(P[ky(n)]={n,w:0,l:0,pf:0,pa:0,s:0,last:0,form:[],pt:{},lv:0});
 const dt=t=>t?new Date(t).toLocaleDateString([],{month:'short',day:'numeric'}):'never';
@@ -93,9 +98,9 @@ function profile(r){
   +'<div class="p-4 border-t border-dark-700 grid grid-cols-2 gap-3"><button data-x class="'+bS+'">Back</button><button class="ad '+bP+'">Add to session</button></div>';
   box.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>box.parentElement.remove());
   const avatarButton=box.querySelector('[data-avatar]'),removeAvatarButton=box.querySelector('[data-remove-avatar]');
-  const refreshAvatar=()=>{box.querySelector('.avatar-preview').innerHTML=avatarHTML(r,56);avatarButton.textContent=safeAvatar(r.avatar)?'Change avatar':'Add avatar';removeAvatarButton.hidden=!safeAvatar(r.avatar)};
+  const refreshAvatar=()=>{box.querySelector('.avatar-preview').innerHTML=avatarHTML(r,56);avatarButton.textContent=safeAvatar(r.avatar)?'Change avatar':'Add avatar';removeAvatarButton.hidden=!safeAvatar(r.avatar);refreshAvatarRows(r)};
   avatarButton.onclick=()=>chooseAvatar(r,refreshAvatar);
-  removeAvatarButton.onclick=()=>{r.avatar='';sv();refreshAvatar();toast('Avatar removed.','success')};
+  removeAvatarButton.onclick=()=>{const previous=r.avatar;r.avatar='';if(!sv()){r.avatar=previous;toast('Could not save the change. Free up device storage and try again.','error');return}refreshAvatar();toast('Avatar removed.','success')};
   box.querySelector('.ad').onclick=()=>{addP(r.n);box.parentElement.remove()};
 }
 function open(){
@@ -109,7 +114,7 @@ function open(){
     const k=q.value.trim().toLowerCase(),v=so.value,
     s={w:(a,b)=>b.w-a.w||pct(b)-pct(a),p:(a,b)=>pct(b)-pct(a)||b.w-a.w,g:(a,b)=>(b.w+b.l)-(a.w+a.l),r:(a,b)=>b.last-a.last,n:(a,b)=>a.n.localeCompare(b.n)}[v];
     const L=Object.values(P).filter(r=>!k||r.n.toLowerCase().includes(k)).sort(s);
-    ls.innerHTML=L.length?L.map(r=>'<div class="flex items-center gap-2 p-3"><button class="pr flex-1 min-w-0 text-left" data-k="'+esc(ky(r.n))+'"><div class="flex items-center gap-3"><span>'+avatarHTML(r,40)+'</span><span class="min-w-0"><span class="block truncate text-white">'+esc(r.n)+'</span><span class="block text-xs text-gray-400">'+r.w+'-'+r.l+' · '+pct(r)+'% · '+r.s+' sessions</span></span></div></button><button class="pa w-9 h-9 rounded-lg bg-pickle-500 text-dark-900" title="Add to session" data-k="'+esc(ky(r.n))+'"><i class="fa-solid fa-plus"></i></button></div>').join('')
+    ls.innerHTML=L.length?L.map(r=>'<div class="flex items-center gap-2 p-3"><button class="pr flex-1 min-w-0 text-left" data-k="'+esc(ky(r.n))+'"><div class="flex items-center gap-3"><span class="profile-list-avatar">'+avatarHTML(r,40)+'</span><span class="min-w-0"><span class="block truncate text-white">'+esc(r.n)+'</span><span class="block text-xs text-gray-400">'+r.w+'-'+r.l+' · '+pct(r)+'% · '+r.s+' sessions</span></span></div></button><button class="pa w-9 h-9 rounded-lg bg-pickle-500 text-dark-900" title="Add to session" data-k="'+esc(ky(r.n))+'"><i class="fa-solid fa-plus"></i></button></div>').join('')
     :'<p class="p-8 text-center text-sm text-gray-500">'+(Object.keys(P).length?'No match.':'No players yet. Finish a scored match and they appear here.')+'</p>';
     ls.querySelectorAll('.pr').forEach(b=>b.onclick=()=>profile(P[b.dataset.k]));
     ls.querySelectorAll('.pa').forEach(b=>b.onclick=()=>addP(P[b.dataset.k].n));
